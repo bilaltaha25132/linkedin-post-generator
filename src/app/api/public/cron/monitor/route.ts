@@ -1,0 +1,48 @@
+import { NextResponse, type NextRequest } from "next/server";
+
+import { env } from "@/lib/env";
+import { runMonitor } from "@/lib/monitor/run";
+
+// A monitoring pass hits Firecrawl + Gemini for every source, so give it room.
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
+
+export async function GET(req: NextRequest) {
+  return handle(req);
+}
+
+export async function POST(req: NextRequest) {
+  return handle(req);
+}
+
+async function handle(req: NextRequest) {
+  if (!(await authorized(req))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const result = await runMonitor();
+    return NextResponse.json({ ok: true, ...result });
+  } catch (err) {
+    return NextResponse.json({ ok: false, error: (err as Error).message }, { status: 500 });
+  }
+}
+
+async function authorized(req: NextRequest): Promise<boolean> {
+  const header = req.headers.get("authorization") ?? "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+  return constantTimeEqual(token, env.cronSecret());
+}
+
+async function constantTimeEqual(a: string, b: string): Promise<boolean> {
+  const enc = new TextEncoder();
+  const [da, db] = await Promise.all([
+    crypto.subtle.digest("SHA-256", enc.encode(a)),
+    crypto.subtle.digest("SHA-256", enc.encode(b)),
+  ]);
+  const x = new Uint8Array(da);
+  const y = new Uint8Array(db);
+  let diff = 0;
+  for (let i = 0; i < x.length; i++) diff |= x[i] ^ y[i];
+  return diff === 0;
+}

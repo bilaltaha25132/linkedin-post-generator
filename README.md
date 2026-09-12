@@ -1,36 +1,25 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Signal Desk
 
-## Getting Started
+A serverless, zero-cost personal tool that watches the web for post-worthy tech
+news and drafts LinkedIn posts in your own voice — grounded in what you've
+already written, so your feed stays cohesive and doesn't repeat itself.
 
-First, run the development server:
+- **Monitor:** Firecrawl searches your topics; a fast LLM scores each item for how
+  strong a post you could write from it.
+- **Write:** a stronger LLM drafts posts imitating your real writing (portfolio
+  blog + case studies + past posts), checked against what you've posted before.
+- **Runs free:** Next.js on Vercel Hobby + Supabase + GitHub Actions cron. No
+  always-on server.
 
-```bash
+## Quick start
+
+```
+npm install
+# fill SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY in .env.local, run the SQL,
+# then load your voice:
+node --env-file=.env.local scripts/import-voice.mjs
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Full walkthrough — Supabase, deploy, scheduling — in **[docs/setup.md](docs/setup.md)**.
+Architecture and design decisions in **[docs/](docs/README.md)**.

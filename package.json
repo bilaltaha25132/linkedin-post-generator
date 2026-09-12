@@ -1,17 +1,26 @@
 {
-  "name": "linkedin-post-gen-tmp",
+  "name": "linkedin-post-generator",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:migrate": "node --env-file=.env.local scripts/migrate.mjs",
+    "voice:import": "node --env-file=.env.local scripts/import-voice.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.45.0",
     "next": "16.3.4",
+    "openai": "^7.15.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.6.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -20,6 +29,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
+    "pg": "^8.23.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

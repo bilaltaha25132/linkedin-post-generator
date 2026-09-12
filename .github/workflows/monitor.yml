@@ -1,0 +1,21 @@
+name: monitor
+
+# Vercel Hobby cron is limited to once/day, so GitHub Actions (free) drives the
+# schedule instead — see docs/architecture.md. Set repo secrets APP_URL and
+# CRON_SECRET (Settings > Secrets and variables > Actions).
+on:
+  schedule:
+    - cron: "0 */6 * * *" # every 6 hours
+  workflow_dispatch: {} # manual "Run workflow" button
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger monitoring pass
+        run: |
+          code=$(curl -sS -o /tmp/body -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/public/cron/monitor")
+          echo "HTTP $code"; cat /tmp/body; echo
+          test "$code" = "200"
