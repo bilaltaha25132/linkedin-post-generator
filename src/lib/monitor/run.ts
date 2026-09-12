@@ -40,15 +40,22 @@ export async function runMonitor(): Promise<MonitorResult> {
     .eq("enabled", true);
   if (error) throw new Error(`Loading sources failed: ${error.message}`);
 
+  // Serverless functions are killed at ~60s. Stop well before then and let the
+  // next pass continue where this one left off (dedup makes it resumable). Two
+  // tiers: don't START a new source late (each Firecrawl search can take ~20s),
+  // and don't process new items past the hard deadline.
+  const deadline = Date.now() + cfg.budgetMs;
+  const sourceStartBy = deadline - 22_000;
+
   for (const source of (sources ?? []) as Source[]) {
-    if (result.newDiscoveries >= cfg.maxNewPerRun) break;
+    if (result.newDiscoveries >= cfg.maxNewPerRun || Date.now() > sourceStartBy) break;
     try {
       const hits = await hitsForSource(source, cfg);
       result.sourcesRun += 1;
       result.hitsSeen += hits.length;
 
       for (const hit of hits) {
-        if (result.newDiscoveries >= cfg.maxNewPerRun) break;
+        if (result.newDiscoveries >= cfg.maxNewPerRun || Date.now() > deadline) break;
         const outcome = await ingestHit(hit, source, cfg);
         if (outcome === "new") result.newDiscoveries += 1;
         else if (outcome === "duplicate") result.skippedDuplicate += 1;

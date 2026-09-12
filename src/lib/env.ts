@@ -52,5 +52,7 @@ export const env = {
     // Cap LLM-scored new items per pass so a run stays within the 60s function
     // budget; the next pass picks up the rest.
     maxNewPerRun: num("MONITOR_MAX_NEW_PER_RUN", 24),
+    // Wall-clock budget for a whole pass (ms). Kept under the ~60s serverless cap.
+    budgetMs: num("MONITOR_BUDGET_MS", 50_000),
   }),
 };

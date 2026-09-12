@@ -59,7 +59,7 @@ export async function search(
       sources: ["news", "web"],
       scrapeOptions: { formats: ["markdown"], onlyMainContent: true },
     }),
-    signal: AbortSignal.timeout(30_000),
+    signal: AbortSignal.timeout(20_000),
   });
 
   if (!response.ok) {
