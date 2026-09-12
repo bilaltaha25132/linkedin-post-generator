@@ -45,10 +45,11 @@ export const env = {
   authSecret: () => req("AUTH_SECRET"),
   cronSecret: () => req("CRON_SECRET"),
 
-  // WhatsApp digest via CallMeBot. Unconfigured (no phone/key) = notifications off.
-  whatsapp: () => ({
-    phone: process.env.CALLMEBOT_PHONE ?? "",
-    apiKey: process.env.CALLMEBOT_APIKEY ?? "",
+  // Email digest via Resend. Unconfigured (no key/recipient) = notifications off.
+  email: () => ({
+    apiKey: process.env.RESEND_API_KEY ?? "",
+    to: process.env.NOTIFY_EMAIL ?? "",
+    from: process.env.NOTIFY_FROM ?? "Signal Desk <onboarding@resend.dev>",
     minScore: num("NOTIFY_MIN_SCORE", 65),
     maxItems: num("NOTIFY_MAX_ITEMS", 5),
   }),
