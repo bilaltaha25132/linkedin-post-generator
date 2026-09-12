@@ -260,6 +260,67 @@ h3 {
   outline-offset: 2px;
 }
 
+/* --- Feed toolbar / filters -------------------------------------------------- */
+.toolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.toolbar-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 220px;
+  padding-left: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+.toolbar-search svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ink-faint);
+  flex: none;
+}
+.toolbar-search .field {
+  border: none;
+  background: transparent;
+  padding-left: 0;
+}
+.toolbar-search .field:focus {
+  outline: none;
+}
+.toolbar-select {
+  width: auto;
+  flex: none;
+  cursor: pointer;
+}
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.seg button {
+  padding: 8px 14px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  border: none;
+  border-left: 1px solid var(--line);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.seg button:first-child {
+  border-left: none;
+}
+.seg button[data-active="true"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
 /* --- Feed: editorial signal rows (the hero) ---------------------------------- */
 .wire {
   border-top: 1px solid var(--line);

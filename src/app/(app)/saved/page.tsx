@@ -1,4 +1,4 @@
-import { DiscoveryRow } from "@/components/discovery-row";
+import { FeedList } from "@/components/feed-list";
 import { SetupNotice } from "@/components/setup-notice";
 import { listDiscoveries } from "@/lib/discoveries/queries";
 import { supabaseConfigured } from "@/lib/supabase/server";
@@ -18,17 +18,12 @@ export default async function SavedPage() {
 
       {!configured ? (
         <SetupNotice />
-      ) : discoveries.length === 0 ? (
-        <div className="empty">
-          <h3>Nothing saved yet</h3>
-          <p>Save an item from the wire and it&rsquo;ll wait for you here.</p>
-        </div>
       ) : (
-        <div className="wire">
-          {discoveries.map((d) => (
-            <DiscoveryRow key={d.id} discovery={d} />
-          ))}
-        </div>
+        <FeedList
+          discoveries={discoveries}
+          emptyTitle="Nothing saved yet"
+          emptyHint="Save an item from the wire and it'll wait for you here."
+        />
       )}
     </>
   );

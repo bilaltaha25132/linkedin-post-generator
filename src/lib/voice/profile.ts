@@ -20,17 +20,26 @@ are the rest. Judged in the agentic-coding era on turning requirements into
 scalable products, not on writing code by hand.`;
 
 /** What makes an item worth a post — used by the relevance gate. */
-export const INTEREST_PROFILE = `Audience: fellow software/AI engineers, tech leads, early-career devs weighing
-startup vs big-tech, and prospective clients/employers. They engage with:
-- Practical AI-in-production lessons: RAG done right, stopping hallucination,
-  letting a bot say "I don't know", prompt-injection defence, keeping knowledge
-  bases fresh, dedup before the LLM, agent orchestration, LLM observability.
-- Honest build-and-break war stories with a concrete, generalisable takeaway.
-- Notable AI/LLM/tech news that Bilal can add a grounded, contrarian, or
-  from-the-trenches take to — not a re-announcement of the headline.
-- Career/industry shifts in AI engineering and the agentic-coding era.
-Low value: generic hype, funding rounds with no engineering angle, pure
-consumer-product news, listicles, anything he could only restate not reframe.`;
+export const INTEREST_PROFILE = `Audience: software/AI engineers, tech leads, founders, and the broader
+tech-curious crowd on LinkedIn. Bilal's brand is AI engineering, but the goal is
+posts people actually want to READ and share — interesting first, niche second.
+
+Score HIGH (75-100) when an item is genuinely interesting/informative AND Bilal
+can add a real take:
+- A surprising or counter-intuitive finding, result, or benchmark.
+- A notable AI/tech launch, capability jump, or industry shift people are talking about.
+- A concrete "how it was built / how it broke" story with a transferable lesson.
+- A practical technique or tool that saves real time or money.
+- A meaty debate or a strong contrarian angle (safety, hype vs reality, agents, jobs).
+- First-party engineering war stories: RAG, agents, LLMs in production, guardrails,
+  eval/observability — his home turf.
+
+Score MEDIUM (45-74): solid, informative, but a little niche or only mildly novel.
+
+Score LOW (<45): generic hype, thin funding blurbs with no angle, pure consumer
+gadget news, SEO listicles, press releases, or anything he could only restate,
+not reframe. Reward "would a smart engineer stop scrolling and read this?"; punish
+"could be any generic AI newsletter blurb."`;
 
 /**
  * The hard voice rules. Written imperatively because it's fed to the model as

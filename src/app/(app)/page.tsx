@@ -1,4 +1,4 @@
-import { DiscoveryRow } from "@/components/discovery-row";
+import { FeedList } from "@/components/feed-list";
 import { RefreshButton } from "@/components/refresh-button";
 import { SetupNotice } from "@/components/setup-notice";
 import { listDiscoveries } from "@/lib/discoveries/queries";
@@ -27,17 +27,12 @@ export default async function FeedPage() {
 
       {!configured ? (
         <SetupNotice />
-      ) : discoveries.length === 0 ? (
-        <div className="empty">
-          <h3>The wire is quiet</h3>
-          <p>Run a scan to pull the latest, or add topics on the Sources page.</p>
-        </div>
       ) : (
-        <div className="wire">
-          {discoveries.map((d) => (
-            <DiscoveryRow key={d.id} discovery={d} />
-          ))}
-        </div>
+        <FeedList
+          discoveries={discoveries}
+          emptyTitle="The wire is quiet"
+          emptyHint="Run a scan to pull the latest, or add topics on the Sources page."
+        />
       )}
     </>
   );
