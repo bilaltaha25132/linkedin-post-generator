@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { env } from "@/lib/env";
 import { runMonitor } from "@/lib/monitor/run";
+import { sendDigest } from "@/lib/notify/digest";
 
 // A monitoring pass hits Firecrawl + Gemini for every source, so give it room.
 export const maxDuration = 60;
@@ -22,7 +23,17 @@ async function handle(req: NextRequest) {
 
   try {
     const result = await runMonitor();
-    return NextResponse.json({ ok: true, ...result });
+
+    // WhatsApp digest is best-effort — never let a notification failure fail the scan.
+    let notified = 0;
+    try {
+      const baseUrl = process.env.APP_URL ?? req.nextUrl.origin;
+      ({ sent: notified } = await sendDigest(baseUrl));
+    } catch {
+      // ignore
+    }
+
+    return NextResponse.json({ ok: true, notified, ...result });
   } catch (err) {
     return NextResponse.json({ ok: false, error: (err as Error).message }, { status: 500 });
   }

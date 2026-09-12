@@ -45,6 +45,14 @@ export const env = {
   authSecret: () => req("AUTH_SECRET"),
   cronSecret: () => req("CRON_SECRET"),
 
+  // WhatsApp digest via CallMeBot. Unconfigured (no phone/key) = notifications off.
+  whatsapp: () => ({
+    phone: process.env.CALLMEBOT_PHONE ?? "",
+    apiKey: process.env.CALLMEBOT_APIKEY ?? "",
+    minScore: num("NOTIFY_MIN_SCORE", 65),
+    maxItems: num("NOTIFY_MAX_ITEMS", 5),
+  }),
+
   monitor: () => ({
     searchLimit: num("MONITOR_SEARCH_LIMIT", 15),
     timeRange: process.env.MONITOR_TIME_RANGE ?? "qdr:d",
