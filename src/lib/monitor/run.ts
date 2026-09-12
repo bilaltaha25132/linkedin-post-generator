@@ -34,10 +34,13 @@ export async function runMonitor(): Promise<MonitorResult> {
     errors: [],
   };
 
+  // Least-recently-scanned first so a bounded run rotates through every source
+  // over time instead of always hammering the first few.
   const { data: sources, error } = await db
     .from("sources")
     .select("*")
-    .eq("enabled", true);
+    .eq("enabled", true)
+    .order("last_scanned_at", { ascending: true, nullsFirst: true });
   if (error) throw new Error(`Loading sources failed: ${error.message}`);
 
   // Serverless functions are killed at ~60s. Stop well before then and let the
@@ -53,6 +56,8 @@ export async function runMonitor(): Promise<MonitorResult> {
       const hits = await hitsForSource(source, cfg);
       result.sourcesRun += 1;
       result.hitsSeen += hits.length;
+      // Mark scanned so the next run rotates to other sources.
+      await db.from("sources").update({ last_scanned_at: new Date().toISOString() }).eq("id", source.id);
 
       for (const hit of hits) {
         if (result.newDiscoveries >= cfg.maxNewPerRun || Date.now() > deadline) break;
