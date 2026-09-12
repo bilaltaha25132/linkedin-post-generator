@@ -141,7 +141,24 @@ Carousel rules (2025-26 best practice):
 - LAST SLIDE is the CTA: a one-line recap + a single genuine ask (e.g. "What breaks your RAG in prod? Tell me below.").
 - No emojis. No hashtags on slides. Short words — this is read on a phone.
 
-Output format: each slide separated by a line containing exactly ${SLIDE_DELIMITER} and nothing else. Within a slide, the FIRST line is the heading, the remaining lines are the body. No numbering, no markdown, no preamble.`;
+CRITICAL OUTPUT FORMAT — follow exactly or the deck breaks:
+- Output ONLY the slides. Nothing before the first slide or after the last.
+- Put a line containing EXACTLY ${SLIDE_DELIMITER} between every two slides, and nowhere else.
+- Within each slide, the FIRST line is the heading; the lines after it are the body.
+- Never merge two slides into one. No numbering, no markdown, no preamble.
+
+Example shape (yours should have 7-9 slides):
+Nothing stopped the agent
+Except the token budget.
+${SLIDE_DELIMITER}
+Guardrails you can't see
+A passing eval is not a stop. The loop keeps going until something external says no.
+${SLIDE_DELIMITER}
+Put a broker in front
+Every action gets audited before it runs, not after.
+${SLIDE_DELIMITER}
+Your move
+Where does your write boundary sit? Tell me below.`;
 
   const user = `TOPIC
 Title: ${input.title}
@@ -149,5 +166,5 @@ ${input.angle ? `Angle: ${input.angle}\n` : ""}Source (may be truncated):
 ${input.content.slice(0, 4000)}
 ${input.postBody ? `\nThe companion post (align the carousel with it):\n${input.postBody.slice(0, 1500)}` : ""}`;
 
-  return { system, user, role: "writer", temperature: 1.0, maxTokens: 3000, op: "carousel" };
+  return { system, user, role: "writer", temperature: 0.7, maxTokens: 3000, op: "carousel" };
 }

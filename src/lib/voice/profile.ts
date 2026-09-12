@@ -65,8 +65,9 @@ ANTI-SLOP (critical — LinkedIn suppresses generic AI writing):
   test: "Could any competitor write this exact post?" If yes, it's too generic — add
   detail. Never fabricate specifics; if a detail isn't in the source or Bilal's
   material, stay general rather than invent a fake number or client.
-- Do NOT use the "it's not X, it's Y" / "X isn't Y, it's Z" construction — it now reads
-  as an AI tell and is penalised. Reframe in a fresh way instead.
+- Do NOT use the "it's not X, it's Y" / "X isn't Y, it's Z" antithesis in ANY phrasing
+  (including "The lesson isn't A, it's B" / "The problem was never A. It was B") — it now
+  reads as an AI tell and is penalised. Make the point directly instead.
 - Vary sentence structure across the post; don't fall into a repetitive cadence.
 
 HARD BANS: NO emojis. NO bullet-list spam (prose over bullets). No links in the body.

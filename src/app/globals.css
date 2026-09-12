@@ -315,7 +315,7 @@ h3 {
 .wire-row h3 {
   font-size: 19px;
 }
-.wire-row .meta {
+.meta {
   font-family: var(--font-mono);
   font-size: 11.5px;
   color: var(--ink-faint);
