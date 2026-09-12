@@ -1,17 +1,48 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { LayoutGrid, Download, RotateCcw, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { LayoutGrid, Download, RotateCcw, Trash2, Check } from "lucide-react";
 
-import { generateCarouselAction } from "@/lib/carousel/actions";
+import { generateCarouselAction, saveCarouselForPost } from "@/lib/carousel/actions";
+import { SlideCard } from "@/components/carousel-attachment";
 import type { Slide } from "@/lib/llm/prompts";
 
 const HANDLE = "Bilal Taha";
 
-export function CarouselStudio({ discoveryId, postBody }: { discoveryId: string; postBody: string }) {
+export function CarouselStudio({
+  discoveryId,
+  postBody,
+  postId,
+  initialSlides = [],
+}: {
+  discoveryId: string;
+  postBody: string;
+  postId?: string | null;
+  initialSlides?: Slide[];
+}) {
   const [pending, startTransition] = useTransition();
-  const [slides, setSlides] = useState<Slide[]>([]);
+  const [slides, setSlides] = useState<Slide[]>(initialSlides);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(initialSlides.length > 0);
+  const lastSavedRef = useRef<string>(JSON.stringify(initialSlides));
+
+  // Persist the deck to its post so it travels with the post everywhere.
+  useEffect(() => {
+    if (!postId) return;
+    const serialized = JSON.stringify(slides);
+    if (serialized === lastSavedRef.current) return;
+    setSaved(false);
+    const timer = setTimeout(async () => {
+      try {
+        await saveCarouselForPost(postId, slides);
+        lastSavedRef.current = serialized;
+        setSaved(true);
+      } catch {
+        /* left unsaved; a later edit or rebuild retries */
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [slides, postId]);
 
   const build = () =>
     startTransition(async () => {
@@ -69,57 +100,21 @@ export function CarouselStudio({ discoveryId, postBody }: { discoveryId: string;
             ))}
           </div>
 
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <button className="btn btn-primary" onClick={download}>
               <Download /> Download PDF
             </button>
             <button className="btn btn-ghost" onClick={build} disabled={pending}>
               <RotateCcw /> New slides
             </button>
+            {postId && saved && (
+              <span style={{ marginLeft: "auto", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Check style={{ width: 13, height: 13 }} /> Saved to post
+              </span>
+            )}
           </div>
         </>
       )}
-    </div>
-  );
-}
-
-function SlideCard({ slide, index, total }: { slide: Slide; index: number; total: number }) {
-  const isCover = index === 0;
-  const isCta = index === total - 1 && total > 1;
-  const bg = isCover ? "var(--accent)" : isCta ? "#15171b" : "#f1f0ea";
-  const fg = isCover || isCta ? "#ffffff" : "#1a1d22";
-  const muted = isCover || isCta ? "rgba(255,255,255,.72)" : "#5c6268";
-
-  return (
-    <div
-      style={{
-        flex: "0 0 auto",
-        width: 168,
-        aspectRatio: "1080 / 1350",
-        background: bg,
-        color: fg,
-        borderRadius: 8,
-        border: "1px solid var(--line)",
-        padding: 16,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
-      {!isCover && !isCta && (
-        <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--accent)", fontWeight: 600 }}>
-          {String(index).padStart(2, "0")}
-        </div>
-      )}
-      <div style={{ fontFamily: "var(--font-display)", fontSize: isCover ? 18 : 15, fontWeight: 600, lineHeight: 1.15, marginTop: isCover ? "auto" : 8 }}>
-        {slide.heading}
-      </div>
-      {slide.body && (
-        <div style={{ fontSize: 10.5, color: muted, marginTop: 8, lineHeight: 1.35 }}>{slide.body}</div>
-      )}
-      <div style={{ marginTop: "auto", fontSize: 9, color: muted }}>
-        {isCover ? "swipe →" : `${index + 1} / ${total}`}
-      </div>
     </div>
   );
 }

@@ -31,7 +31,12 @@ export interface Discovery {
   discovered_at: string;
 }
 
-export type PostStatus = "draft" | "posted";
+export type PostStatus = "draft" | "queued" | "posted";
+
+export interface CarouselSlide {
+  heading: string;
+  body: string;
+}
 
 export interface Post {
   id: string;
@@ -39,6 +44,8 @@ export interface Post {
   body: string;
   variants: string[] | null;
   status: PostStatus;
+  carousel: CarouselSlide[] | null;
+  blog: string | null;
   external_url: string | null;
   created_at: string;
   posted_at: string | null;

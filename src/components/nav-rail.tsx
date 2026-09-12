@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Radio, Bookmark, PenLine, Radar, Coins, LogOut } from "lucide-react";
+import { Radio, Bookmark, PenLine, Star, Radar, Coins, LogOut } from "lucide-react";
 
 const LINKS = [
   { href: "/", label: "Feed", icon: Radio },
   { href: "/saved", label: "Saved", icon: Bookmark },
   { href: "/library", label: "Library", icon: PenLine },
+  { href: "/queue", label: "To post", icon: Star },
   { href: "/sources", label: "Sources", icon: Radar },
   { href: "/usage", label: "Usage", icon: Coins },
 ];

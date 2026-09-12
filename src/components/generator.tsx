@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
-import { Sparkles, Copy, Check, Save, RotateCcw } from "lucide-react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { Sparkles, Copy, Check, RotateCcw, RefreshCw, Star } from "lucide-react";
 
 import { generatePosts } from "@/lib/generate/actions";
-import { createPost } from "@/lib/posts/actions";
+import { upsertDraftForDiscovery, updatePostBody, setPostQueued } from "@/lib/posts/actions";
 import { CarouselStudio } from "@/components/carousel-studio";
+import { BlogStudio } from "@/components/blog-studio";
+
+type SaveState = "idle" | "saving" | "saved" | "error";
 
 export function Generator({
   discoveryId,
@@ -23,22 +26,68 @@ export function Generator({
   const [warning, setWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [savedId, setSavedId] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [queued, setQueued] = useState(false);
+
+  // One draft row per discovery; the ref survives re-renders so edits update it.
+  // postId mirrors the ref as state so the carousel studio re-renders with it.
+  const postIdRef = useRef<string | null>(null);
+  const lastSavedRef = useRef<string>("");
+  const [postId, setPostId] = useState<string | null>(null);
+  const rememberPostId = (id: string) => {
+    postIdRef.current = id;
+    setPostId(id);
+  };
 
   const generate = () =>
     startTransition(async () => {
       setError(null);
-      setSavedId(null);
+      setQueued(false);
       try {
         const result = await generatePosts(discoveryId, { guidance: guidance.trim() || undefined });
         setVariants(result.variants);
         setSelected(0);
-        setBody(result.variants[0] ?? "");
+        const first = result.variants[0] ?? "";
+        setBody(first);
         setWarning(result.duplicateWarning);
+        // A draft exists the moment it's written — persist it straight away.
+        setSaveState("saving");
+        try {
+          const id = await upsertDraftForDiscovery({ discoveryId, body: first, variants: result.variants });
+          rememberPostId(id);
+          lastSavedRef.current = first;
+          setSaveState("saved");
+        } catch {
+          setSaveState("error");
+        }
       } catch (err) {
         setError((err as Error).message);
       }
     });
+
+  // Debounced autosave: every edit or take-switch persists to the same draft.
+  useEffect(() => {
+    if (!variants.length || !body.trim() || body === lastSavedRef.current) return;
+    setSaveState("saving");
+    const timer = setTimeout(async () => {
+      if (body === lastSavedRef.current) {
+        setSaveState("saved");
+        return;
+      }
+      try {
+        if (postIdRef.current) {
+          await updatePostBody(postIdRef.current, body);
+        } else {
+          rememberPostId(await upsertDraftForDiscovery({ discoveryId, body, variants }));
+        }
+        lastSavedRef.current = body;
+        setSaveState("saved");
+      } catch {
+        setSaveState("error");
+      }
+    }, 900);
+    return () => clearTimeout(timer);
+  }, [body, variants, discoveryId]);
 
   const pick = (i: number) => {
     setSelected(i);
@@ -51,10 +100,30 @@ export function Generator({
     setTimeout(() => setCopied(false), 1500);
   };
 
-  const save = () =>
+  const retrySave = () =>
     startTransition(async () => {
-      const id = await createPost({ discoveryId, body, variants });
-      setSavedId(id);
+      setSaveState("saving");
+      try {
+        rememberPostId(await upsertDraftForDiscovery({ discoveryId, body, variants }));
+        lastSavedRef.current = body;
+        setSaveState("saved");
+      } catch {
+        setSaveState("error");
+      }
+    });
+
+  const queue = () =>
+    startTransition(async () => {
+      // Make sure the latest body is saved before we line it up.
+      let id = postIdRef.current;
+      if (!id || body !== lastSavedRef.current) {
+        id = await upsertDraftForDiscovery({ discoveryId, body, variants });
+        rememberPostId(id);
+        lastSavedRef.current = body;
+        setSaveState("saved");
+      }
+      await setPostQueued(id, true);
+      setQueued(true);
     });
 
   return (
@@ -116,28 +185,59 @@ export function Generator({
             <button className="btn" onClick={copy}>
               {copied ? <Check /> : <Copy />} {copied ? "Copied" : "Copy"}
             </button>
-            <button className="btn btn-primary" onClick={save} disabled={pending || !body.trim()}>
-              <Save /> Save to library
-            </button>
             <button className="btn btn-ghost" onClick={generate} disabled={pending}>
               <RotateCcw /> New takes
             </button>
+            <button
+              className="btn"
+              onClick={queue}
+              disabled={pending || !body.trim()}
+              style={queued ? { borderColor: "var(--accent)", color: "var(--accent)" } : undefined}
+            >
+              <Star fill={queued ? "currentColor" : "none"} /> {queued ? "Queued to post" : "Queue to post"}
+            </button>
+            <SaveIndicator state={saveState} onRetry={retrySave} />
             <span style={{ marginLeft: "auto", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-faint)" }}>
               {countWords(body)} words
             </span>
           </div>
 
-          {savedId && (
-            <p className="notice" style={{ borderColor: "var(--accent)" }}>
-              Saved. <Link href="/library" style={{ color: "var(--accent)", textDecoration: "underline" }}>Open the library</Link> to post it.
-            </p>
-          )}
+          <CarouselStudio discoveryId={discoveryId} postBody={body} postId={postId} />
 
-          <CarouselStudio discoveryId={discoveryId} postBody={body} />
+          <BlogStudio discoveryId={discoveryId} postBody={body} postId={postId} />
         </>
       )}
     </div>
   );
+}
+
+function SaveIndicator({ state, onRetry }: { state: SaveState; onRetry: () => void }) {
+  const mono = { fontFamily: "var(--font-mono)", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 };
+  if (state === "saving") {
+    return (
+      <span style={{ ...mono, color: "var(--ink-faint)" }}>
+        <RefreshCw style={{ width: 13, height: 13, animation: "spin 0.9s linear infinite" }} /> Saving to drafts…
+      </span>
+    );
+  }
+  if (state === "saved") {
+    return (
+      <span style={{ ...mono, color: "var(--accent)" }}>
+        <Check style={{ width: 13, height: 13 }} /> Saved to{" "}
+        <Link href="/library" style={{ color: "var(--accent)", textDecoration: "underline" }}>
+          drafts
+        </Link>
+      </span>
+    );
+  }
+  if (state === "error") {
+    return (
+      <button className="btn btn-ghost" style={{ ...mono, color: "var(--danger)" }} onClick={onRetry}>
+        Couldn&rsquo;t save — retry
+      </button>
+    );
+  }
+  return null;
 }
 
 function countWords(text: string): number {

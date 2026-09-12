@@ -80,6 +80,12 @@
   border-color: var(--line);
 }
 
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 body {
   background: var(--paper);
   color: var(--ink);

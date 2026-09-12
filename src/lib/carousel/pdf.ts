@@ -1,11 +1,31 @@
 import { jsPDF } from "jspdf";
 
 import type { Slide } from "@/lib/llm/prompts";
+import {
+  FRAUNCES_SEMIBOLD_TTF,
+  PLEX_SANS_REGULAR_TTF,
+  PLEX_SANS_SEMIBOLD_TTF,
+} from "@/lib/carousel/fonts";
 
 // LinkedIn-recommended portrait carousel canvas.
 const W = 1080;
 const H = 1350;
 const M = 96; // margin
+
+// Real brand type embedded into the PDF so the deck doesn't ship in jsPDF's
+// built-in Helvetica (the generic/AI-slide look). Fraunces = display serif for
+// headings; IBM Plex Sans = body. Registered once per document.
+const DISPLAY = "Fraunces";
+const SANS = "PlexSans";
+
+function registerFonts(doc: jsPDF) {
+  doc.addFileToVFS("Fraunces-SemiBold.ttf", FRAUNCES_SEMIBOLD_TTF);
+  doc.addFont("Fraunces-SemiBold.ttf", DISPLAY, "normal");
+  doc.addFileToVFS("PlexSans-Regular.ttf", PLEX_SANS_REGULAR_TTF);
+  doc.addFont("PlexSans-Regular.ttf", SANS, "normal");
+  doc.addFileToVFS("PlexSans-SemiBold.ttf", PLEX_SANS_SEMIBOLD_TTF);
+  doc.addFont("PlexSans-SemiBold.ttf", SANS, "bold");
+}
 
 type RGB = [number, number, number];
 const COLOR: Record<string, RGB> = {
@@ -28,6 +48,7 @@ export interface CarouselOptions {
 export function buildCarouselPdf(slides: Slide[], opts: CarouselOptions = {}): jsPDF {
   const handle = opts.handle ?? "Signal Desk";
   const doc = new jsPDF({ unit: "px", format: [W, H], orientation: "portrait" });
+  registerFonts(doc);
 
   slides.forEach((slide, i) => {
     if (i > 0) doc.addPage([W, H], "portrait");
@@ -52,7 +73,7 @@ function ink(doc: jsPDF, c: RGB) {
   doc.setTextColor(c[0], c[1], c[2]);
 }
 
-/** Draw wrapped text; returns the y just below the block. */
+/** Draw wrapped text in a chosen face; returns the y just below the block. */
 function paragraph(
   doc: jsPDF,
   text: string,
@@ -60,16 +81,19 @@ function paragraph(
   y: number,
   maxW: number,
   pt: number,
-  weight: "normal" | "bold",
-  lineFactor = 1.28,
+  font: { family: string; style: "normal" | "bold" },
+  lineFactor: number,
 ): number {
-  doc.setFont("helvetica", weight);
+  doc.setFont(font.family, font.style);
   doc.setFontSize(pt);
   const lineH = pt * PT_TO_PX * lineFactor;
   const lines = doc.splitTextToSize(text, maxW) as string[];
   lines.forEach((line, i) => doc.text(line, x, y + i * lineH));
   return y + lines.length * lineH;
 }
+
+const HEADING = { family: DISPLAY, style: "normal" as const };
+const BODY = { family: SANS, style: "normal" as const };
 
 function renderCover(doc: jsPDF, slide: Slide, handle: string) {
   fill(doc, COLOR.cobalt);
@@ -80,19 +104,24 @@ function renderCover(doc: jsPDF, slide: Slide, handle: string) {
   doc.rect(M, M, 54, 8, "F");
 
   ink(doc, COLOR.white);
-  let y = 360;
-  y = paragraph(doc, slide.heading, M, y, W - 2 * M, 60, "bold", 1.15);
+  let y = 340;
+  // Serif headings read tighter than Helvetica did; a hair more line height.
+  y = paragraph(doc, slide.heading, M, y, W - 2 * M, 62, HEADING, 1.12);
   if (slide.body) {
-    y += 34;
+    y += 30;
     ink(doc, [225, 228, 245]);
-    paragraph(doc, slide.body, M, y, W - 2 * M, 28, "normal");
+    paragraph(doc, slide.body, M, y, W - 2 * M, 26, BODY, 1.4);
   }
 
   ink(doc, [210, 215, 240]);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(20);
+  doc.setFont(SANS, "normal");
+  doc.setFontSize(19);
   doc.text(handle, M, H - M);
-  doc.text("swipe →", W - M, H - M, { align: "right" });
+  // "swipe" + a drawn triangle: the → glyph isn't in the font's latin subset.
+  doc.text("swipe", W - M - 26, H - M, { align: "right" });
+  fill(doc, [210, 215, 240]);
+  const ty = H - M - 8;
+  doc.triangle(W - M - 16, ty - 7, W - M - 16, ty + 7, W - M, ty, "F");
 }
 
 function renderBody(doc: jsPDF, slide: Slide, handle: string, n: number, total: number) {
@@ -101,25 +130,25 @@ function renderBody(doc: jsPDF, slide: Slide, handle: string, n: number, total: 
 
   // index
   ink(doc, COLOR.cobalt);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(30);
+  doc.setFont(SANS, "bold");
+  doc.setFontSize(28);
   doc.text(String(n - 1).padStart(2, "0"), M, M + 40);
   fill(doc, COLOR.cobalt);
   doc.rect(M, M + 60, 44, 6, "F");
 
   let y = 300;
   ink(doc, COLOR.ink);
-  y = paragraph(doc, slide.heading, M, y, W - 2 * M, 44, "bold", 1.18);
+  y = paragraph(doc, slide.heading, M, y, W - 2 * M, 46, HEADING, 1.16);
   if (slide.body) {
-    y += 40;
+    y += 36;
     ink(doc, COLOR.mutedLight);
-    paragraph(doc, slide.body, M, y, W - 2 * M, 28, "normal", 1.35);
+    paragraph(doc, slide.body, M, y, W - 2 * M, 27, BODY, 1.45);
   }
 
   // footer
   ink(doc, COLOR.mutedLight);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(18);
+  doc.setFont(SANS, "normal");
+  doc.setFontSize(17);
   doc.text(handle, M, H - M);
   doc.text(`${n} / ${total}`, W - M, H - M, { align: "right" });
 }
@@ -133,16 +162,16 @@ function renderCta(doc: jsPDF, slide: Slide, handle: string, n: number, total: n
 
   let y = 380;
   ink(doc, COLOR.white);
-  y = paragraph(doc, slide.heading, M, y, W - 2 * M, 46, "bold", 1.18);
+  y = paragraph(doc, slide.heading, M, y, W - 2 * M, 48, HEADING, 1.16);
   if (slide.body) {
-    y += 34;
+    y += 30;
     ink(doc, COLOR.mutedDark);
-    paragraph(doc, slide.body, M, y, W - 2 * M, 28, "normal", 1.35);
+    paragraph(doc, slide.body, M, y, W - 2 * M, 27, BODY, 1.45);
   }
 
   ink(doc, COLOR.mutedDark);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(18);
+  doc.setFont(SANS, "normal");
+  doc.setFontSize(17);
   doc.text(handle, M, H - M);
   doc.text(`${n} / ${total}`, W - M, H - M, { align: "right" });
 }

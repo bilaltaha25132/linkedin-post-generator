@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Copy, Check, Pencil, Trash2, Send, ExternalLink } from "lucide-react";
+import { Copy, Check, Pencil, Trash2, Send, ExternalLink, Star } from "lucide-react";
 
-import { deletePost, markPosted, updatePostBody } from "@/lib/posts/actions";
+import { deletePost, markPosted, setPostQueued, updatePostBody } from "@/lib/posts/actions";
+import { CarouselAttachment } from "@/components/carousel-attachment";
+import { BlogAttachment } from "@/components/blog-attachment";
 import type { Post } from "@/lib/db/types";
 
 export function PostCard({ post }: { post: Post }) {
@@ -34,8 +36,8 @@ export function PostCard({ post }: { post: Post }) {
   return (
     <article className="panel" style={{ display: "grid", gap: 14 }}>
       <header style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span className="chip" style={post.status === "posted" ? { borderColor: "var(--accent)", color: "var(--accent)" } : undefined}>
-          {post.status}
+        <span className="chip" style={post.status !== "draft" ? { borderColor: "var(--accent)", color: "var(--accent)" } : undefined}>
+          {post.status === "queued" ? "to post" : post.status}
         </span>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-faint)" }}>
           {new Date(post.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
@@ -50,6 +52,12 @@ export function PostCard({ post }: { post: Post }) {
       ) : (
         <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{post.body}</p>
       )}
+
+      {!editing && post.carousel && post.carousel.length > 0 && (
+        <CarouselAttachment slides={post.carousel} />
+      )}
+
+      {!editing && post.blog && <BlogAttachment blog={post.blog} />}
 
       <footer style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         {editing ? (
@@ -70,6 +78,25 @@ export function PostCard({ post }: { post: Post }) {
               <Pencil /> Edit
             </button>
             {post.status === "draft" && (
+              <button
+                className="btn btn-ghost"
+                onClick={() => startTransition(async () => { await setPostQueued(post.id, true); })}
+                disabled={pending}
+              >
+                <Star /> Queue
+              </button>
+            )}
+            {post.status === "queued" && (
+              <button
+                className="btn btn-ghost"
+                style={{ color: "var(--accent)" }}
+                onClick={() => startTransition(async () => { await setPostQueued(post.id, false); })}
+                disabled={pending}
+              >
+                <Star fill="currentColor" /> Queued
+              </button>
+            )}
+            {post.status !== "posted" && (
               <button className="btn btn-ghost" onClick={() => setPostingUrl(postingUrl === null ? "" : null)}>
                 <Send /> Mark posted
               </button>
