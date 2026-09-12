@@ -42,8 +42,16 @@ Browser (behind password gate, src/proxy.ts)
   │       ├─ match_posts  → similar past posts (dedup warning + cohesion)
   │       ├─ recent posts → "don't repeat these"
   │       └─ DeepSeek writer → N distinct drafts
+  │     Carousel Studio (src/lib/carousel + components/carousel-studio.tsx)
+  │       └─ DeepSeek → 7-9 slides → editable → jsPDF (1080×1350) download
   ├─ /library     drafts + posted; edit / copy / mark posted
+  ├─ /usage       DeepSeek token usage + est. cost
   └─ /sources     manage what the monitor watches
+
+After each scan the cron also pushes a WhatsApp digest of top new items
+(src/lib/notify, via CallMeBot) and marks them notified so none repeat.
+Post/carousel voice follows 2025-26 LinkedIn best practice — see
+[ADR 0005](decisions/0005-linkedin-best-practices-and-carousels.md).
 ```
 
 ## Layers

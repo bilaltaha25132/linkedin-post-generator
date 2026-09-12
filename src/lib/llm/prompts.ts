@@ -101,3 +101,53 @@ ${recent}`;
   // for engaging prose without drifting incoherent.
   return { system, user, role: "writer", temperature: 1.3, maxTokens: 8000, op: "generate" };
 }
+
+// --- Carousel generation (writer model) ----------------------------------------
+
+export const SLIDE_DELIMITER = "===|SLIDE|===";
+
+export interface Slide {
+  heading: string;
+  body: string;
+}
+
+/** Parse a delimiter-separated carousel into slides (first line = heading). */
+export function parseCarousel(text: string): Slide[] {
+  return text
+    .split(SLIDE_DELIMITER)
+    .map((chunk) => chunk.replace(/^```+\w*|```+$/g, "").trim())
+    .filter(Boolean)
+    .map((chunk) => {
+      const lines = chunk.split("\n").map((l) => l.trim()).filter(Boolean);
+      return { heading: lines[0] ?? "", body: lines.slice(1).join("\n") };
+    })
+    .filter((s) => s.heading.length > 0);
+}
+
+export function buildCarouselPrompt(input: {
+  title: string;
+  content: string;
+  angle?: string | null;
+  postBody?: string;
+}): ChatOptions {
+  const system = `You turn a topic into a LinkedIn carousel (a swipeable PDF deck) written as Bilal.
+
+${AUTHOR_BIO}
+
+Carousel rules (2025-26 best practice):
+- 7 to 9 slides total. One idea per slide. No slide crammed with two concepts.
+- SLIDE 1 is the cover: a scroll-stopping hook (≤ 8 words heading, one short line of body). Mirror the tone of his posts — concrete, understated, no hype.
+- SLIDES 2..n-1 are the body: each a single self-contained takeaway — a failure mode, a fix, a metric, a decision. Heading = the point in ≤ 8 words; body = 1-3 short lines, ≤ 40 words, plain language, concrete and first-party (real tools, real numbers, real tradeoffs; never invented).
+- LAST SLIDE is the CTA: a one-line recap + a single genuine ask (e.g. "What breaks your RAG in prod? Tell me below.").
+- No emojis. No hashtags on slides. Short words — this is read on a phone.
+
+Output format: each slide separated by a line containing exactly ${SLIDE_DELIMITER} and nothing else. Within a slide, the FIRST line is the heading, the remaining lines are the body. No numbering, no markdown, no preamble.`;
+
+  const user = `TOPIC
+Title: ${input.title}
+${input.angle ? `Angle: ${input.angle}\n` : ""}Source (may be truncated):
+${input.content.slice(0, 4000)}
+${input.postBody ? `\nThe companion post (align the carousel with it):\n${input.postBody.slice(0, 1500)}` : ""}`;
+
+  return { system, user, role: "writer", temperature: 1.0, maxTokens: 3000, op: "carousel" };
+}

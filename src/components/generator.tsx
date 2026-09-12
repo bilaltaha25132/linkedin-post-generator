@@ -6,6 +6,7 @@ import { Sparkles, Copy, Check, Save, RotateCcw } from "lucide-react";
 
 import { generatePosts } from "@/lib/generate/actions";
 import { createPost } from "@/lib/posts/actions";
+import { CarouselStudio } from "@/components/carousel-studio";
 
 export function Generator({
   discoveryId,
@@ -131,6 +132,8 @@ export function Generator({
               Saved. <Link href="/library" style={{ color: "var(--accent)", textDecoration: "underline" }}>Open the library</Link> to post it.
             </p>
           )}
+
+          <CarouselStudio discoveryId={discoveryId} postBody={body} />
         </>
       )}
     </div>
