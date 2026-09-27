@@ -8,7 +8,11 @@ import type { ChatOptions } from "@/lib/llm/client";
 export const relevanceSchema = z.object({
   score: z.number().min(0).max(100),
   reason: z.string(),
-  topics: z.array(z.string()).max(6).default([]),
+  // Trim rather than reject: an over-eager tag list shouldn't cost the story.
+  topics: z
+    .array(z.string())
+    .default([])
+    .transform((topics) => topics.slice(0, 6)),
   angle: z.string(),
 });
 export type Relevance = z.infer<typeof relevanceSchema>;
