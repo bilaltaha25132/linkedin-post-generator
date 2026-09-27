@@ -1,6 +1,11 @@
 import { env } from "@/lib/env";
 import { hashUrl } from "@/lib/dedup/url-hash";
-import { search, scrape, type FirecrawlSearchHit } from "@/lib/firecrawl/client";
+import {
+  search,
+  scrape,
+  type FirecrawlScrapeHit,
+  type FirecrawlSearchHit,
+} from "@/lib/firecrawl/client";
 import { isFreshEnough, parseRelativeDate } from "@/lib/firecrawl/dates";
 import { chatJSON } from "@/lib/llm/client";
 import { embed } from "@/lib/llm/embeddings";
@@ -82,19 +87,9 @@ async function hitsForSource(source: Source, cfg: MonitorConfig): Promise<Firecr
     return search(source.value, cfg.searchLimit, cfg.timeRange);
   }
   if (source.kind === "url") {
-    const page = await scrape(source.value);
-    if (!page?.markdown) return [];
-    const meta = page.metadata ?? {};
-    return [
-      {
-        url: source.value,
-        title: (meta.title as string) ?? source.label ?? source.value,
-        description: (meta.description as string) ?? "",
-        markdown: page.markdown,
-        date: (meta.publishedTime as string) ?? undefined,
-        bucket: "web",
-      },
-    ];
+    // Title and published time come from the scrape in ingestHit, which every
+    // new item goes through — don't pay for the page twice.
+    return [{ url: source.value, description: "", bucket: "web" }];
   }
   // RSS sources are configurable but not yet ingested — see docs/architecture.md.
   return [];
@@ -115,30 +110,39 @@ async function ingestHit(
     .maybeSingle();
   if (existing) return "duplicate";
 
-  const publishedAt = parseRelativeDate(hit.date);
+  // Search no longer returns page content, so this is where the one credit per
+  // item is spent — and only for URLs that aren't already stored, which is most
+  // of the saving on a 6-hourly schedule. A failed scrape degrades to the search
+  // snippet rather than losing the story.
+  const page = await scrape(hit.url).catch(() => null);
+  const title =
+    hit.title ?? scrapedMeta(page, "title") ?? (source.kind === "url" ? source.label : null);
+  const snippet = hit.description || scrapedMeta(page, "description") || null;
+  const content = page?.markdown || snippet || "";
+  // Nothing to score — e.g. a url source whose page wouldn't scrape.
+  if (!content) return "error";
+
+  const publishedAt =
+    parseRelativeDate(hit.date) ??
+    parseRelativeDate(scrapedMeta(page, "publishedTime", "publishedDate", "date"));
   if (!isFreshEnough(publishedAt, cfg.maxAgeDays)) return "stale";
 
-  const content = hit.markdown ?? hit.description ?? "";
   const relevance = await chatJSON({
-    ...buildRelevancePrompt({
-      title: hit.title ?? "",
-      snippet: hit.description ?? "",
-      content,
-    }),
+    ...buildRelevancePrompt({ title: title ?? "", snippet: snippet ?? "", content }),
     schema: relevanceSchema,
   });
 
-  const embedding = await embed(`${hit.title ?? ""}\n\n${content.slice(0, 4000)}`);
+  const embedding = await embed(`${title ?? ""}\n\n${content.slice(0, 4000)}`);
 
   const { error } = await db.from("discoveries").insert({
     url: hit.url,
     url_hash: urlHash,
-    title: hit.title ?? null,
+    title,
     source_name: hostOf(hit.url),
     source_id: source.id,
     published_at: publishedAt,
-    snippet: hit.description ?? null,
-    content_md: content || null,
+    snippet,
+    content_md: content,
     topics: relevance.topics,
     relevance_score: relevance.score,
     relevance_reason: relevance.reason,
@@ -148,6 +152,16 @@ async function ingestHit(
   if (error) throw new Error(`insert discovery failed: ${error.message}`);
 
   return "new";
+}
+
+/** Read a string field out of a scrape's metadata, trying each key in turn. */
+function scrapedMeta(page: FirecrawlScrapeHit | null, ...keys: string[]): string | undefined {
+  const meta = page?.metadata ?? {};
+  for (const key of keys) {
+    const value = meta[key];
+    if (typeof value === "string" && value) return value;
+  }
+  return undefined;
 }
 
 function hostOf(url: string): string | null {

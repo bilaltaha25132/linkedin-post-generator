@@ -7,7 +7,9 @@ export const dynamic = "force-dynamic";
 
 export default async function SavedPage() {
   const configured = supabaseConfigured();
-  const discoveries = configured ? await listDiscoveries(["saved"]) : [];
+  const { items: discoveries, total } = configured
+    ? await listDiscoveries(["saved"])
+    : { items: [], total: 0 };
 
   return (
     <>
@@ -21,6 +23,7 @@ export default async function SavedPage() {
       ) : (
         <FeedList
           discoveries={discoveries}
+          total={total}
           emptyTitle="Nothing saved yet"
           emptyHint="Save an item from the wire and it'll wait for you here."
         />

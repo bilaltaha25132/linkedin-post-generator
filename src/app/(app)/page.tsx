@@ -10,7 +10,9 @@ export const maxDuration = 60;
 
 export default async function FeedPage() {
   const configured = supabaseConfigured();
-  const discoveries = configured ? await listDiscoveries(["new"]) : [];
+  const { items: discoveries, total } = configured
+    ? await listDiscoveries(["new"])
+    : { items: [], total: 0 };
 
   return (
     <>
@@ -30,6 +32,7 @@ export default async function FeedPage() {
       ) : (
         <FeedList
           discoveries={discoveries}
+          total={total}
           emptyTitle="The wire is quiet"
           emptyHint="Run a scan to pull the latest, or add topics on the Sources page."
         />

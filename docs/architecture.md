@@ -11,7 +11,7 @@ tool designed to cost nothing to run.
 | App + hosting | Next.js 16 (App Router) on **Vercel Hobby** | Free tier |
 | Data | **Supabase** Postgres + `pgvector` | Free tier |
 | Scheduler | **GitHub Actions** cron → cron endpoint | Free minutes; sidesteps Vercel Hobby's once-a-day cron cap |
-| Monitoring | **Firecrawl** v2 search/scrape | Existing key |
+| Monitoring | **Firecrawl** v2 search/scrape | Free tier, round-robined across two accounts |
 | Chat (writing + scoring) | **DeepSeek** `deepseek-chat`, OpenAI-compatible | Cheap ([ADR 0003](decisions/0003-deepseek-for-chat.md)) |
 | Embeddings | **Google Gemini** `gemini-embedding-001` @ 1024 dims | Free tier ([ADR 0002](decisions/0002-llm-provider-gemini.md)) |
 
@@ -24,9 +24,10 @@ GitHub Actions (every 6h)
   └─► GET /api/public/cron/monitor   (Bearer CRON_SECRET)
         └─ runMonitor()  src/lib/monitor/run.ts
              ├─ for each enabled source (sources table):
-             │    search  → Firecrawl v2 /search (news + web)
-             │    url     → Firecrawl v1 /scrape
+             │    search  → Firecrawl v2 /search (news + web), snippets only
+             │    url     → one entry, page fetched below
              ├─ dedup by url_hash (src/lib/dedup/url-hash.ts)
+             ├─ scrape the page → Firecrawl v1 /scrape, only for new URLs
              ├─ drop items older than MONITOR_ARTICLE_MAX_AGE_DAYS
              ├─ relevance gate  → DeepSeek → {score, reason, topics, angle}
              ├─ embed (Gemini, 1024-dim)
@@ -48,11 +49,19 @@ Browser (behind password gate, src/proxy.ts)
   ├─ /usage       DeepSeek token usage + est. cost
   └─ /sources     manage what the monitor watches
 
-After each scan the cron also pushes a WhatsApp digest of top new items
-(src/lib/notify, via CallMeBot) and marks them notified so none repeat.
+After each scan the cron also emails a digest of top new items
+(src/lib/notify, via Resend) and marks them notified so none repeat.
 Post/carousel voice follows 2025-26 LinkedIn best practice — see
 [ADR 0005](decisions/0005-linkedin-best-practices-and-carousels.md).
 ```
+
+### Firecrawl credits
+
+Search is 2 credits per 10 results and `limit` applies **per source**, so
+`news + web` returns double. Scraping adds a credit per page. The monitor
+therefore searches without `scrapeOptions` (snippets only) and pays for a scrape
+exactly once per *new* URL — re-runs cost nothing for stories already stored.
+Keys are round-robined and fall back on the other when one returns 402.
 
 ## Layers
 

@@ -15,10 +15,13 @@ const THRESHOLDS = [
 
 export function FeedList({
   discoveries,
+  total,
   emptyTitle,
   emptyHint,
 }: {
   discoveries: Discovery[];
+  /** Every match, not just the rows fetched for rendering. */
+  total: number;
   emptyTitle: string;
   emptyHint: string;
 }) {
@@ -101,7 +104,8 @@ export function FeedList({
       ) : (
         <>
           <p style={{ color: "var(--ink-faint)", fontFamily: "var(--font-mono)", fontSize: 12, margin: "0 0 4px" }}>
-            {shown.length} of {discoveries.length}
+            {shown.length === total ? `${total} signals` : `${shown.length} of ${total} signals`}
+            {discoveries.length < total ? ` · showing the first ${discoveries.length}` : ""}
           </p>
           <div className="wire">
             {shown.map((d) => (
