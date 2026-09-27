@@ -82,9 +82,32 @@ export async function runMonitor(): Promise<MonitorResult> {
 type MonitorConfig = ReturnType<typeof env.monitor>;
 type IngestOutcome = "new" | "duplicate" | "stale" | "error";
 
+// Social posts and videos scored worst on the wire (facebook alone was ~20% of
+// all items at avg 47): they're reactions to a story, not the story. Excluding
+// them in the query frees result slots for articles; the host check backs it up
+// because search engines treat `-site:` as a hint.
+const EXCLUDED_HOSTS = [
+  "facebook.com",
+  "instagram.com",
+  "youtube.com",
+  "linkedin.com",
+  "x.com",
+  "twitter.com",
+  "tiktok.com",
+  "reddit.com",
+  "pinterest.com",
+];
+const EXCLUDE_QUERY = EXCLUDED_HOSTS.map((host) => `-site:${host}`).join(" ");
+
+function isExcludedHost(url: string): boolean {
+  const host = hostOf(url);
+  return host !== null && EXCLUDED_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+}
+
 async function hitsForSource(source: Source, cfg: MonitorConfig): Promise<FirecrawlSearchHit[]> {
   if (source.kind === "search") {
-    return search(source.value, cfg.searchLimit, cfg.timeRange);
+    const hits = await search(`${source.value} ${EXCLUDE_QUERY}`, cfg.searchLimit, cfg.timeRange);
+    return hits.filter((hit) => !isExcludedHost(hit.url));
   }
   if (source.kind === "url") {
     // Title and published time come from the scrape in ingestHit, which every

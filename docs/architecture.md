@@ -62,6 +62,13 @@ Search is 2 credits per 10 results and `limit` applies **per source**, so
 therefore searches without `scrapeOptions` (snippets only) and pays for a scrape
 exactly once per *new* URL — re-runs cost nothing for stories already stored.
 Keys are round-robined and fall back on the other when one returns 402.
+Social and video hosts (`EXCLUDED_HOSTS` in `src/lib/monitor/run.ts`) are
+excluded from every search — they scored worst and are reactions to a story,
+not the story.
+
+A pass only gets through one or two sources inside the time budget, so the
+number of enabled sources sets how often each is revisited, not the credit
+spend. Keep the list short so each topic is checked every day or two.
 
 ## Layers
 
