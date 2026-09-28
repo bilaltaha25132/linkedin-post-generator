@@ -45,6 +45,15 @@ This embeds your portfolio `blog.ts` + `work.ts` and anything in
 `voice-corpus/`, and fills the `voice_corpus` table. Re-run whenever you add
 writing. If your portfolio lives elsewhere, set `PORTFOLIO_DATA_DIR`.
 
+### Optional: a licensed slide font
+
+Carousels render in Season Sans when it has been uploaded to the private
+`brand` bucket, otherwise in Inter Tight. The font never goes in git:
+
+```
+node --env-file=.env.local scripts/upload-brand-font.mjs path/to/font.woff2
+```
+
 ## 4. Run
 
 ```

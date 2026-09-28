@@ -4,20 +4,14 @@ import { getDiscovery } from "@/lib/discoveries/queries";
 import { chat } from "@/lib/llm/client";
 import { buildCarouselPrompt, parseCarousel, SLIDE_DELIMITER, type Slide } from "@/lib/llm/prompts";
 
-export async function generateCarousel(
-  discoveryId: string,
-  postBody?: string,
-): Promise<Slide[]> {
-  const discovery = await getDiscovery(discoveryId);
-  if (!discovery) throw new Error("Discovery not found");
+export interface CarouselSource {
+  /** The news item the post came from; absent for posts written from scratch. */
+  discoveryId?: string | null;
+  postBody?: string;
+}
 
-  const content = discovery.content_md ?? discovery.snippet ?? discovery.title ?? "";
-  const prompt = buildCarouselPrompt({
-    title: discovery.title ?? "",
-    content,
-    angle: discovery.suggested_angle,
-    postBody,
-  });
+export async function generateCarousel({ discoveryId, postBody }: CarouselSource): Promise<Slide[]> {
+  const prompt = await promptFor({ discoveryId, postBody });
 
   // The model occasionally ignores the slide delimiter and returns one blob;
   // when too few slides parse, reroll once with a corrective nudge.
@@ -33,4 +27,21 @@ export async function generateCarousel(
 
   if (slides.length === 0) throw new Error("The writer returned no usable slides. Try again.");
   return slides;
+}
+
+async function promptFor({ discoveryId, postBody }: CarouselSource) {
+  if (discoveryId) {
+    const discovery = await getDiscovery(discoveryId);
+    if (!discovery) throw new Error("Discovery not found");
+    return buildCarouselPrompt({
+      title: discovery.title ?? "",
+      content: discovery.content_md ?? discovery.snippet ?? discovery.title ?? "",
+      angle: discovery.suggested_angle,
+      postBody,
+    });
+  }
+
+  const body = postBody?.trim();
+  if (!body) throw new Error("Write the post first, then build a carousel from it.");
+  return buildCarouselPrompt({ title: body.split("\n")[0].slice(0, 140), content: body });
 }

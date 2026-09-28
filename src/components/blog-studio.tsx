@@ -27,8 +27,9 @@ export function BlogStudio({
   // Persist the article to its post so it travels with the post everywhere.
   useEffect(() => {
     if (!postId || blog === lastSavedRef.current) return;
-    setSaved(false);
+    // Flagged when the save starts, not per keystroke (see writer.tsx).
     const timer = setTimeout(async () => {
+      setSaved(false);
       try {
         await saveBlogForPost(postId, blog);
         lastSavedRef.current = blog;

@@ -106,6 +106,83 @@ ${recent}`;
   return { system, user, role: "writer", temperature: 1.0, maxTokens: 8000, op: "generate" };
 }
 
+// --- Enhancing a post Bilal wrote himself (writer model) ------------------------
+
+export interface EnhanceInput {
+  draft: string;
+  voiceSamples: { title: string | null; content: string }[];
+  recentPosts: string[];
+  guidance?: string;
+}
+
+export function buildEnhancePrompt(input: EnhanceInput): ChatOptions {
+  const samples = input.voiceSamples
+    .map((s, i) => `--- SAMPLE ${i + 1}${s.title ? ` (${s.title})` : ""} ---\n${s.content.slice(0, 1800)}`)
+    .join("\n\n");
+  const recent = input.recentPosts.length
+    ? input.recentPosts.map((p, i) => `- Post ${i + 1}: ${p.slice(0, 300)}`).join("\n")
+    : "(none yet)";
+
+  const system = `You are Bilal's editor. He wrote the draft below himself: it may be rough notes, a half-formed idea, or a near-finished post. Turn it into a LinkedIn post ready to publish, in his voice.
+
+${WRITER_PERSONA}
+
+${VOICE_RULES}
+
+EDITING RULES (these override the persona where they conflict):
+- His ideas, claims, facts, numbers, names and experiences ARE the post. Keep every one of them. If he names his employer, a client or a project himself, keep it.
+- Never add facts, numbers, names, quotes or anecdotes that are not in his draft. That includes his own actions and thoughts: do not write that he tried, tweaked, swapped, assumed or felt anything the draft doesn't say. A lesson may be restated or sharpened; a backstory may not be invented. Where the draft is thin, stay general.
+- Fix what's weak: land the hook within the first ~140 characters, cut filler, tighten sentences, order the ideas so it scans, and close with one genuine question.
+- If the draft is notes, write the full post from them without padding.
+- LENGTH follows the substance, overriding the length rule above: short notes make a short post, and coming in under 900 characters is fine. Never pad a thin draft with reflection, backstory or technical detail it doesn't contain.
+
+Write 2 DISTINCT versions:
+1. A polish: keeps his structure and as much of his own wording as possible, fixing only what's weak.
+2. A bolder rewrite: a different hook and a tighter shape, same substance.
+
+Output the posts separated by a line containing exactly ${VARIANT_DELIMITER} and nothing else. No labels, no numbering, no preamble, no markdown fences.`;
+
+  const user = `HIS DRAFT
+${input.draft.slice(0, 6000)}
+
+${input.guidance ? `EXTRA STEER FROM BILAL: ${input.guidance}\n\n` : ""}BILAL'S REAL WRITING (match this voice for TONE only):
+${samples || "(no samples available — rely on the voice rules above)"}
+
+HIS RECENT POSTS (don't reuse their openings):
+${recent}
+
+FINAL CHECK before you answer: every specific in your versions (a number, a tool, a technique, a detail of how something was done, anything he did, tried, assumed or felt) must appear in HIS DRAFT. Delete any sentence that fails this.`;
+
+  // Lower than drafting from news: this is an edit of his words, not a fresh take.
+  return { system, user, role: "writer", temperature: 0.7, maxTokens: 5000, op: "enhance" };
+}
+
+/**
+ * Second pass over an enhanced version. The writer reliably embellishes a
+ * first-person draft with invented specifics (it's told to be concrete), and a
+ * post about his own work can't carry details he didn't write.
+ */
+export function buildFactCheckPrompt(draft: string, post: string): ChatOptions {
+  const system = `You fact-check a LinkedIn post that an editor rewrote from its author's own draft.
+
+Compare the POST with the DRAFT. Remove every claim the DRAFT does not support, or rewrite it minimally so it becomes general. Unsupported claims include:
+- numbers, tools, techniques, and details of how something was done or built;
+- anything the author did, tried, assumed, felt, noticed, or has "seen many times";
+- comparisons like "no model swap, no prompt rewrite" that imply things the draft never mentions.
+
+General observations that follow directly from the draft may stay. Keep everything else exactly as written: wording, line breaks, the closing question and the hashtags. If nothing is unsupported, return the post unchanged.
+
+Output ONLY the corrected post. No notes, no preamble.`;
+
+  const user = `DRAFT
+${draft.slice(0, 6000)}
+
+POST
+${post}`;
+
+  return { system, user, role: "utility", temperature: 0.1, maxTokens: 3000, op: "fact-check" };
+}
+
 // --- Carousel generation (writer model) ----------------------------------------
 
 export const SLIDE_DELIMITER = "===|SLIDE|===";
@@ -144,6 +221,7 @@ Carousel rules (2025-26 best practice):
 - SLIDES 2..n-1 are the body: each a single self-contained takeaway — a failure mode, a fix, a metric, a decision. Heading = the point in ≤ 8 words; body = 1-3 short lines, ≤ 40 words, plain language, concrete (real tools, real numbers, real tradeoffs from the story; never invented, never name his past clients/projects).
 - LAST SLIDE is the CTA: a one-line recap + a single genuine ask (e.g. "What breaks your RAG in prod? Tell me below.").
 - No emojis. No hashtags on slides. Short words — this is read on a phone.
+- TWO-TONE HEADINGS: every heading is a short black lead plus a continuation in [square brackets], which renders on its own line in grey: "Four rules, [on every engagement.]" / "Evals pass. [Production doesn't.]" / "Budgets are guardrails [too.]". The lead states the point; the bracketed part completes or twists it. Only the CTA heading may skip the brackets.
 
 CRITICAL OUTPUT FORMAT — follow exactly or the deck breaks:
 - Output ONLY the slides. Nothing before the first slide or after the last.
@@ -152,8 +230,8 @@ CRITICAL OUTPUT FORMAT — follow exactly or the deck breaks:
 - Never merge two slides into one. No numbering, no markdown, no preamble.
 
 Example shape (yours should have 7-9 slides):
-Nothing stopped the agent
-Except the token budget.
+Nothing stopped the agent, [except the bill.]
+The token budget was the only guardrail that fired.
 ${SLIDE_DELIMITER}
 Guardrails you can't see
 A passing eval is not a stop. The loop keeps going until something external says no.

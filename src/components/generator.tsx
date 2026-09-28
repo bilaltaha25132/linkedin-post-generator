@@ -1,15 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Sparkles, Copy, Check, RotateCcw, RefreshCw, Star } from "lucide-react";
+import { Sparkles, Copy, Check, RotateCcw, Star } from "lucide-react";
 
 import { generatePosts } from "@/lib/generate/actions";
 import { upsertDraftForDiscovery, updatePostBody, setPostQueued } from "@/lib/posts/actions";
 import { CarouselStudio } from "@/components/carousel-studio";
 import { BlogStudio } from "@/components/blog-studio";
-
-type SaveState = "idle" | "saving" | "saved" | "error";
+import { SaveIndicator, countWords, type SaveState } from "@/components/save-indicator";
 
 export function Generator({
   discoveryId,
@@ -68,12 +66,14 @@ export function Generator({
   // Debounced autosave: every edit or take-switch persists to the same draft.
   useEffect(() => {
     if (!variants.length || !body.trim() || body === lastSavedRef.current) return;
-    setSaveState("saving");
+    // "saving" is set when the save starts, not per keystroke: a setState on
+    // every character stacked nested updates and React dropped characters.
     const timer = setTimeout(async () => {
       if (body === lastSavedRef.current) {
         setSaveState("saved");
         return;
       }
+      setSaveState("saving");
       try {
         if (postIdRef.current) {
           await updatePostBody(postIdRef.current, body);
@@ -211,35 +211,3 @@ export function Generator({
   );
 }
 
-function SaveIndicator({ state, onRetry }: { state: SaveState; onRetry: () => void }) {
-  const mono = { fontFamily: "var(--font-mono)", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 };
-  if (state === "saving") {
-    return (
-      <span style={{ ...mono, color: "var(--ink-faint)" }}>
-        <RefreshCw style={{ width: 13, height: 13, animation: "spin 0.9s linear infinite" }} /> Saving to drafts…
-      </span>
-    );
-  }
-  if (state === "saved") {
-    return (
-      <span style={{ ...mono, color: "var(--accent)" }}>
-        <Check style={{ width: 13, height: 13 }} /> Saved to{" "}
-        <Link href="/library" style={{ color: "var(--accent)", textDecoration: "underline" }}>
-          drafts
-        </Link>
-      </span>
-    );
-  }
-  if (state === "error") {
-    return (
-      <button className="btn btn-ghost" style={{ ...mono, color: "var(--danger)" }} onClick={onRetry}>
-        Couldn&rsquo;t save — retry
-      </button>
-    );
-  }
-  return null;
-}
-
-function countWords(text: string): number {
-  return text.trim().split(/\s+/).filter(Boolean).length;
-}

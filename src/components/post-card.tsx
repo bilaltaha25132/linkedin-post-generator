@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Copy, Check, Pencil, Trash2, Send, ExternalLink, Star } from "lucide-react";
 
 import { deletePost, markPosted, setPostQueued, updatePostBody } from "@/lib/posts/actions";
-import { CarouselAttachment } from "@/components/carousel-attachment";
+import { CarouselStudio } from "@/components/carousel-studio";
 import { BlogAttachment } from "@/components/blog-attachment";
 import type { Post } from "@/lib/db/types";
 
@@ -53,8 +53,14 @@ export function PostCard({ post }: { post: Post }) {
         <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{post.body}</p>
       )}
 
-      {!editing && post.carousel && post.carousel.length > 0 && (
-        <CarouselAttachment slides={post.carousel} />
+      {!editing && (
+        <CarouselStudio
+          inline
+          postId={post.id}
+          discoveryId={post.discovery_id}
+          postBody={post.body}
+          initialSlides={post.carousel ?? []}
+        />
       )}
 
       {!editing && post.blog && <BlogAttachment blog={post.blog} />}

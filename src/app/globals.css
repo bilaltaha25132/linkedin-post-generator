@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* Carousel slides only. Fetched lazily from the sign-in-gated route, so the
+   licensed file never sits in /public; see scripts/upload-brand-font.mjs. */
+@font-face {
+  font-family: "Season Sans";
+  src: url("/api/brand-font") format("woff2");
+  font-weight: 300 900;
+  font-display: swap;
+}
+
 /* ============================================================================
    The Signal Desk — tokens
    Cool bone paper + cool ink + a single cobalt-indigo signal accent.
@@ -156,15 +165,8 @@ h3 {
   letter-spacing: -0.02em;
   margin-bottom: 22px;
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-.wordmark .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-  display: inline-block;
+  align-items: center;
+  gap: 10px;
 }
 @media (max-width: 780px) {
   .wordmark {

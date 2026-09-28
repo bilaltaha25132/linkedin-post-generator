@@ -45,10 +45,14 @@ flowchart LR
   It writes *takes on the news*, not résumé bait.
 - **Three deliverables per story**, all persisted together on one post:
   - **LinkedIn post** — several distinct takes to choose from and edit.
-  - **Carousel PDF** — 1080×1350 portrait deck with **embedded brand fonts**
-    (Fraunces + IBM Plex Sans), so the export doesn't look like a generic template.
+  - **Carousel PDF** — 1080×1350 portrait deck: a black cover, warm-paper
+    slides, and headings that run black into grey. Uses your own licensed font
+    when uploaded privately (Inter Tight otherwise). Build, regenerate or edit it
+    from any post.
   - **Blog article** — a full Markdown post (H1 + sections, ~600–1000 words) for
     your own website.
+- **Write your own.** Paste a draft or rough notes; Enhance returns a polish and a
+  bolder rewrite in your voice, fact-checked against what you actually wrote.
 - **Cohesion memory.** pgvector similarity against past posts keeps your feed from
   repeating itself and steers the voice.
 - **Auto-save + queue.** Drafts save the moment they're written; a "To-post" queue

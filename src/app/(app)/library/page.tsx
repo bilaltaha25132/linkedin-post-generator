@@ -4,6 +4,8 @@ import { listPosts } from "@/lib/posts/queries";
 import { supabaseConfigured } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
+// Post cards can regenerate their carousel, a writer-model server action.
+export const maxDuration = 60;
 
 export default async function LibraryPage() {
   const configured = supabaseConfigured();

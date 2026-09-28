@@ -1,177 +1,239 @@
 import { jsPDF } from "jspdf";
 
 import type { Slide } from "@/lib/llm/prompts";
+import { CAROUSEL_HANDLE, headingRuns, type HeadingRun } from "@/lib/carousel/heading";
 import {
-  FRAUNCES_SEMIBOLD_TTF,
-  PLEX_SANS_REGULAR_TTF,
-  PLEX_SANS_SEMIBOLD_TTF,
-} from "@/lib/carousel/fonts";
+  GAP,
+  GREEN,
+  MARGIN as M,
+  SLIDE_H as H,
+  SLIDE_W as W,
+  TYPE,
+  slideKind,
+  themeFor,
+  type SlideKind,
+  type SlideTheme,
+  type TextStyle,
+} from "@/lib/carousel/design";
 
-// LinkedIn-recommended portrait carousel canvas.
-const W = 1080;
-const H = 1350;
-const M = 96; // margin
+// Slides are drawn to a canvas with the browser's own copy of the font and
+// placed in the PDF as images. Embedding Season Sans as text would mean
+// converting it to TrueType, and its licence forbids modifying the file.
+// 2× keeps text crisp when LinkedIn scales the page up.
+const SCALE = 2;
 
-// Real brand type embedded into the PDF so the deck doesn't ship in jsPDF's
-// built-in Helvetica (the generic/AI-slide look). Fraunces = display serif for
-// headings; IBM Plex Sans = body. Registered once per document.
-const DISPLAY = "Fraunces";
-const SANS = "PlexSans";
-
-function registerFonts(doc: jsPDF) {
-  doc.addFileToVFS("Fraunces-SemiBold.ttf", FRAUNCES_SEMIBOLD_TTF);
-  doc.addFont("Fraunces-SemiBold.ttf", DISPLAY, "normal");
-  doc.addFileToVFS("PlexSans-Regular.ttf", PLEX_SANS_REGULAR_TTF);
-  doc.addFont("PlexSans-Regular.ttf", SANS, "normal");
-  doc.addFileToVFS("PlexSans-SemiBold.ttf", PLEX_SANS_SEMIBOLD_TTF);
-  doc.addFont("PlexSans-SemiBold.ttf", SANS, "bold");
-}
-
-type RGB = [number, number, number];
-const COLOR: Record<string, RGB> = {
-  paper: [241, 240, 234],
-  ink: [26, 29, 34],
-  cobalt: [44, 64, 189],
-  white: [255, 255, 255],
-  dark: [21, 23, 27],
-  mutedDark: [196, 201, 212],
-  mutedLight: [92, 98, 106],
-};
-
-// jsPDF font size is in points; the canvas is in px. 1pt ≈ 1.333px.
-const PT_TO_PX = 96 / 72;
-
-export interface CarouselOptions {
-  handle?: string;
-}
-
-export function buildCarouselPdf(slides: Slide[], opts: CarouselOptions = {}): jsPDF {
-  const handle = opts.handle ?? "Signal Desk";
+export async function buildCarouselPdf(slides: Slide[], handle = CAROUSEL_HANDLE): Promise<jsPDF> {
+  const family = await loadSlideFonts();
   const doc = new jsPDF({ unit: "px", format: [W, H], orientation: "portrait" });
-  registerFonts(doc);
 
   slides.forEach((slide, i) => {
     if (i > 0) doc.addPage([W, H], "portrait");
-    const isCover = i === 0;
-    const isCta = i === slides.length - 1 && slides.length > 1;
-    if (isCover) renderCover(doc, slide, handle);
-    else if (isCta) renderCta(doc, slide, handle, i + 1, slides.length);
-    else renderBody(doc, slide, handle, i + 1, slides.length);
+    const kind = slideKind(i, slides.length);
+    const canvas = document.createElement("canvas");
+    canvas.width = W * SCALE;
+    canvas.height = H * SCALE;
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(SCALE, SCALE);
+    drawSlide(ctx, family, slide, kind, handle, i + 1, slides.length);
+    doc.addImage(canvas, "PNG", 0, 0, W, H, undefined, "FAST");
   });
 
   return doc;
 }
 
-export function downloadCarouselPdf(slides: Slide[], opts: CarouselOptions = {}): void {
-  buildCarouselPdf(slides, opts).save("signal-desk-carousel.pdf");
+export async function downloadCarouselPdf(slides: Slide[]): Promise<void> {
+  (await buildCarouselPdf(slides)).save("carousel.pdf");
 }
 
-function fill(doc: jsPDF, c: RGB) {
-  doc.setFillColor(c[0], c[1], c[2]);
-}
-function ink(doc: jsPDF, c: RGB) {
-  doc.setTextColor(c[0], c[1], c[2]);
+/**
+ * Canvas draws with whatever fonts are already loaded, so load both weights up
+ * front. Returns the family stack: Season Sans when the private font is
+ * uploaded, otherwise the Inter Tight webfont.
+ */
+async function loadSlideFonts(): Promise<string> {
+  const interTight = getComputedStyle(document.documentElement).getPropertyValue("--font-slide").trim();
+  const families = ['"Season Sans"', interTight].filter(Boolean);
+  await Promise.all(
+    families.flatMap((family) =>
+      [400, 500].map((weight) => document.fonts.load(`${weight} 40px ${family}`).catch(() => [])),
+    ),
+  );
+  return [...families, "system-ui", "sans-serif"].join(", ");
 }
 
-/** Draw wrapped text in a chosen face; returns the y just below the block. */
-function paragraph(
-  doc: jsPDF,
-  text: string,
+function drawSlide(
+  ctx: CanvasRenderingContext2D,
+  family: string,
+  slide: Slide,
+  kind: SlideKind,
+  handle: string,
+  n: number,
+  total: number,
+) {
+  const theme = themeFor(kind);
+  ctx.fillStyle = theme.bg;
+  ctx.fillRect(0, 0, W, H);
+  ctx.textBaseline = "top";
+
+  // Eyebrow: a green square and the author, the site's section-label treatment.
+  ctx.fillStyle = GREEN;
+  ctx.fillRect(M, M + 7, 16, 16);
+  setFont(ctx, family, TYPE.label);
+  ctx.fillStyle = theme.label;
+  ctx.fillText(handle, M + 32, M);
+  if (kind !== "cover") {
+    ctx.fillStyle = theme.counter;
+    ctx.textAlign = "right";
+    ctx.fillText(`${n} / ${total}`, W - M, M);
+    ctx.textAlign = "left";
+  }
+
+  const headingStyle = kind === "cover" ? TYPE.coverHeading : TYPE.heading;
+  const maxW = W - 2 * M;
+  const headingLines = wrap(ctx, family, headingRuns(slide.heading), maxW, headingStyle);
+  const bodyLines = slide.body ? wrap(ctx, family, [{ text: slide.body, muted: false }], maxW, TYPE.body) : [];
+
+  const headingH = headingLines.length * headingStyle.size * headingStyle.lineHeight;
+  const gap = bodyLines.length ? GAP.body : 0;
+  const bodyH = bodyLines.length * TYPE.body.size * TYPE.body.lineHeight;
+  const buttonH = kind === "cta" ? GAP.button + 72 : 0;
+
+  // Centre the block between eyebrow and footer, nudged up to the optical centre.
+  const top = M + 80;
+  const bottom = kind === "cover" ? H - M - 96 : H - M;
+  let y = top + (bottom - top - (headingH + gap + bodyH + buttonH)) / 2 - 24;
+
+  for (const line of headingLines) {
+    drawLine(ctx, family, line, M, y, headingStyle, theme.ink, theme.tail);
+    y += headingStyle.size * headingStyle.lineHeight;
+  }
+  y += gap;
+  for (const line of bodyLines) {
+    drawLine(ctx, family, line, M, y, TYPE.body, theme.body, theme.body);
+    y += TYPE.body.size * TYPE.body.lineHeight;
+  }
+
+  if (kind === "cover") drawSwipe(ctx, family, theme);
+  if (kind === "cta") drawFollowButton(ctx, family, theme, handle, y + GAP.button);
+}
+
+/** Bottom rule with a right-aligned "Swipe" and a drawn arrow. */
+function drawSwipe(ctx: CanvasRenderingContext2D, family: string, theme: SlideTheme) {
+  ctx.fillStyle = theme.hairline;
+  ctx.fillRect(M, H - M - 56, W - 2 * M, 2);
+
+  const arrowW = 34;
+  setFont(ctx, family, TYPE.label);
+  ctx.fillStyle = theme.ink;
+  ctx.textAlign = "right";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText("Swipe", W - M - arrowW - 16, H - M);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+
+  const ay = H - M - TYPE.label.size * 0.34;
+  ctx.strokeStyle = theme.ink;
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(W - M - arrowW, ay);
+  ctx.lineTo(W - M, ay);
+  ctx.moveTo(W - M - 10, ay - 10);
+  ctx.lineTo(W - M, ay);
+  ctx.lineTo(W - M - 10, ay + 10);
+  ctx.stroke();
+}
+
+/** The site's square CTA button, inverted against the slide. */
+function drawFollowButton(
+  ctx: CanvasRenderingContext2D,
+  family: string,
+  theme: SlideTheme,
+  handle: string,
+  y: number,
+) {
+  const label = `Follow ${handle} for more`;
+  setFont(ctx, family, TYPE.button);
+  const padX = 36;
+  ctx.fillStyle = theme.buttonBg;
+  ctx.fillRect(M, y, ctx.measureText(label).width + padX * 2, 72);
+  ctx.fillStyle = theme.buttonText;
+  ctx.textBaseline = "middle";
+  ctx.fillText(label, M + padX, y + 37);
+  ctx.textBaseline = "top";
+}
+
+/**
+ * Greedy word wrap over ink and grey runs. A grey run starts its own line, as
+ * the site sets it; explicit newlines are kept.
+ */
+function wrap(
+  ctx: CanvasRenderingContext2D,
+  family: string,
+  runs: HeadingRun[],
+  maxW: number,
+  style: TextStyle,
+): HeadingRun[][] {
+  setFont(ctx, family, style);
+  const space = ctx.measureText(" ").width;
+  const lines: HeadingRun[][] = [[]];
+  let lineW = 0;
+  const current = () => lines[lines.length - 1];
+  const breakLine = () => {
+    if (current().length) lines.push([]);
+    lineW = 0;
+  };
+
+  runs.forEach((run, i) => {
+    if (run.muted && i > 0 && !runs[i - 1].muted) breakLine();
+    run.text.split(/(\n)/).forEach((part) => {
+      if (part === "\n") return breakLine();
+      for (const word of part.split(/\s+/).filter(Boolean)) {
+        const width = ctx.measureText(word).width;
+        const next = current().length ? lineW + space + width : width;
+        if (current().length && next > maxW) {
+          lines.push([{ text: word, muted: run.muted }]);
+          lineW = width;
+        } else {
+          current().push({ text: word, muted: run.muted });
+          lineW = next;
+        }
+      }
+    });
+  });
+  return lines.filter((line) => line.length);
+}
+
+function drawLine(
+  ctx: CanvasRenderingContext2D,
+  family: string,
+  words: HeadingRun[],
   x: number,
   y: number,
-  maxW: number,
-  pt: number,
-  font: { family: string; style: "normal" | "bold" },
-  lineFactor: number,
-): number {
-  doc.setFont(font.family, font.style);
-  doc.setFontSize(pt);
-  const lineH = pt * PT_TO_PX * lineFactor;
-  const lines = doc.splitTextToSize(text, maxW) as string[];
-  lines.forEach((line, i) => doc.text(line, x, y + i * lineH));
-  return y + lines.length * lineH;
+  style: TextStyle,
+  color: string,
+  mutedColor: string,
+) {
+  setFont(ctx, family, style);
+  const space = ctx.measureText(" ").width;
+  let cursor = x;
+  let i = 0;
+  while (i < words.length) {
+    let j = i;
+    while (j + 1 < words.length && words[j + 1].muted === words[i].muted) j += 1;
+    const text = words
+      .slice(i, j + 1)
+      .map((w) => w.text)
+      .join(" ");
+    ctx.fillStyle = words[i].muted ? mutedColor : color;
+    ctx.fillText(text, cursor, y);
+    cursor += ctx.measureText(text).width + space;
+    i = j + 1;
+  }
 }
 
-const HEADING = { family: DISPLAY, style: "normal" as const };
-const BODY = { family: SANS, style: "normal" as const };
-
-function renderCover(doc: jsPDF, slide: Slide, handle: string) {
-  fill(doc, COLOR.cobalt);
-  doc.rect(0, 0, W, H, "F");
-
-  // accent tick
-  fill(doc, COLOR.white);
-  doc.rect(M, M, 54, 8, "F");
-
-  ink(doc, COLOR.white);
-  let y = 340;
-  // Serif headings read tighter than Helvetica did; a hair more line height.
-  y = paragraph(doc, slide.heading, M, y, W - 2 * M, 62, HEADING, 1.12);
-  if (slide.body) {
-    y += 30;
-    ink(doc, [225, 228, 245]);
-    paragraph(doc, slide.body, M, y, W - 2 * M, 26, BODY, 1.4);
-  }
-
-  ink(doc, [210, 215, 240]);
-  doc.setFont(SANS, "normal");
-  doc.setFontSize(19);
-  doc.text(handle, M, H - M);
-  // "swipe" + a drawn triangle: the → glyph isn't in the font's latin subset.
-  doc.text("swipe", W - M - 26, H - M, { align: "right" });
-  fill(doc, [210, 215, 240]);
-  const ty = H - M - 8;
-  doc.triangle(W - M - 16, ty - 7, W - M - 16, ty + 7, W - M, ty, "F");
-}
-
-function renderBody(doc: jsPDF, slide: Slide, handle: string, n: number, total: number) {
-  fill(doc, COLOR.paper);
-  doc.rect(0, 0, W, H, "F");
-
-  // index
-  ink(doc, COLOR.cobalt);
-  doc.setFont(SANS, "bold");
-  doc.setFontSize(28);
-  doc.text(String(n - 1).padStart(2, "0"), M, M + 40);
-  fill(doc, COLOR.cobalt);
-  doc.rect(M, M + 60, 44, 6, "F");
-
-  let y = 300;
-  ink(doc, COLOR.ink);
-  y = paragraph(doc, slide.heading, M, y, W - 2 * M, 46, HEADING, 1.16);
-  if (slide.body) {
-    y += 36;
-    ink(doc, COLOR.mutedLight);
-    paragraph(doc, slide.body, M, y, W - 2 * M, 27, BODY, 1.45);
-  }
-
-  // footer
-  ink(doc, COLOR.mutedLight);
-  doc.setFont(SANS, "normal");
-  doc.setFontSize(17);
-  doc.text(handle, M, H - M);
-  doc.text(`${n} / ${total}`, W - M, H - M, { align: "right" });
-}
-
-function renderCta(doc: jsPDF, slide: Slide, handle: string, n: number, total: number) {
-  fill(doc, COLOR.dark);
-  doc.rect(0, 0, W, H, "F");
-
-  fill(doc, COLOR.cobalt);
-  doc.rect(M, M, 54, 8, "F");
-
-  let y = 380;
-  ink(doc, COLOR.white);
-  y = paragraph(doc, slide.heading, M, y, W - 2 * M, 48, HEADING, 1.16);
-  if (slide.body) {
-    y += 30;
-    ink(doc, COLOR.mutedDark);
-    paragraph(doc, slide.body, M, y, W - 2 * M, 27, BODY, 1.45);
-  }
-
-  ink(doc, COLOR.mutedDark);
-  doc.setFont(SANS, "normal");
-  doc.setFontSize(17);
-  doc.text(handle, M, H - M);
-  doc.text(`${n} / ${total}`, W - M, H - M, { align: "right" });
+function setFont(ctx: CanvasRenderingContext2D, family: string, style: TextStyle) {
+  ctx.font = `${style.weight} ${style.size}px ${family}`;
+  ctx.letterSpacing = `${style.track * style.size}px`;
 }

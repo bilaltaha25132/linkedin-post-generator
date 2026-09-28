@@ -45,7 +45,13 @@ Browser (behind password gate, src/proxy.ts)
   │       └─ DeepSeek writer → N distinct drafts
   │     Carousel Studio (src/lib/carousel + components/carousel-studio.tsx)
   │       └─ DeepSeek → 7-9 slides → editable → jsPDF (1080×1350) download
-  ├─ /library     drafts + posted; edit / copy / mark posted
+  ├─ /write       a post he writes himself (discovery_id null)
+  │     enhanceDraft()  src/lib/write/run.ts
+  │       ├─ DeepSeek writer → a polish + a bolder rewrite
+  │       └─ fact-check pass → strips specifics his draft doesn't contain
+  │     autosaves to drafts; carousel built from the post body on request
+  ├─ /library     drafts + posted; edit / copy / mark posted; every card can
+  │               build, regenerate or edit its carousel
   ├─ /usage       DeepSeek token usage + est. cost
   └─ /sources     manage what the monitor watches
 
@@ -54,6 +60,24 @@ After each scan the cron also emails a digest of top new items
 Post/carousel voice follows 2025-26 LinkedIn best practice — see
 [ADR 0005](decisions/0005-linkedin-best-practices-and-carousels.md).
 ```
+
+### Carousel design
+
+The deck follows the EdgeFirm site. Every heading is a black lead with a grey
+continuation on its own line ("Four rules, / on every engagement."): a
+`[bracketed]` phrase is the grey part, and headings without brackets are split
+at their first clause break (`src/lib/carousel/heading.ts`). Content slides sit
+on warm paper `#f0eeea`; the cover and closing slide are black. All colours and
+type sizes live in `src/lib/carousel/design.ts`, shared by the PDF renderer and
+the on-screen preview (`components/slide-card.tsx`) so they can't drift.
+
+**The font is Season Sans, and it is not in this repo.** Its Displaay licence
+forbids redistributing, modifying, or publicly hosting the file. It lives in a
+private Supabase bucket (`scripts/upload-brand-font.mjs`) and reaches the
+browser only through `/api/brand-font`, which the proxy restricts to signed-in
+sessions. Because converting it to TrueType would modify it, `pdf.ts` draws each
+slide to a 2× canvas with the browser's copy of the font and places the pages in
+the PDF as images. Without the uploaded font, slides fall back to Inter Tight.
 
 ### Firecrawl credits
 

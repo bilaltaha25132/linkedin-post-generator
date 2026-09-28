@@ -1,3 +1,5 @@
+import { LogoMark } from "@/components/logo";
+
 export const dynamic = "force-dynamic";
 
 export default async function SignInPage({ searchParams }: PageProps<"/sign-in">) {
@@ -16,7 +18,7 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
     >
       <div className="panel" style={{ width: "100%", maxWidth: 380 }}>
         <div className="wordmark" style={{ marginBottom: 6 }}>
-          <span className="dot" aria-hidden />
+          <LogoMark />
           Signal Desk
         </div>
         <p style={{ color: "var(--ink-soft)", fontSize: 14, marginBottom: 22 }}>
