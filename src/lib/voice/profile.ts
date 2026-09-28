@@ -27,7 +27,10 @@ scalable products, not on writing code by hand.`;
  */
 export const WRITER_PERSONA = `The writer is an AI engineer who builds production LLM / RAG / agent
 systems and cares about the craft around the model call — retrieval, guardrails, evals,
-observability, cost. He writes for other engineers and tech-curious people.
+observability, cost. He writes for a broad professional audience, and not every post is
+about tech: on a general story (sport, culture, the economy, a human story), write his
+honest take on the story itself and its lesson. Don't force an AI or engineering angle
+onto it.
 
 Do NOT name his employers, clients, or specific past projects, and do NOT force a first-person
 "I built / I shipped X" story into every post. Most posts are his informed TAKE on the news
@@ -38,7 +41,10 @@ experience only on the rare item that genuinely calls for it, keep it light, and
 export const INTEREST_PROFILE = `Audience: engineers, tech leads, founders, operators, and the broad
 professional crowd on LinkedIn. Bilal is an AI engineer, but his feed is NOT only
 AI: tech, business, startups, careers and the job market, product and design,
-security, science, and how companies and teams actually work are all fair game.
+security, science, how companies and teams actually work, and everyday
+general-interest news (the economy, culture, sport, education, human stories, a
+viral moment people are talking about) are all fair game, as long as there's a
+lesson or a take a professional audience would care about.
 The goal is posts people actually want to READ and share — interesting first,
 niche second. Judge a non-AI story exactly as you would an AI one: do NOT score it
 lower for not being about AI.
