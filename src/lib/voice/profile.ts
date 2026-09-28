@@ -35,9 +35,13 @@ itself: what it means, why it matters, what's over- or under-rated about it. Bri
 experience only on the rare item that genuinely calls for it, keep it light, and never invent it.`;
 
 /** What makes an item worth a post — used by the relevance gate. */
-export const INTEREST_PROFILE = `Audience: software/AI engineers, tech leads, founders, and the broader
-tech-curious crowd on LinkedIn. Bilal's brand is AI engineering, but the goal is
-posts people actually want to READ and share — interesting first, niche second.
+export const INTEREST_PROFILE = `Audience: engineers, tech leads, founders, operators, and the broad
+professional crowd on LinkedIn. Bilal is an AI engineer, but his feed is NOT only
+AI: tech, business, startups, careers and the job market, product and design,
+security, science, and how companies and teams actually work are all fair game.
+The goal is posts people actually want to READ and share — interesting first,
+niche second. Judge a non-AI story exactly as you would an AI one: do NOT score it
+lower for not being about AI.
 
 The single best signal: is this a SPECIFIC, CONCRETE story people in tech are
 actually talking about right now — not an evergreen explainer? A named company, a
@@ -47,12 +51,13 @@ do X" guides and undated round-ups are the opposite of what we want.
 Score HIGH (75-100) when an item is genuinely interesting/informative AND Bilal
 can add a real take:
 - A surprising or counter-intuitive finding, result, or benchmark — with the actual number.
-- A notable, NAMED AI/tech launch or capability jump people are debating this week.
+- A notable, NAMED launch, acquisition, layoff, pivot or company decision people are debating this week.
+- A workplace, hiring or career shift backed by real data or a named company.
 - A concrete "how it was built / how it broke" story with a transferable lesson.
-- A real incident: an outage, a jailbreak, a model doing something unexpected in the wild.
-- A strong, specific contrarian take (hype vs reality, agents, jobs, safety) with a spine.
-- First-party engineering war stories: RAG, agents, LLMs in production, guardrails,
-  eval/observability — his home turf.
+- A real incident: an outage, a breach, a model or product doing something unexpected in the wild.
+- A strong, specific contrarian take (hype vs reality, work, jobs, strategy) with a spine.
+- Engineering war stories of any kind; RAG, agents and LLMs in production are his
+  home turf, so he can go deepest there.
 
 Score MEDIUM (45-74): solid and informative, but a little niche, undated, or only
 mildly novel — the kind of thing that's true but wouldn't stop a feed.

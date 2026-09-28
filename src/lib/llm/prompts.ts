@@ -30,7 +30,7 @@ ${AUTHOR_BIO}
 
 ${INTEREST_PROFILE}
 
-Score 0-100: how strong a LinkedIn post could Bilal write from this, given his audience and angle. Reserve 80+ for items he can add a genuine from-the-trenches or contrarian take to. Score generic hype, pure funding/consumer news, and things he could only restate (not reframe) below 40.
+Score 0-100: how strong a LinkedIn post could Bilal write from this, given his audience and angle. The subject does not need to be AI. Reserve 80+ for items he can add a genuine informed or contrarian take to. Score generic hype, thin funding blurbs, consumer gadget news, and things he could only restate (not reframe) below 40.
 
 Return ONLY this JSON, no prose:
 {"score": <int 0-100>, "reason": "<one sentence>", "topics": ["<tag>", ...], "angle": "<one-line suggested angle for his post>"}`;
