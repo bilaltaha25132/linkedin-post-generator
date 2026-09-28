@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useTransition } from "react";
 import { ExternalLink, PenLine, Bookmark, X } from "lucide-react";
 
+import { LocalTime } from "@/components/local-time";
 import { SignalScore } from "@/components/signal-score";
 import { setDiscoveryStatus } from "@/lib/discoveries/actions";
 import type { Discovery } from "@/lib/db/types";
@@ -29,7 +30,14 @@ export function DiscoveryRow({ discovery }: { discovery: Discovery }) {
 
         <div className="meta">
           {discovery.source_name && <span>{discovery.source_name}</span>}
-          {discovery.published_at && <span>{formatDate(discovery.published_at)}</span>}
+          <span>
+            Arrived <LocalTime iso={discovery.discovered_at} />
+          </span>
+          {discovery.published_at && (
+            <span>
+              Published <LocalTime iso={discovery.published_at} withTime={false} />
+            </span>
+          )}
           {discovery.topics.slice(0, 3).map((t) => (
             <span key={t}>#{t}</span>
           ))}
@@ -57,8 +65,4 @@ export function DiscoveryRow({ discovery }: { discovery: Discovery }) {
       </div>
     </article>
   );
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
