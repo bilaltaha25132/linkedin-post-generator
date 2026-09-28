@@ -53,8 +53,21 @@ export const VARIANT_DELIMITER = "===|POST|===";
 export function parseVariants(text: string): string[] {
   return text
     .split(VARIANT_DELIMITER)
-    .map((v) => v.replace(/^```+\w*|```+$/g, "").trim())
+    .map((v) => stripDashes(v.replace(/^```+\w*|```+$/g, "").trim()))
     .filter((v) => v.length > 0);
+}
+
+/**
+ * Remove em and en dashes, which Bilal bans outright. The prompt says so too,
+ * but DeepSeek still slips them in, so every writer output passes through here.
+ */
+export function stripDashes(text: string): string {
+  return text
+    .replace(/(\d)\s*[–—]\s*(\d)/g, "$1-$2")
+    .replace(/^[ \t]*[–—][ \t]*/gm, "")
+    .replace(/([.,;:!?])[ \t]*[–—][ \t]*/g, "$1 ")
+    .replace(/[ \t]*[–—][ \t]*(?=\n|$)/g, ".")
+    .replace(/[ \t]*[–—][ \t]*/g, ", ");
 }
 
 export interface GenerationInput {
@@ -196,7 +209,7 @@ export interface Slide {
 export function parseCarousel(text: string): Slide[] {
   return text
     .split(SLIDE_DELIMITER)
-    .map((chunk) => chunk.replace(/^```+\w*|```+$/g, "").trim())
+    .map((chunk) => stripDashes(chunk.replace(/^```+\w*|```+$/g, "").trim()))
     .filter(Boolean)
     .map((chunk) => {
       const lines = chunk.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -255,7 +268,7 @@ ${input.postBody ? `\nThe companion post (align the carousel with it):\n${input.
 
 /** Strip an accidental surrounding code fence from a Markdown blog reply. */
 export function parseBlog(text: string): string {
-  return text.replace(/^```+\w*\n?/, "").replace(/\n?```+\s*$/, "").trim();
+  return stripDashes(text.replace(/^```+\w*\n?/, "").replace(/\n?```+\s*$/, "").trim());
 }
 
 export function buildBlogPrompt(input: {

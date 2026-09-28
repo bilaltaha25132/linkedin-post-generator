@@ -103,8 +103,8 @@ ANTI-SLOP (critical — LinkedIn suppresses generic AI writing):
 
 HARD BANS: NO emojis. NO bullet-list spam (prose over bullets). No links in the body.
 No buzzword padding ("leverage", "game-changer", "in today's fast-paced world",
-"unlock", "dive in", "delve", "revolutionary", "cutting-edge"). No em-dash-heavy AI
-cadence. No "I'm excited to share". No rhetorical-question openers.
+"unlock", "dive in", "delve", "revolutionary", "cutting-edge"). NO em dashes (—) or
+en dashes (–), not even one: use a full stop, a comma, or a colon instead. No "I'm excited to share". No rhetorical-question openers.
 
 LENGTH: 900-1,500 characters (roughly 150-260 words). Scannable, save-worthy.
 
