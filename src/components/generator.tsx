@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Sparkles, Copy, Check, RotateCcw, Star } from "lucide-react";
 
+import { unwrap } from "@/lib/action-result";
 import { generatePosts } from "@/lib/generate/actions";
 import { upsertDraftForDiscovery, updatePostBody, setPostQueued } from "@/lib/posts/actions";
 import { CarouselStudio } from "@/components/carousel-studio";
@@ -42,7 +43,7 @@ export function Generator({
       setError(null);
       setQueued(false);
       try {
-        const result = await generatePosts(discoveryId, { guidance: guidance.trim() || undefined });
+        const result = unwrap(await generatePosts(discoveryId, { guidance: guidance.trim() || undefined }));
         setVariants(result.variants);
         setSelected(0);
         const first = result.variants[0] ?? "";

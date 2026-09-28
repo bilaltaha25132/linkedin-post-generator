@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { RefreshCw } from "lucide-react";
 
+import { unwrap } from "@/lib/action-result";
 import { runMonitorNow } from "@/lib/monitor/actions";
 
 export function RefreshButton() {
@@ -13,7 +14,7 @@ export function RefreshButton() {
     startTransition(async () => {
       setNote(null);
       try {
-        const r = await runMonitorNow();
+        const r = unwrap(await runMonitorNow());
         setNote(
           `${r.newDiscoveries} new from ${r.sourcesRun} sources` +
             (r.errors.length ? ` · ${r.errors.length} errors` : ""),

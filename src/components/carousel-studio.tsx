@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { LayoutGrid, Download, RotateCcw, Trash2, Check, Pencil } from "lucide-react";
 
+import { unwrap } from "@/lib/action-result";
 import { generateCarouselAction, saveCarouselForPost } from "@/lib/carousel/actions";
 import { SlideCard, downloadDeck } from "@/components/slide-card";
 import type { Slide } from "@/lib/llm/prompts";
@@ -55,7 +56,7 @@ export function CarouselStudio({
     startTransition(async () => {
       setError(null);
       try {
-        setSlides(await generateCarouselAction({ discoveryId, postBody: postBody || undefined }));
+        setSlides(unwrap(await generateCarouselAction({ discoveryId, postBody: postBody || undefined })));
       } catch (err) {
         setError((err as Error).message);
       }

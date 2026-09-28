@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Sparkles, Copy, Check, Star, Plus } from "lucide-react";
 
+import { unwrap } from "@/lib/action-result";
 import { enhanceDraftAction } from "@/lib/write/actions";
 import { createPost, updatePostBody, setPostQueued } from "@/lib/posts/actions";
 import { CarouselStudio } from "@/components/carousel-studio";
@@ -68,7 +69,7 @@ export function Writer() {
     startTransition(async () => {
       setError(null);
       try {
-        const out = await enhanceDraftAction(body, guidance.trim() || undefined);
+        const out = unwrap(await enhanceDraftAction(body, guidance.trim() || undefined));
         setVersions([body, ...out]);
         setSelected(1);
         setBody(out[0]);

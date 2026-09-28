@@ -2,11 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 
+import { attempt, type ActionResult } from "@/lib/action-result";
 import { generateBlog } from "@/lib/blog/run";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
-export async function generateBlogAction(discoveryId: string, postBody?: string): Promise<string> {
-  return generateBlog(discoveryId, postBody);
+export async function generateBlogAction(discoveryId: string, postBody?: string): Promise<ActionResult<string>> {
+  return attempt(() => generateBlog(discoveryId, postBody));
 }
 
 /** Persist a blog article with its post so it travels with the post. */

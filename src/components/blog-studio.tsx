@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { FileText, Copy, Check, Download, RotateCcw } from "lucide-react";
 
+import { unwrap } from "@/lib/action-result";
 import { generateBlogAction, saveBlogForPost } from "@/lib/blog/actions";
 import { downloadMarkdown, blogWordCount } from "@/lib/blog/markdown";
 
@@ -45,7 +46,7 @@ export function BlogStudio({
     startTransition(async () => {
       setError(null);
       try {
-        setBlog(await generateBlogAction(discoveryId, postBody || undefined));
+        setBlog(unwrap(await generateBlogAction(discoveryId, postBody || undefined)));
       } catch (err) {
         setError((err as Error).message);
       }

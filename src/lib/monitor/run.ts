@@ -8,7 +8,6 @@ import {
 } from "@/lib/firecrawl/client";
 import { isFreshEnough, parseRelativeDate } from "@/lib/firecrawl/dates";
 import { chatJSON } from "@/lib/llm/client";
-import { embed } from "@/lib/llm/embeddings";
 import { buildRelevancePrompt, relevanceSchema } from "@/lib/llm/prompts";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { Source } from "@/lib/db/types";
@@ -155,8 +154,6 @@ async function ingestHit(
     schema: relevanceSchema,
   });
 
-  const embedding = await embed(`${title ?? ""}\n\n${content.slice(0, 4000)}`);
-
   const { error } = await db.from("discoveries").insert({
     url: hit.url,
     url_hash: urlHash,
@@ -170,7 +167,6 @@ async function ingestHit(
     relevance_score: relevance.score,
     relevance_reason: relevance.reason,
     suggested_angle: relevance.angle,
-    embedding,
   });
   if (error) throw new Error(`insert discovery failed: ${error.message}`);
 
