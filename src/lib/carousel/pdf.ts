@@ -22,9 +22,16 @@ import {
 // 2× keeps text crisp when LinkedIn scales the page up.
 const SCALE = 2;
 
-export async function buildCarouselPdf(slides: Slide[], handle = CAROUSEL_HANDLE): Promise<jsPDF> {
+export async function buildCarouselPdf(
+  slides: Slide[],
+  title: string,
+  handle = CAROUSEL_HANDLE,
+): Promise<jsPDF> {
   const family = await loadSlideFonts();
   const doc = new jsPDF({ unit: "px", format: [W, H], orientation: "portrait" });
+  // Carries the document title LinkedIn asks for, so the file describes itself
+  // wherever it lands — including the PDF a reader can download.
+  doc.setProperties({ title, author: handle });
 
   slides.forEach((slide, i) => {
     if (i > 0) doc.addPage([W, H], "portrait");
@@ -41,8 +48,8 @@ export async function buildCarouselPdf(slides: Slide[], handle = CAROUSEL_HANDLE
   return doc;
 }
 
-export async function downloadCarouselPdf(slides: Slide[]): Promise<void> {
-  (await buildCarouselPdf(slides)).save("carousel.pdf");
+export async function downloadCarouselPdf(slides: Slide[], title: string): Promise<void> {
+  (await buildCarouselPdf(slides, title)).save("carousel.pdf");
 }
 
 /**

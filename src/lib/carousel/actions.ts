@@ -12,10 +12,10 @@ export async function generateCarouselAction(source: CarouselSource): Promise<Ac
 }
 
 /** Persist a deck with its post so it shows up wherever the post does. */
-export async function saveCarouselForPost(postId: string, slides: Slide[]): Promise<void> {
+export async function saveCarouselForPost(postId: string, slides: Slide[], title: string): Promise<void> {
   const { error } = await supabaseAdmin()
     .from("posts")
-    .update({ carousel: slides.length ? slides : null })
+    .update({ carousel: slides.length ? slides : null, carousel_title: title.trim() || null })
     .eq("id", postId);
   if (error) throw new Error(error.message);
   revalidatePath("/library");

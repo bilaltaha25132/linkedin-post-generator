@@ -116,7 +116,7 @@ export function SlideCard({
   );
 }
 
-export async function downloadDeck(slides: Slide[]): Promise<void> {
+export async function downloadDeck(slides: Slide[], title: string): Promise<void> {
   const { downloadCarouselPdf } = await import("@/lib/carousel/pdf");
-  await downloadCarouselPdf(slides);
+  await downloadCarouselPdf(slides, title);
 }

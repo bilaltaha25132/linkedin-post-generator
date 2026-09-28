@@ -61,6 +61,7 @@ export function PostCard({ post }: { post: Post }) {
           discoveryId={post.discovery_id}
           postBody={post.body}
           initialSlides={post.carousel ?? []}
+          initialTitle={post.carousel_title ?? ""}
         />
       )}
 

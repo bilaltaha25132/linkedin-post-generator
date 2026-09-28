@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
-import { LayoutGrid, Download, RotateCcw, Trash2, Check, Pencil } from "lucide-react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { LayoutGrid, Download, RotateCcw, Trash2, Check, Copy, Pencil } from "lucide-react";
 
 import { unwrap } from "@/lib/action-result";
 import { generateCarouselAction, saveCarouselForPost } from "@/lib/carousel/actions";
+import { LINKEDIN_TITLE_MAX, titleFromCover } from "@/lib/carousel/title";
 import { SlideCard, downloadDeck } from "@/components/slide-card";
 import type { Slide } from "@/lib/llm/prompts";
 
@@ -17,6 +18,7 @@ export function CarouselStudio({
   postId,
   discoveryId = null,
   initialSlides = [],
+  initialTitle = "",
   inline = false,
 }: {
   postBody: string;
@@ -24,25 +26,31 @@ export function CarouselStudio({
   /** The news item the post came from; null for posts written from scratch. */
   discoveryId?: string | null;
   initialSlides?: Slide[];
+  initialTitle?: string;
   inline?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [slides, setSlides] = useState<Slide[]>(initialSlides);
+  // Decks made before titles existed get theirs from their own cover.
+  const startTitle = initialTitle || titleFromCover(initialSlides);
+  const [title, setTitle] = useState(startTitle);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(initialSlides.length > 0);
   const [editing, setEditing] = useState(!inline);
-  const lastSavedRef = useRef<string>(JSON.stringify(initialSlides));
+  const [titleCopied, setTitleCopied] = useState(false);
+  const titleId = useId();
+  const lastSavedRef = useRef<string>(JSON.stringify({ slides: initialSlides, title: startTitle }));
 
   // Persist the deck to its post so it travels with the post everywhere.
   useEffect(() => {
     if (!postId) return;
-    const serialized = JSON.stringify(slides);
+    const serialized = JSON.stringify({ slides, title });
     if (serialized === lastSavedRef.current) return;
     // Flagged when the save starts, not per keystroke (see writer.tsx).
     const timer = setTimeout(async () => {
       setSaved(false);
       try {
-        await saveCarouselForPost(postId, slides);
+        await saveCarouselForPost(postId, slides, title);
         lastSavedRef.current = serialized;
         setSaved(true);
       } catch {
@@ -50,17 +58,26 @@ export function CarouselStudio({
       }
     }, 800);
     return () => clearTimeout(timer);
-  }, [slides, postId]);
+  }, [slides, title, postId]);
 
   const build = () =>
     startTransition(async () => {
       setError(null);
       try {
-        setSlides(unwrap(await generateCarouselAction({ discoveryId, postBody: postBody || undefined })));
+        const next = unwrap(await generateCarouselAction({ discoveryId, postBody: postBody || undefined }));
+        setSlides(next);
+        // A fresh deck restates its claim on the cover, so it renames itself.
+        setTitle(titleFromCover(next));
       } catch (err) {
         setError((err as Error).message);
       }
     });
+
+  const copyTitle = async () => {
+    await navigator.clipboard.writeText(title);
+    setTitleCopied(true);
+    setTimeout(() => setTitleCopied(false), 1500);
+  };
 
   const edit = (i: number, patch: Partial<Slide>) =>
     setSlides((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
@@ -84,7 +101,7 @@ export function CarouselStudio({
 
   const actions = (
     <>
-      <button className={inline ? "btn btn-ghost" : "btn btn-primary"} onClick={() => downloadDeck(slides)}>
+      <button className={inline ? "btn btn-ghost" : "btn btn-primary"} onClick={() => downloadDeck(slides, title)}>
         <Download /> Download PDF
       </button>
       <button className="btn btn-ghost" onClick={build} disabled={pending}>
@@ -142,6 +159,40 @@ export function CarouselStudio({
 
       {slides.length > 0 && (
         <>
+          <div style={{ display: "grid", gap: 6 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+              <label className="lbl" htmlFor={titleId} style={{ marginBottom: 0 }}>
+                Document title
+              </label>
+              <span
+                style={{
+                  marginLeft: "auto",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 12,
+                  color: "var(--ink-faint)",
+                }}
+              >
+                {title.length}/{LINKEDIN_TITLE_MAX}
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                id={titleId}
+                className="field"
+                value={title}
+                maxLength={LINKEDIN_TITLE_MAX}
+                placeholder="Name this deck for LinkedIn"
+                onChange={(e) => setTitle(e.target.value)}
+              />
+              <button className="btn" onClick={copyTitle}>
+                {titleCopied ? <Check /> : <Copy />} {titleCopied ? "Copied" : "Copy"}
+              </button>
+            </div>
+            <p style={{ margin: 0, color: "var(--ink-faint)", fontSize: 13 }}>
+              LinkedIn asks for this when you upload the deck as a document.
+            </p>
+          </div>
+
           <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8, opacity: pending ? 0.5 : 1 }}>
             {slides.map((s, i) => (
               <SlideCard key={i} slide={s} index={i} total={slides.length} width={inline ? 180 : 220} />

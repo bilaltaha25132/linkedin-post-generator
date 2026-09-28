@@ -45,6 +45,7 @@ export interface Post {
   variants: string[] | null;
   status: PostStatus;
   carousel: CarouselSlide[] | null;
+  carousel_title: string | null;
   blog: string | null;
   external_url: string | null;
   created_at: string;
