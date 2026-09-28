@@ -87,10 +87,14 @@ export async function upsertDraftForDiscovery(input: {
   return postId;
 }
 
+/**
+ * Autosave path, called on every pause in typing, so it doesn't re-embed: that
+ * burned the free embeddings quota. The post is embedded when created and
+ * again, on its final text, when marked posted.
+ */
 export async function updatePostBody(id: string, body: string): Promise<void> {
   const db = supabaseAdmin();
-  const embedding = await embed(body);
-  const { error } = await db.from("posts").update({ body, embedding }).eq("id", id);
+  const { error } = await db.from("posts").update({ body }).eq("id", id);
   if (error) throw new Error(error.message);
   revalidatePath("/library");
 }
@@ -113,9 +117,13 @@ export async function markPosted(id: string, externalUrl?: string): Promise<void
     .from("posts")
     .update({ status: "posted", posted_at: new Date().toISOString(), external_url: externalUrl ?? null })
     .eq("id", id)
-    .select("discovery_id")
+    .select("discovery_id,body")
     .single();
   if (error) throw new Error(error.message);
+
+  // Re-embed the final text so repeat checks compare against what went out.
+  const embedding = await embed(data.body as string);
+  if (embedding) await db.from("posts").update({ embedding }).eq("id", id);
 
   if (data.discovery_id) {
     await db.from("discoveries").update({ status: "posted" }).eq("id", data.discovery_id);

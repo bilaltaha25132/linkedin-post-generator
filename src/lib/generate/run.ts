@@ -26,9 +26,12 @@ export async function generateForDiscovery(
   const content = discovery.content_md ?? discovery.snippet ?? discovery.title ?? "";
   const queryEmbedding = await embed(`${discovery.title ?? ""}\n\n${content.slice(0, 4000)}`);
 
+  // Without an embedding there's no similarity search: draft from the voice
+  // rules and recent posts alone.
+  const noMatches = Promise.resolve({ data: [] });
   const [voiceRes, similarRes, recentRes] = await Promise.all([
-    db.rpc("match_voice", { query_embedding: queryEmbedding, match_count: 3 }),
-    db.rpc("match_posts", { query_embedding: queryEmbedding, match_count: 3 }),
+    queryEmbedding ? db.rpc("match_voice", { query_embedding: queryEmbedding, match_count: 3 }) : noMatches,
+    queryEmbedding ? db.rpc("match_posts", { query_embedding: queryEmbedding, match_count: 3 }) : noMatches,
     db.from("posts").select("body").order("created_at", { ascending: false }).limit(5),
   ]);
 

@@ -17,7 +17,9 @@ export async function enhanceDraft(draft: string, guidance?: string): Promise<st
   const db = supabaseAdmin();
   const queryEmbedding = await embed(text.slice(0, 4000));
   const [voiceRes, recentRes] = await Promise.all([
-    db.rpc("match_voice", { query_embedding: queryEmbedding, match_count: 3 }),
+    queryEmbedding
+      ? db.rpc("match_voice", { query_embedding: queryEmbedding, match_count: 3 })
+      : Promise.resolve({ data: [] }),
     db.from("posts").select("body").order("created_at", { ascending: false }).limit(5),
   ]);
 
