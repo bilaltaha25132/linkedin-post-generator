@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Copy, Check, Pencil, Trash2, Send, ExternalLink, Star } from "lucide-react";
 
 import { deletePost, markPosted, setPostQueued, updatePostBody } from "@/lib/posts/actions";
+import { copyForLinkedIn } from "@/lib/linkedin";
 import { CarouselStudio } from "@/components/carousel-studio";
 import { BlogAttachment } from "@/components/blog-attachment";
 import type { Post } from "@/lib/db/types";
@@ -16,7 +17,7 @@ export function PostCard({ post }: { post: Post }) {
   const [postingUrl, setPostingUrl] = useState<string | null>(null);
 
   const copy = async () => {
-    await navigator.clipboard.writeText(post.body);
+    await copyForLinkedIn(post.body);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
@@ -77,7 +78,11 @@ export function PostCard({ post }: { post: Post }) {
           </>
         ) : (
           <>
-            <button className="btn" onClick={copy}>
+            <button
+              className="btn"
+              onClick={copy}
+              title="Copy with the line spacing LinkedIn keeps"
+            >
               {copied ? <Check /> : <Copy />} {copied ? "Copied" : "Copy"}
             </button>
             <button className="btn btn-ghost" onClick={() => setEditing(true)}>

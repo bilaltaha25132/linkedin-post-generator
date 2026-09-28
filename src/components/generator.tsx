@@ -5,6 +5,7 @@ import { Sparkles, Copy, Check, RotateCcw, Star } from "lucide-react";
 
 import { unwrap } from "@/lib/action-result";
 import { generatePosts } from "@/lib/generate/actions";
+import { copyForLinkedIn } from "@/lib/linkedin";
 import { upsertDraftForDiscovery, updatePostBody, setPostQueued } from "@/lib/posts/actions";
 import { CarouselStudio } from "@/components/carousel-studio";
 import { BlogStudio } from "@/components/blog-studio";
@@ -96,7 +97,7 @@ export function Generator({
   };
 
   const copy = async () => {
-    await navigator.clipboard.writeText(body);
+    await copyForLinkedIn(body);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
@@ -183,7 +184,11 @@ export function Generator({
           />
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <button className="btn" onClick={copy}>
+            <button
+              className="btn"
+              onClick={copy}
+              title="Copy with the line spacing LinkedIn keeps"
+            >
               {copied ? <Check /> : <Copy />} {copied ? "Copied" : "Copy"}
             </button>
             <button className="btn btn-ghost" onClick={generate} disabled={pending}>
