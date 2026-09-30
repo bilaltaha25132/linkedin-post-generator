@@ -19,6 +19,7 @@ export const relevanceSchema = z.object({
     .array(z.string())
     .default([])
     .transform((figures) => figures.map((f) => stripDashes(f.trim())).filter(Boolean).slice(0, 5)),
+  launch: z.boolean().default(false),
 });
 export type Relevance = z.infer<typeof relevanceSchema>;
 
@@ -43,8 +44,10 @@ When a PUBLIC DISCUSSION is given, it shows how hard engineers are engaging with
 
 KEY NUMBERS: list up to 5 of the most important hard figures about the SUBJECT, stated in the CONTENT itself: benchmark results (name the benchmark and the model), prices, context sizes, speed or cost ratios, money raised or spent, headcounts, measured before/after results. Each under 90 characters and self-explanatory, e.g. "Gemini 4 Argon: 92.1% on GPQA Diamond". Only figures a reader would quote. Never include: when the article or thread was published, points, comment, upvote, star, fork or view counts, anything from the discussion, or a figure you inferred. Return [] when the content has none worth quoting.
 
+LAUNCH: true when the item announces, or is first-days coverage of, something newly released or unveiled in AI: a model or model version, a product, feature, API, device, agent or developer tool. The item itself must be the announcement or a news report of the release. False for opinion pieces, essays, podcasts and interviews (even ones that mention a launch), analysis, funding, hiring, research with nothing released, and anything that shipped weeks ago. A significant AI launch from a major lab or a widely used tool scores at least 75.
+
 Return ONLY this JSON, no prose:
-{"score": <int 0-100>, "reason": "<one sentence>", "topics": ["<tag>", ...], "angle": "<one-line suggested angle for his post>", "key_numbers": ["<figure>", ...]}`;
+{"score": <int 0-100>, "reason": "<one sentence>", "topics": ["<tag>", ...], "angle": "<one-line suggested angle for his post>", "key_numbers": ["<figure>", ...], "launch": <true|false>}`;
 
   const user = `TITLE: ${item.title}
 SNIPPET: ${item.snippet}
@@ -231,6 +234,43 @@ POST
 ${post}`;
 
   return { system, user, role: "utility", temperature: 0.1, maxTokens: 3000, op: "fact-check" };
+}
+
+/**
+ * Last pass over every post: rewrite whatever reads as machine-written into
+ * Bilal's own register. `tells` are the patterns the detector found in this
+ * draft, so the editor fixes those specifically instead of guessing.
+ */
+export function buildHumanizePrompt(
+  post: string,
+  voiceSamples: { title: string | null; content: string }[],
+  tells: string[],
+): ChatOptions {
+  const samples = voiceSamples
+    .map((s, i) => `--- SAMPLE ${i + 1}${s.title ? ` (${s.title})` : ""} ---\n${s.content.slice(0, 1500)}`)
+    .join("\n\n");
+
+  const system = `You are a line editor. A LinkedIn post was drafted by a model for Bilal, and it has to read as if he wrote it himself. Readers on LinkedIn now spot AI writing instantly and scroll past it.
+
+${VOICE_RULES}
+
+HOW TO EDIT:
+- Rewrite the sentences that carry those tells so they sound like him: join clipped fragments into real sentences, replace a label-and-colon with an actual sentence, replace a summary line or an aphorism with the specific thought behind it, or cut it.
+- Keep every fact, number, name and claim, and keep his take. Add nothing that isn't in the post.
+- Keep roughly the same length and the same opening fact. Keep the hashtag line as it is.
+- Leave sentences that already sound human alone. This is an edit, not a rewrite from scratch.
+
+Output ONLY the edited post. No notes, no preamble, no quotation marks around it.`;
+
+  const user = `HOW BILAL ACTUALLY WRITES (match this register):
+${samples || "(no samples available; rely on the voice rules)"}
+
+${tells.length ? `THIS DRAFT CONTAINS THESE AI TELLS, fix each one:\n${tells.map((t) => `- ${t}`).join("\n")}` : "No specific tells were detected; still smooth out anything that reads as generated."}
+
+THE POST
+${post}`;
+
+  return { system, user, role: "writer", temperature: 0.7, maxTokens: 3000, op: "humanize" };
 }
 
 // --- Carousel generation (writer model) ----------------------------------------

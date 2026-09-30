@@ -5,9 +5,10 @@ name: monitor
 # CRON_SECRET (Settings > Secrets and variables > Actions).
 on:
   schedule:
-    # Feeds are free to read, so check often; web search still runs at most
-    # every MONITOR_SEARCH_INTERVAL_HOURS. Minute 17 dodges the top-of-hour queue.
-    - cron: "17 */3 * * *" # every 3 hours
+    # Feeds are free to read, so check hourly and a launch lands within the hour;
+    # web search still runs at most every MONITOR_SEARCH_INTERVAL_HOURS. Minute
+    # 17 dodges the top-of-hour queue.
+    - cron: "17 * * * *" # every hour
   workflow_dispatch: {} # manual "Run workflow" button
 
 jobs:

@@ -20,7 +20,7 @@ This mirrors the pattern proven in the `mizan` project.
 ## Flow
 
 ```
-GitHub Actions (every 3h)
+GitHub Actions (every hour)
   └─► GET /api/public/cron/monitor   (Bearer CRON_SECRET, 300s Fluid limit)
         └─ runMonitor()  src/lib/monitor/run.ts
              ├─ every pass, read all feeds (free):
@@ -35,7 +35,7 @@ GitHub Actions (every 3h)
                   ├─ scrape → Firecrawl v1 /scrape, unless the feed carries the article
                   ├─ HN thread + top comments (hn stories carry theirs; others are
                   │  looked up by URL)
-                  ├─ relevance gate → DeepSeek → {score, reason, topics, angle, key_numbers}
+                  ├─ relevance gate → DeepSeek → {score, reason, topics, angle, key_numbers, launch}
                   └─ insert into discoveries
 
 Browser (behind password gate, src/proxy.ts)
@@ -47,7 +47,9 @@ Browser (behind password gate, src/proxy.ts)
   │       ├─ match_voice  → closest samples of Bilal's real writing
   │       ├─ match_posts  → similar past posts (dedup warning + cohesion)
   │       ├─ recent posts → "don't repeat these"
-  │       └─ DeepSeek writer → N distinct drafts
+  │       ├─ DeepSeek writer → N distinct drafts
+  │       └─ humanize pass → each draft edited against the AI tells
+  │          src/lib/voice/tells.ts finds in it (src/lib/voice/humanize.ts)
   │     Carousel Studio (src/lib/carousel + components/carousel-studio.tsx)
   │       └─ DeepSeek → 7-9 slides → editable → jsPDF (1080×1350) download
   ├─ /write       a post he writes himself (discovery_id null)
@@ -115,8 +117,25 @@ contributes posts but no comments.
 (benchmark results, prices, context sizes), shown on the wire and the draft
 page. Thread stats and publication dates are excluded by the prompt.
 
+`is_launch` marks a story that announces a newly released AI model, product or
+tool. Launches get a "New release" tag and filter on the wire, and lead the email
+digest at a lower score bar (55), so a release reaches Bilal within the hour.
+
 Search sources rotate one per pass, so the number of them sets how often each is
 revisited. Keep that list short and specific.
+
+### Why drafts don't read as AI
+
+The voice rules in `src/lib/voice/profile.ts` are drawn from Bilal's own blog
+writing. An earlier version prescribed LinkedIn "best practice" (punchy
+fragments, a jab of a hook, a closing question, exactly three hashtags) and every
+draft came out in the same machine cadence. `aiTells()` names the patterns that
+give a post away (summary lines, colon labels, fragment stacks, aphorism
+endings, the "it's not X, it's Y" turn); each draft gets a line edit that fixes
+the ones it contains, and an edit that comes back worse is discarded. When
+embeddings are rate-limited, voice samples fall back to his latest writing
+rather than none. The corpus has no LinkedIn posts yet; importing a few would
+sharpen the voice further.
 
 ## Layers
 

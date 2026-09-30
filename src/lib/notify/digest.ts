@@ -4,6 +4,8 @@ import { env } from "@/lib/env";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { sendEmail, emailConfigured } from "@/lib/notify/email";
 
+const LAUNCH_MIN_SCORE = 55;
+
 /**
  * Email a digest of the best not-yet-notified discoveries, then mark them
  * notified so they never appear again. No-op when email isn't configured or
@@ -15,12 +17,15 @@ export async function sendDigest(baseUrl: string): Promise<{ sent: number }> {
   const cfg = env.email();
   const db = supabaseAdmin();
 
+  // A new release is worth hearing about while it's still news, so launches
+  // clear a lower bar and lead the email.
   const { data, error } = await db
     .from("discoveries")
-    .select("id,title,relevance_score,suggested_angle,source_name")
+    .select("id,title,relevance_score,suggested_angle,source_name,is_launch")
     .eq("status", "new")
     .eq("notified", false)
-    .gte("relevance_score", cfg.minScore)
+    .or(`relevance_score.gte.${cfg.minScore},and(is_launch.eq.true,relevance_score.gte.${LAUNCH_MIN_SCORE})`)
+    .order("is_launch", { ascending: false })
     .order("relevance_score", { ascending: false })
     .limit(cfg.maxItems);
   if (error) throw new Error(error.message);
@@ -28,7 +33,10 @@ export async function sendDigest(baseUrl: string): Promise<{ sent: number }> {
   const items = data ?? [];
   if (items.length === 0) return { sent: 0 };
 
-  const subject = `Signal Desk — ${items.length} worth posting about`;
+  const launch = items.find((i) => i.is_launch);
+  const subject = launch
+    ? `New release: ${launch.title}${items.length > 1 ? ` (+${items.length - 1} more)` : ""}`
+    : `Signal Desk: ${items.length} worth posting about`;
   const text = items
     .map((d) => `[${d.relevance_score}] ${d.title}\n${d.suggested_angle ?? ""}\n${baseUrl}/generate/${d.id}`)
     .join("\n\n");
@@ -46,6 +54,7 @@ type Item = {
   relevance_score: number | null;
   suggested_angle: string | null;
   source_name: string | null;
+  is_launch: boolean;
 };
 
 function renderHtml(items: Item[], baseUrl: string): string {
@@ -53,7 +62,7 @@ function renderHtml(items: Item[], baseUrl: string): string {
     .map(
       (d) => `
       <tr><td style="padding:16px 0;border-top:1px solid #d7d4c9;">
-        <div style="font:600 13px monospace;color:#2c40bd;">${d.relevance_score ?? "—"} / 100 &nbsp;·&nbsp; ${esc(d.source_name ?? "")}</div>
+        <div style="font:600 13px monospace;color:#2c40bd;">${d.is_launch ? "NEW RELEASE &nbsp;·&nbsp; " : ""}${d.relevance_score ?? "-"} / 100 &nbsp;·&nbsp; ${esc(d.source_name ?? "")}</div>
         <div style="font:600 18px Georgia,serif;color:#1a1d22;margin:6px 0;">${esc(d.title ?? "")}</div>
         <div style="font:14px system-ui;color:#555a62;margin-bottom:10px;">${esc(d.suggested_angle ?? "")}</div>
         <a href="${baseUrl}/generate/${d.id}" style="font:600 14px system-ui;color:#fff;background:#2c40bd;padding:8px 14px;border-radius:6px;text-decoration:none;">Draft this post →</a>

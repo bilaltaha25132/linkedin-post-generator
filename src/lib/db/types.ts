@@ -43,6 +43,8 @@ export interface Discovery {
   suggested_angle: string | null;
   /** Benchmark scores, prices and other hard figures pulled from the story. */
   key_numbers: string[];
+  /** Announces a newly released AI model, product or tool. */
+  is_launch: boolean;
   discussion: Discussion | null;
   status: DiscoveryStatus;
   discovered_at: string;

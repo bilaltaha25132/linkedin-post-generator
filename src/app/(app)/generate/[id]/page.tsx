@@ -9,8 +9,9 @@ import { getDiscovery } from "@/lib/discoveries/queries";
 import { supabaseConfigured } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
-// Generation (a server action posted to this route) runs the writer model.
-export const maxDuration = 60;
+// Generation (a server action posted to this route) drafts, then edits each
+// draft for voice: two writer-model rounds.
+export const maxDuration = 180;
 
 export default async function GeneratePage({ params }: PageProps<"/generate/[id]">) {
   if (!supabaseConfigured()) {
@@ -40,6 +41,7 @@ export default async function GeneratePage({ params }: PageProps<"/generate/[id]
         <div>
           <h2 style={{ fontSize: 22 }}>{discovery.title ?? discovery.url}</h2>
           <div className="meta" style={{ marginTop: 8 }}>
+            {discovery.is_launch && <span className="launch-tag">New release</span>}
             {discovery.source_name && <span>{discovery.source_name}</span>}
             {discovery.discussion && <DiscussionLink discussion={discovery.discussion} />}
             {discovery.topics.slice(0, 4).map((t) => (

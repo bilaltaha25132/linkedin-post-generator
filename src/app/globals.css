@@ -407,6 +407,12 @@ h3 {
   font-size: 14px;
   max-width: 66ch;
 }
+.launch-tag {
+  color: var(--paper);
+  background: var(--accent);
+  border-radius: var(--radius);
+  padding: 0 6px;
+}
 .thread-link {
   display: inline-flex;
   align-items: center;

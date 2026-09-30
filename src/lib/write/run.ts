@@ -4,6 +4,8 @@ import { chat } from "@/lib/llm/client";
 import { embed } from "@/lib/llm/embeddings";
 import { buildEnhancePrompt, buildFactCheckPrompt, parseVariants } from "@/lib/llm/prompts";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { humanize, voiceSamplesFor } from "@/lib/voice/humanize";
+import { aiTells } from "@/lib/voice/tells";
 
 const MIN_DRAFT_CHARS = 20;
 
@@ -16,10 +18,8 @@ export async function enhanceDraft(draft: string, guidance?: string): Promise<st
 
   const db = supabaseAdmin();
   const queryEmbedding = await embed(text.slice(0, 4000));
-  const [voiceRes, recentRes] = await Promise.all([
-    queryEmbedding
-      ? db.rpc("match_voice", { query_embedding: queryEmbedding, match_count: 3 })
-      : Promise.resolve({ data: [] }),
+  const [voiceSamples, recentRes] = await Promise.all([
+    voiceSamplesFor(queryEmbedding),
     db.from("posts").select("body").order("created_at", { ascending: false }).limit(5),
   ]);
 
@@ -27,18 +27,21 @@ export async function enhanceDraft(draft: string, guidance?: string): Promise<st
     buildEnhancePrompt({
       draft: text,
       guidance,
-      voiceSamples: (voiceRes.data ?? []) as { title: string | null; content: string }[],
+      voiceSamples,
       recentPosts: ((recentRes.data ?? []) as { body: string }[]).map((r) => r.body),
     }),
   );
   const versions = parseVariants(raw);
   if (versions.length === 0) throw new Error("The writer returned nothing usable. Try again.");
 
-  // A failed check keeps the unchecked version rather than losing the rewrite.
+  // His own draft is human already, so only an edit that picked up tells gets
+  // the humanize pass. The fact-check runs last so nothing invented survives;
+  // a failed check keeps the unchecked version rather than losing the rewrite.
   return Promise.all(
     versions.map(async (version) => {
-      const checked = await chat(buildFactCheckPrompt(text, version)).catch(() => "");
-      return parseVariants(checked)[0] || version;
+      const human = aiTells(version).length ? await humanize(version, voiceSamples) : version;
+      const checked = await chat(buildFactCheckPrompt(text, human)).catch(() => "");
+      return parseVariants(checked)[0] || human;
     }),
   );
 }

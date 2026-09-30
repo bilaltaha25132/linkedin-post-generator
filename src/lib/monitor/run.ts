@@ -279,6 +279,7 @@ async function ingestHit(hit: WireHit, source: Source, cfg: MonitorConfig): Prom
     relevance_reason: relevance.reason,
     suggested_angle: relevance.angle,
     key_numbers: relevance.key_numbers,
+    is_launch: relevance.launch,
     discussion: thread?.discussion ?? null,
     discussion_comments: thread?.comments ?? null,
   });

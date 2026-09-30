@@ -79,7 +79,7 @@ export const env = {
     concurrency: num("MONITOR_CONCURRENCY", 2),
     // Feeds run every pass; web search is the credit-heavy part, so it runs one
     // source at a time and no more often than this.
-    searchIntervalHours: num("MONITOR_SEARCH_INTERVAL_HOURS", 6),
+    searchIntervalHours: num("MONITOR_SEARCH_INTERVAL_HOURS", 12),
     // Wall-clock budget for a scheduled pass (ms), under the 300s Fluid limit.
     budgetMs: num("MONITOR_BUDGET_MS", 240_000),
   }),

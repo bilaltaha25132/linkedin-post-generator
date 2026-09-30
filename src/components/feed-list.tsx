@@ -29,6 +29,8 @@ export function FeedList({
   const [sort, setSort] = useState<Sort>("signal");
   const [topic, setTopic] = useState("all");
   const [minScore, setMinScore] = useState(0);
+  const [launchesOnly, setLaunchesOnly] = useState(false);
+  const launchCount = useMemo(() => discoveries.filter((d) => d.is_launch).length, [discoveries]);
 
   const topics = useMemo(() => {
     const set = new Set<string>();
@@ -40,6 +42,7 @@ export function FeedList({
     const q = query.trim().toLowerCase();
     const filtered = discoveries.filter((d) => {
       if ((d.relevance_score ?? 0) < minScore) return false;
+      if (launchesOnly && !d.is_launch) return false;
       if (topic !== "all" && !d.topics.includes(topic)) return false;
       if (q) {
         const hay = `${d.title ?? ""} ${d.suggested_angle ?? ""} ${d.source_name ?? ""}`.toLowerCase();
@@ -53,7 +56,7 @@ export function FeedList({
         : Date.parse(b.discovered_at) - Date.parse(a.discovered_at),
     );
     return filtered;
-  }, [discoveries, query, sort, topic, minScore]);
+  }, [discoveries, query, sort, topic, minScore, launchesOnly]);
 
   return (
     <>
@@ -66,6 +69,15 @@ export function FeedList({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
+        </div>
+
+        <div className="seg">
+          <button data-active={!launchesOnly} onClick={() => setLaunchesOnly(false)}>
+            Everything
+          </button>
+          <button data-active={launchesOnly} onClick={() => setLaunchesOnly(true)}>
+            New releases{launchCount ? ` (${launchCount})` : ""}
+          </button>
         </div>
 
         <div className="seg">

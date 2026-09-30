@@ -30,6 +30,7 @@ export function DiscoveryRow({ discovery }: { discovery: Discovery }) {
         </h3>
 
         <div className="meta">
+          {discovery.is_launch && <span className="launch-tag">New release</span>}
           {discovery.source_name && <span>{discovery.source_name}</span>}
           {discovery.discussion && <DiscussionLink discussion={discovery.discussion} />}
           <span>

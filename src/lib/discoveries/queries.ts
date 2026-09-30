@@ -5,7 +5,7 @@ import type { Discovery, DiscoveryStatus, DiscussionComment } from "@/lib/db/typ
 
 // Columns excluding the large embedding vector — never needed by the UI.
 const LIST_COLUMNS =
-  "id,url,url_hash,title,source_name,source_id,published_at,snippet,topics,relevance_score,relevance_reason,suggested_angle,key_numbers,discussion,status,discovered_at";
+  "id,url,url_hash,title,source_name,source_id,published_at,snippet,topics,relevance_score,relevance_reason,suggested_angle,key_numbers,is_launch,discussion,status,discovered_at";
 
 export type DiscoveryDetail = Discovery & {
   content_md: string | null;

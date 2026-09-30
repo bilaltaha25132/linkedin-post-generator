@@ -3,8 +3,8 @@ import { Writer } from "@/components/writer";
 import { supabaseConfigured } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
-// Enhance and carousel generation run the writer model as server actions.
-export const maxDuration = 60;
+// Enhance runs the writer, a voice edit and a fact-check in turn.
+export const maxDuration = 180;
 
 export default function WritePage() {
   return (
