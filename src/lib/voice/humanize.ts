@@ -11,23 +11,38 @@ export interface VoiceSample {
 }
 
 /**
- * Samples of Bilal's real writing to imitate: the closest by embedding when
- * there is one, otherwise his most recent pieces. Without this fallback a
- * rate-limited embedding left the writer with no voice to copy at all.
+ * Samples of Bilal's real writing to imitate. His own LinkedIn posts always come
+ * first, since that's the register being written; the rest are the closest
+ * pieces by embedding, or his most recent when there's no embedding. Without
+ * that fallback a rate-limited embedding left the writer no voice to copy.
  */
 export async function voiceSamplesFor(embedding: number[] | null, count = 3): Promise<VoiceSample[]> {
   const db = supabaseAdmin();
-  if (embedding) {
-    const { data } = await db.rpc("match_voice", { query_embedding: embedding, match_count: count });
-    if (data?.length) return data as VoiceSample[];
-  }
-  const { data } = await db
+  const { data: posts } = await db
     .from("voice_corpus")
     .select("title,content")
-    .in("kind", ["linkedin", "blog"])
+    .eq("kind", "linkedin")
     .order("created_at", { ascending: false })
-    .limit(count);
-  return (data ?? []) as VoiceSample[];
+    .limit(2);
+  const linkedin = (posts ?? []) as VoiceSample[];
+
+  let related: VoiceSample[] = [];
+  if (embedding) {
+    const { data } = await db.rpc("match_voice", { query_embedding: embedding, match_count: count + linkedin.length });
+    related = (data ?? []) as VoiceSample[];
+  }
+  if (related.length === 0) {
+    const { data } = await db
+      .from("voice_corpus")
+      .select("title,content")
+      .eq("kind", "blog")
+      .order("created_at", { ascending: false })
+      .limit(count);
+    related = (data ?? []) as VoiceSample[];
+  }
+
+  const seen = new Set(linkedin.map((s) => s.content));
+  return [...linkedin, ...related.filter((s) => !seen.has(s.content))].slice(0, Math.max(count, linkedin.length + 1));
 }
 
 /**
