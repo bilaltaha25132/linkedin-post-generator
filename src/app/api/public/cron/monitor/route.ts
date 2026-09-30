@@ -4,8 +4,9 @@ import { env } from "@/lib/env";
 import { runMonitor } from "@/lib/monitor/run";
 import { sendDigest } from "@/lib/notify/digest";
 
-// A monitoring pass hits Firecrawl + Gemini for every source, so give it room.
-export const maxDuration = 60;
+// A pass reads every feed and scores what's new; MONITOR_BUDGET_MS keeps it
+// under this Fluid compute limit.
+export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {

@@ -407,6 +407,36 @@ h3 {
   font-size: 14px;
   max-width: 66ch;
 }
+.thread-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent);
+  text-decoration: none;
+}
+.thread-link:hover {
+  text-decoration: underline;
+}
+.thread-link svg {
+  width: 12px;
+  height: 12px;
+}
+.figures {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.figures li {
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 3px 8px;
+}
 .row-actions {
   display: flex;
   flex-direction: column;

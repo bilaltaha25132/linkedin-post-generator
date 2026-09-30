@@ -1,6 +1,6 @@
 // Row shapes mirroring supabase/migrations/0001_init.sql.
 
-export type SourceKind = "search" | "rss" | "url";
+export type SourceKind = "search" | "rss" | "url" | "hn";
 
 export interface Source {
   id: string;
@@ -8,10 +8,24 @@ export interface Source {
   value: string;
   label: string | null;
   enabled: boolean;
+  last_scanned_at: string | null;
   created_at: string;
 }
 
 export type DiscoveryStatus = "new" | "saved" | "dismissed" | "drafted" | "posted";
+
+/** A public thread about the story: where it is and how much it's being talked about. */
+export interface Discussion {
+  platform: string;
+  url: string;
+  points: number | null;
+  comments: number | null;
+}
+
+export interface DiscussionComment {
+  author: string;
+  text: string;
+}
 
 export interface Discovery {
   id: string;
@@ -27,6 +41,9 @@ export interface Discovery {
   relevance_score: number | null;
   relevance_reason: string | null;
   suggested_angle: string | null;
+  /** Benchmark scores, prices and other hard figures pulled from the story. */
+  key_numbers: string[];
+  discussion: Discussion | null;
   status: DiscoveryStatus;
   discovered_at: string;
 }

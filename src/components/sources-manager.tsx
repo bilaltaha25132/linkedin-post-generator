@@ -6,16 +6,36 @@ import { Plus, Trash2 } from "lucide-react";
 import { addSource, deleteSource, toggleSource } from "@/lib/sources/actions";
 import type { Source, SourceKind } from "@/lib/db/types";
 
+const KIND_FIELDS: Record<SourceKind, { label: string; placeholder: string }> = {
+  rss: { label: "Feed URL (RSS or Atom)", placeholder: "https://example.com/feed.xml" },
+  hn: { label: "Minimum points on Hacker News", placeholder: "100" },
+  search: { label: "What to search for", placeholder: "e.g. agent memory architectures" },
+  url: { label: "Page to watch", placeholder: "https://…" },
+};
+
+const KIND_NAMES: Record<SourceKind, string> = {
+  rss: "feed",
+  hn: "hacker news",
+  search: "search",
+  url: "page",
+};
+
 export function SourcesManager({ sources }: { sources: Source[] }) {
   const [pending, startTransition] = useTransition();
-  const [kind, setKind] = useState<SourceKind>("search");
+  const [kind, setKind] = useState<SourceKind>("rss");
   const [value, setValue] = useState("");
   const [label, setLabel] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const add = () => {
     if (!value.trim()) return;
     startTransition(async () => {
-      await addSource({ kind, value, label });
+      const result = await addSource({ kind, value, label });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setError(null);
       setValue("");
       setLabel("");
     });
@@ -32,19 +52,22 @@ export function SourcesManager({ sources }: { sources: Source[] }) {
                 className="field"
                 value={kind}
                 onChange={(e) => setKind(e.target.value as SourceKind)}
-                style={{ width: 140 }}
+                style={{ width: 160 }}
               >
+                <option value="rss">RSS feed</option>
+                <option value="hn">Hacker News</option>
                 <option value="search">Search query</option>
                 <option value="url">Page URL</option>
               </select>
             </div>
             <div style={{ flex: 1, minWidth: 220 }}>
-              <label className="lbl">{kind === "search" ? "What to search for" : "Page to watch"}</label>
+              <label className="lbl">{KIND_FIELDS[kind].label}</label>
               <input
                 className="field"
                 value={value}
+                inputMode={kind === "hn" ? "numeric" : undefined}
                 onChange={(e) => setValue(e.target.value)}
-                placeholder={kind === "search" ? "e.g. agent memory architectures" : "https://…"}
+                placeholder={KIND_FIELDS[kind].placeholder}
               />
             </div>
             <div style={{ width: 180 }}>
@@ -57,6 +80,11 @@ export function SourcesManager({ sources }: { sources: Source[] }) {
               <Plus /> Add source
             </button>
           </div>
+          {error && (
+            <p className="notice" role="alert" style={{ borderColor: "var(--danger)" }}>
+              {error}
+            </p>
+          )}
         </div>
       </div>
 
@@ -73,7 +101,7 @@ export function SourcesManager({ sources }: { sources: Source[] }) {
               borderBottom: "1px solid var(--line)",
             }}
           >
-            <span className="chip">{s.kind}</span>
+            <span className="chip">{KIND_NAMES[s.kind]}</span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 500 }}>{s.label ?? s.value}</div>
               {s.label && (

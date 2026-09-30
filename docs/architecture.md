@@ -11,7 +11,7 @@ tool designed to cost nothing to run.
 | App + hosting | Next.js 16 (App Router) on **Vercel Hobby** | Free tier |
 | Data | **Supabase** Postgres + `pgvector` | Free tier |
 | Scheduler | **GitHub Actions** cron → cron endpoint | Free minutes; sidesteps Vercel Hobby's once-a-day cron cap |
-| Monitoring | **Firecrawl** v2 search/scrape | Free tier, round-robined across two accounts |
+| Monitoring | **Hacker News** + **RSS** feeds; **Firecrawl** v2 search/scrape | Feeds are public; Firecrawl free tier, round-robined across two accounts |
 | Chat (writing + scoring) | **DeepSeek** `deepseek-chat`, OpenAI-compatible | Cheap ([ADR 0003](decisions/0003-deepseek-for-chat.md)) |
 | Embeddings | **Google Gemini** `gemini-embedding-001` @ 1024 dims | Free tier ([ADR 0002](decisions/0002-llm-provider-gemini.md)) |
 
@@ -20,18 +20,23 @@ This mirrors the pattern proven in the `mizan` project.
 ## Flow
 
 ```
-GitHub Actions (every 6h)
-  └─► GET /api/public/cron/monitor   (Bearer CRON_SECRET)
+GitHub Actions (every 3h)
+  └─► GET /api/public/cron/monitor   (Bearer CRON_SECRET, 300s Fluid limit)
         └─ runMonitor()  src/lib/monitor/run.ts
-             ├─ for each enabled source (sources table):
+             ├─ every pass, read all feeds (free):
+             │    hn      → Hacker News front page, via Algolia (src/lib/feeds/hacker-news.ts)
+             │    rss     → RSS/Atom feeds of labs and writers (src/lib/feeds/rss.ts)
+             ├─ at most every MONITOR_SEARCH_INTERVAL_HOURS, one rotating source:
              │    search  → Firecrawl v2 /search (news + web), snippets only
              │    url     → one entry, page fetched below
-             ├─ dedup by url_hash (src/lib/dedup/url-hash.ts)
-             ├─ scrape the page → Firecrawl v1 /scrape, only for new URLs
-             ├─ drop items older than MONITOR_ARTICLE_MAX_AGE_DAYS
-             ├─ relevance gate  → DeepSeek → {score, reason, topics, angle}
-             ├─ embed (Gemini, 1024-dim)
-             └─ insert into discoveries
+             ├─ drop stale items and stored url_hashes in one query, before any spend
+             ├─ interleave sources; take ≤ MONITOR_MAX_ITEMS_PER_SOURCE from each
+             └─ per item, two at a time until the budget runs out:
+                  ├─ scrape → Firecrawl v1 /scrape, unless the feed carries the article
+                  ├─ HN thread + top comments (hn stories carry theirs; others are
+                  │  looked up by URL)
+                  ├─ relevance gate → DeepSeek → {score, reason, topics, angle, key_numbers}
+                  └─ insert into discoveries
 
 Browser (behind password gate, src/proxy.ts)
   ├─ /            Feed — new discoveries, ranked by score
@@ -90,9 +95,28 @@ Social and video hosts (`EXCLUDED_HOSTS` in `src/lib/monitor/run.ts`) are
 excluded from every search — they scored worst and are reactions to a story,
 not the story.
 
-A pass only gets through one or two sources inside the time budget, so the
-number of enabled sources sets how often each is revisited, not the credit
-spend. Keep the list short so each topic is checked every day or two.
+### Where the wire comes from
+
+Feeds are the primary source and search is the supplement. Generic web search
+turned out to be the wrong tool for "what's new": it returned homepages, section
+indexes and listicles, and general-interest queries averaged under 30. Feeds
+are current to the hour, cost nothing to read, and a feed that carries the full
+article (Latent Space, The Verge, Pragmatic Engineer) costs no scrape either.
+
+Hacker News does double duty. Its front page is what engineers are arguing about
+right now, and any story, from any source, that has an HN thread with traction
+gets the thread's points, comment count and top comments attached. The relevance
+gate reads them as a timeliness signal, the draft page shows them under "What
+people are saying", and the writer may engage with the debate but may not treat
+a comment as fact. Reddit rate-limits comment feeds (HTTP 429), so r/LocalLLaMA
+contributes posts but no comments.
+
+`key_numbers` are the hard figures the relevance gate pulls from the article
+(benchmark results, prices, context sizes), shown on the wire and the draft
+page. Thread stats and publication dates are excluded by the prompt.
+
+Search sources rotate one per pass, so the number of them sets how often each is
+revisited. Keep that list short and specific.
 
 ## Layers
 
@@ -110,7 +134,7 @@ lookups go through the `match_posts` / `match_voice` SQL functions.
 
 ## Not yet built
 
-- RSS sources: the `sources.kind = 'rss'` value is accepted and stored but not
-  ingested (`hitsForSource` returns `[]` for it). Needs a feed parser.
+- Discussion is captured once, at ingest. A thread that grows afterwards isn't
+  refreshed.
 - Post quality depends on the voice corpus being populated — run
   `scripts/import-voice.mjs` (see [setup](setup.md)).

@@ -5,8 +5,8 @@ import { listDiscoveries } from "@/lib/discoveries/queries";
 import { supabaseConfigured } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
-// The "Scan now" server action runs a full monitoring pass.
-export const maxDuration = 60;
+// The "Scan now" server action runs a monitoring pass (90s budget, see monitor/actions.ts).
+export const maxDuration = 150;
 
 export default async function FeedPage() {
   const configured = supabaseConfigured();

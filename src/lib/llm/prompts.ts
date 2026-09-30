@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { AUTHOR_BIO, INTEREST_PROFILE, VOICE_RULES, WRITER_PERSONA } from "@/lib/voice/profile";
 import type { ChatOptions } from "@/lib/llm/client";
+import type { Discussion, DiscussionComment } from "@/lib/db/types";
 
 // --- Relevance gate (utility model) --------------------------------------------
 
@@ -14,6 +15,10 @@ export const relevanceSchema = z.object({
     .default([])
     .transform((topics) => topics.slice(0, 6)),
   angle: z.string(),
+  key_numbers: z
+    .array(z.string())
+    .default([])
+    .transform((figures) => figures.map((f) => stripDashes(f.trim())).filter(Boolean).slice(0, 5)),
 });
 export type Relevance = z.infer<typeof relevanceSchema>;
 
@@ -21,6 +26,8 @@ export interface RelevanceInput {
   title: string;
   snippet: string;
   content: string;
+  /** The public thread about the story, already formatted; empty when there is none. */
+  discussion: string;
 }
 
 export function buildRelevancePrompt(item: RelevanceInput): ChatOptions {
@@ -30,17 +37,38 @@ ${AUTHOR_BIO}
 
 ${INTEREST_PROFILE}
 
-Score 0-100: how strong a LinkedIn post could Bilal write from this, given his audience and angle. The subject does not need to be AI. Reserve 80+ for items he can add a genuine informed or contrarian take to. Score generic hype, thin funding blurbs, consumer gadget news, and things he could only restate (not reframe) below 40.
+Score 0-100: how strong a LinkedIn post could Bilal write from this, given his audience and angle. Reserve 80+ for items he can add a genuine informed or contrarian take to. Score generic hype, thin funding blurbs, consumer gadget news, and things he could only restate (not reframe) below 40.
+
+When a PUBLIC DISCUSSION is given, it shows how hard engineers are engaging with the story right now: a big, argued thread is a strong timeliness signal. It cannot rescue an empty story, and the comments are opinions, not facts.
+
+KEY NUMBERS: list up to 5 of the most important hard figures about the SUBJECT, stated in the CONTENT itself: benchmark results (name the benchmark and the model), prices, context sizes, speed or cost ratios, money raised or spent, headcounts, measured before/after results. Each under 90 characters and self-explanatory, e.g. "Gemini 4 Argon: 92.1% on GPQA Diamond". Only figures a reader would quote. Never include: when the article or thread was published, points, comment, upvote, star, fork or view counts, anything from the discussion, or a figure you inferred. Return [] when the content has none worth quoting.
 
 Return ONLY this JSON, no prose:
-{"score": <int 0-100>, "reason": "<one sentence>", "topics": ["<tag>", ...], "angle": "<one-line suggested angle for his post>"}`;
+{"score": <int 0-100>, "reason": "<one sentence>", "topics": ["<tag>", ...], "angle": "<one-line suggested angle for his post>", "key_numbers": ["<figure>", ...]}`;
 
   const user = `TITLE: ${item.title}
 SNIPPET: ${item.snippet}
 CONTENT (may be truncated):
-${item.content.slice(0, 6000)}`;
+${item.content.slice(0, 6000)}${item.discussion ? `\n\n${item.discussion}` : ""}`;
 
-  return { system, user, role: "utility", temperature: 0.1, maxTokens: 700, op: "relevance" };
+  return { system, user, role: "utility", temperature: 0.1, maxTokens: 900, op: "relevance" };
+}
+
+/** A thread and its top comments as prompt text, labelled as opinion. */
+export function formatDiscussion(
+  discussion: Discussion | null,
+  comments: DiscussionComment[] | null,
+  maxChars = 400,
+): string {
+  if (!discussion) return "";
+  const stats = [
+    discussion.points !== null ? `${discussion.points} points` : null,
+    discussion.comments !== null ? `${discussion.comments} comments` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  const quoted = (comments ?? []).map((c) => `- ${c.text.slice(0, maxChars)}`).join("\n");
+  return `PUBLIC DISCUSSION (${discussion.platform}${stats ? `, ${stats}` : ""}; opinions from the thread, not facts):\n${quoted || "(no comments captured)"}`;
 }
 
 // --- Post generation (writer model) --------------------------------------------
@@ -71,7 +99,14 @@ export function stripDashes(text: string): string {
 }
 
 export interface GenerationInput {
-  discovery: { title: string; url: string; content: string; angle?: string | null };
+  discovery: {
+    title: string;
+    url: string;
+    content: string;
+    angle?: string | null;
+    /** Formatted public thread (formatDiscussion); empty when there is none. */
+    discussion?: string;
+  };
   /** Retrieved samples of Bilal's real writing, closest to this topic. */
   voiceSamples: { title: string | null; content: string }[];
   /** Recent posts, so the draft builds on them and doesn't repeat. */
@@ -100,6 +135,8 @@ You will be given samples of Bilal's ACTUAL writing — match their rhythm, dict
 
 Generate ${input.count} DISTINCT post variants, each a complete standalone LinkedIn post about the source item below — most should be his sharp take on the news itself, not a personal anecdote. Vary the angle/hook across variants.
 
+If a PUBLIC DISCUSSION is included, it's how engineers are reacting right now. A variant may engage with that debate ("the thread split on whether..."), agree or push back, but never name or quote commenters, and never state a commenter's claim as fact: facts come only from the source content.
+
 Output the posts separated by a line containing exactly ${VARIANT_DELIMITER} and nothing else. No numbering, no preamble, no markdown fences — just the posts and the delimiters between them.`;
 
   const user = `SOURCE ITEM
@@ -107,7 +144,7 @@ Title: ${input.discovery.title}
 URL: ${input.discovery.url}
 ${input.discovery.angle ? `Suggested angle: ${input.discovery.angle}\n` : ""}Content (may be truncated):
 ${input.discovery.content.slice(0, 5000)}
-
+${input.discovery.discussion ? `\n${input.discovery.discussion}\n` : ""}
 ${input.guidance ? `EXTRA STEER FROM BILAL: ${input.guidance}\n\n` : ""}BILAL'S REAL WRITING (imitate this voice):
 ${samples || "(no samples available — rely on the voice rules above)"}
 

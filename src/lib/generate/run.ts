@@ -3,7 +3,7 @@ import "server-only";
 import { getDiscovery } from "@/lib/discoveries/queries";
 import { chat } from "@/lib/llm/client";
 import { embed } from "@/lib/llm/embeddings";
-import { buildGenerationPrompt, parseVariants } from "@/lib/llm/prompts";
+import { buildGenerationPrompt, formatDiscussion, parseVariants } from "@/lib/llm/prompts";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export interface GenerationResult {
@@ -51,6 +51,7 @@ export async function generateForDiscovery(
         url: discovery.url,
         content,
         angle: discovery.suggested_angle,
+        discussion: formatDiscussion(discovery.discussion, discovery.discussion_comments),
       },
       voiceSamples,
       recentPosts,

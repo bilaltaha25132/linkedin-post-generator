@@ -39,29 +39,35 @@ experience only on the rare item that genuinely calls for it, keep it light, and
 
 /** What makes an item worth a post — used by the relevance gate. */
 export const INTEREST_PROFILE = `Audience: engineers, tech leads, founders, operators, and the broad
-professional crowd on LinkedIn. Bilal is an AI engineer, but his feed is NOT only
-AI: tech, business, startups, careers and the job market, product and design,
-security, science, how companies and teams actually work, and everyday
-general-interest news (the economy, culture, sport, education, human stories, a
-viral moment people are talking about) are all fair game, as long as there's a
-lesson or a take a professional audience would care about.
-The goal is posts people actually want to READ and share — interesting first,
-niche second. Judge a non-AI story exactly as you would an AI one: do NOT score it
-lower for not being about AI.
+professional crowd on LinkedIn.
+
+HIS BEAT, in priority order:
+1. What's new at the frontier of AI, this week: a new or updated model (with its
+   benchmark results, price, context, speed), a lab's announcement or strategy move,
+   an open-weight release, a new agent or coding tool, a research result that changes
+   what's possible, a capability or pricing shift, AI behaving unexpectedly in the wild.
+2. What the software world is arguing about right now: the hot Hacker News or Reddit
+   thread, a debated engineering practice, a tool or protocol fight (MCP, frameworks,
+   languages), a postmortem, a model quietly getting worse, AI changing how teams build.
+3. Tech business, careers and the job market, security incidents and big outages,
+   when there's a lesson for people who build software.
+Everyday general-interest news (sport, culture, human stories) is NOT his beat: it
+only clears 60 when it carries an unusually sharp lesson for a professional
+audience, and it never outranks a real development in AI or software.
 
 The single best signal: is this a SPECIFIC, CONCRETE story people in tech are
 actually talking about right now — not an evergreen explainer? A named company, a
 real number, a dated event, a named tool or model, a real incident. Vague "how to
-do X" guides and undated round-ups are the opposite of what we want.
+do X" guides, vendor explainers, and undated round-ups are the opposite of what we want.
 
 Score HIGH (75-100) when an item is genuinely interesting/informative AND Bilal
 can add a real take:
+- A NAMED model launch or update with real benchmark numbers, or a claim people dispute.
 - A surprising or counter-intuitive finding, result, or benchmark — with the actual number.
-- A notable, NAMED launch, acquisition, layoff, pivot or company decision people are debating this week.
-- A workplace, hiring or career shift backed by real data or a named company.
+- A debate engineers are actively having this week, with a side worth taking.
+- A notable, NAMED launch, acquisition, layoff, pivot or company decision people are debating.
 - A concrete "how it was built / how it broke" story with a transferable lesson.
 - A real incident: an outage, a breach, a model or product doing something unexpected in the wild.
-- A strong, specific contrarian take (hype vs reality, work, jobs, strategy) with a spine.
 - Engineering war stories of any kind; RAG, agents and LLMs in production are his
   home turf, so he can go deepest there.
 
@@ -69,8 +75,9 @@ Score MEDIUM (45-74): solid and informative, but a little niche, undated, or onl
 mildly novel — the kind of thing that's true but wouldn't stop a feed.
 
 Score LOW (<45): generic hype, thin funding blurbs with no angle, pure consumer
-gadget news, SEO listicles, "top 10 tools" round-ups, press releases, evergreen
-explainers with no news peg, or anything he could only restate, not reframe.
+gadget news, SEO listicles, "top 10 tools" round-ups, press releases, product pages,
+homepages and section indexes, evergreen explainers with no news peg, or anything he
+could only restate, not reframe.
 Reward "would a smart engineer stop scrolling and read THIS specific story?";
 punish "could be any generic AI newsletter blurb from any week."`;
 

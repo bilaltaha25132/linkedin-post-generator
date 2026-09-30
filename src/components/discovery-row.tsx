@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useTransition } from "react";
 import { ExternalLink, PenLine, Bookmark, X } from "lucide-react";
 
+import { DiscussionLink, KeyNumbers } from "@/components/discussion-link";
 import { LocalTime } from "@/components/local-time";
 import { SignalScore } from "@/components/signal-score";
 import { setDiscoveryStatus } from "@/lib/discoveries/actions";
@@ -30,6 +31,7 @@ export function DiscoveryRow({ discovery }: { discovery: Discovery }) {
 
         <div className="meta">
           {discovery.source_name && <span>{discovery.source_name}</span>}
+          {discovery.discussion && <DiscussionLink discussion={discovery.discussion} />}
           <span>
             Arrived <LocalTime iso={discovery.discovered_at} />
           </span>
@@ -44,6 +46,7 @@ export function DiscoveryRow({ discovery }: { discovery: Discovery }) {
         </div>
 
         {discovery.relevance_reason && <p className="reason">{discovery.relevance_reason}</p>}
+        <KeyNumbers figures={discovery.key_numbers ?? []} />
         {discovery.suggested_angle && <p className="angle">{discovery.suggested_angle}</p>}
       </div>
 

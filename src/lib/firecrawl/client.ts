@@ -158,7 +158,7 @@ export async function scrape(url: string): Promise<FirecrawlScrapeHit | null> {
   const response = await firecrawlPost(
     SCRAPE_ENDPOINT,
     { url, formats: ["markdown"], onlyMainContent: true },
-    45_000,
+    30_000,
   );
 
   if (!response.ok) throw httpError(`scrape of "${url}"`, response);

@@ -5,7 +5,9 @@ name: monitor
 # CRON_SECRET (Settings > Secrets and variables > Actions).
 on:
   schedule:
-    - cron: "0 */6 * * *" # every 6 hours
+    # Feeds are free to read, so check often; web search still runs at most
+    # every MONITOR_SEARCH_INTERVAL_HOURS. Minute 17 dodges the top-of-hour queue.
+    - cron: "17 */3 * * *" # every 3 hours
   workflow_dispatch: {} # manual "Run workflow" button
 
 jobs:
@@ -14,7 +16,7 @@ jobs:
     steps:
       - name: Trigger monitoring pass
         run: |
-          code=$(curl -sS -o /tmp/body -w "%{http_code}" \
+          code=$(curl -sS --max-time 330 -o /tmp/body -w "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.APP_URL }}/api/public/cron/monitor")
           echo "HTTP $code"; cat /tmp/body; echo

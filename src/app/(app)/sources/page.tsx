@@ -14,8 +14,8 @@ export default async function SourcesPage() {
       <div className="page-head">
         <h1>Sources</h1>
         <p>
-          The topics and pages the monitor watches. Search queries run against news and the web;
-          page URLs are scraped directly. Turn off what&rsquo;s noisy.
+          What the monitor watches. Feeds and Hacker News are read every pass and cost no credits;
+          search queries and pages use Firecrawl, so they take turns. Turn off what&rsquo;s noisy.
         </p>
       </div>
 
