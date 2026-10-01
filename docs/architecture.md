@@ -20,7 +20,7 @@ This mirrors the pattern proven in the `mizan` project.
 ## Flow
 
 ```
-GitHub Actions (every hour)
+GitHub Actions (every 8 hours)
   └─► GET /api/public/cron/monitor   (Bearer CRON_SECRET, 300s Fluid limit)
         └─ runMonitor()  src/lib/monitor/run.ts
              ├─ every pass, read all feeds (free):
@@ -119,7 +119,7 @@ page. Thread stats and publication dates are excluded by the prompt.
 
 `is_launch` marks a story that announces a newly released AI model, product or
 tool. Launches get a "New release" tag and filter on the wire, and lead the email
-digest at a lower score bar (55), so a release reaches Bilal within the hour.
+digest at a lower score bar (55), so a release reaches Bilal by the next pass.
 
 Search sources rotate one per pass, so the number of them sets how often each is
 revisited. Keep that list short and specific.

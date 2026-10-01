@@ -70,16 +70,19 @@ export const env = {
     timeRange: process.env.MONITOR_TIME_RANGE ?? "qdr:d",
     maxAgeDays: num("MONITOR_ARTICLE_MAX_AGE_DAYS", 2),
     // Cap scored new items per pass; the next pass picks up the rest.
-    maxNewPerRun: num("MONITOR_MAX_NEW_PER_RUN", 30),
+    maxNewPerRun: num("MONITOR_MAX_NEW_PER_RUN", 40),
     // Unseen items taken from any one source per pass, so a busy feed can't fill
-    // a pass on its own; the rest wait for the next pass.
-    maxItemsPerSource: num("MONITOR_MAX_ITEMS_PER_SOURCE", 4),
+    // a pass on its own. Sized for an 8-hourly schedule: lower, and a busy day
+    // on Hacker News outruns the passes before stories go stale.
+    maxItemsPerSource: num("MONITOR_MAX_ITEMS_PER_SOURCE", 8),
     // Items processed side by side. Firecrawl's free plan allows two concurrent
     // scrapes, and a 429 would park a key that still has credits.
     concurrency: num("MONITOR_CONCURRENCY", 2),
     // Feeds run every pass; web search is the credit-heavy part, so it runs one
     // source at a time and no more often than this.
-    searchIntervalHours: num("MONITOR_SEARCH_INTERVAL_HOURS", 12),
+    // Under the 8h schedule, so every scheduled pass includes one search even
+    // when GitHub starts it a little early.
+    searchIntervalHours: num("MONITOR_SEARCH_INTERVAL_HOURS", 6),
     // Wall-clock budget for a scheduled pass (ms), under the 300s Fluid limit.
     budgetMs: num("MONITOR_BUDGET_MS", 240_000),
   }),
