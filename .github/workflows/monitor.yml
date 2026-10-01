@@ -5,8 +5,11 @@ name: monitor
 # CRON_SECRET (Settings > Secrets and variables > Actions).
 on:
   schedule:
-    # Minute 17 dodges the top-of-hour queue.
-    - cron: "17 */8 * * *" # every 8 hours
+    # Every 8 hours, all inside DeepSeek's off-peak (half-price) window: peak is
+    # 01-04 and 06-10 UTC on weekdays (src/lib/llm/peak.ts). 04:17 leaves 1h40m
+    # of slack before peak for GitHub's scheduling delays; minute 17 dodges the
+    # top-of-hour queue.
+    - cron: "17 4,12,20 * * *"
   workflow_dispatch: {} # manual "Run workflow" button
 
 jobs:

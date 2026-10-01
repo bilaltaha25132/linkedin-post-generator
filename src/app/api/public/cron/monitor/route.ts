@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { env } from "@/lib/env";
+import { isDeepSeekPeak, peakEndsAt } from "@/lib/llm/peak";
 import { runMonitor } from "@/lib/monitor/run";
 import { sendDigest } from "@/lib/notify/digest";
 
@@ -20,6 +21,13 @@ export async function POST(req: NextRequest) {
 async function handle(req: NextRequest) {
   if (!(await authorized(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Scoring every new story is most of the DeepSeek spend, and peak costs
+  // double. The schedule sits off-peak; this catches a run GitHub started late.
+  // Nothing is lost: stories stay in their feeds for the next pass.
+  if (isDeepSeekPeak() && req.nextUrl.searchParams.get("force") !== "1") {
+    return NextResponse.json({ ok: true, skipped: "DeepSeek peak hours", resumesAt: peakEndsAt()?.toISOString() });
   }
 
   try {

@@ -20,7 +20,7 @@ This mirrors the pattern proven in the `mizan` project.
 ## Flow
 
 ```
-GitHub Actions (every 8 hours)
+GitHub Actions (04:17, 12:17, 20:17 UTC: every 8h, all DeepSeek off-peak)
   └─► GET /api/public/cron/monitor   (Bearer CRON_SECRET, 300s Fluid limit)
         └─ runMonitor()  src/lib/monitor/run.ts
              ├─ every pass, read all feeds (free):
@@ -59,6 +59,7 @@ Browser (behind password gate, src/proxy.ts)
   │     autosaves to drafts; carousel built from the post body on request
   ├─ /library     drafts + posted; edit / copy / mark posted; every card can
   │               build, regenerate or edit its carousel
+  ├─ /posted      only what's been published, newest first
   ├─ /usage       DeepSeek token usage + est. cost
   └─ /sources     manage what the monitor watches
 
@@ -123,6 +124,15 @@ digest at a lower score bar (55), so a release reaches Bilal by the next pass.
 
 Search sources rotate one per pass, so the number of them sets how often each is
 revisited. Keep that list short and specific.
+
+### DeepSeek off-peak
+
+DeepSeek bills double during peak: 01:00-04:00 and 06:00-10:00 UTC, weekdays
+(`src/lib/llm/peak.ts`). Scoring every new story is most of the spend, so the
+scheduled scans sit off-peak, and the cron route skips a pass that GitHub starts
+late into peak (`?force=1` overrides); stories stay in their feeds for the next
+one. Drafting is on demand and can't be moved, so the nav shows a notice during
+peak with when it ends, and Bilal decides whether to wait.
 
 ### Why drafts don't read as AI
 

@@ -19,4 +19,5 @@ export async function saveBlogForPost(postId: string, blog: string): Promise<voi
   if (error) throw new Error(error.message);
   revalidatePath("/library");
   revalidatePath("/queue");
+  revalidatePath("/posted");
 }

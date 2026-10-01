@@ -41,7 +41,8 @@ export function PostCard({ post }: { post: Post }) {
           {post.status === "queued" ? "to post" : post.status}
         </span>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-faint)" }}>
-          {new Date(post.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+          {post.posted_at ? "Posted " : ""}
+          {new Date(post.posted_at ?? post.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
         </span>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-faint)", marginLeft: "auto" }}>
           {countWords(post.body)} words

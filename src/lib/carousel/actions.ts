@@ -20,4 +20,5 @@ export async function saveCarouselForPost(postId: string, slides: Slide[], title
   if (error) throw new Error(error.message);
   revalidatePath("/library");
   revalidatePath("/queue");
+  revalidatePath("/posted");
 }

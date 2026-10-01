@@ -97,6 +97,7 @@ export async function updatePostBody(id: string, body: string): Promise<void> {
   const { error } = await db.from("posts").update({ body }).eq("id", id);
   if (error) throw new Error(error.message);
   revalidatePath("/library");
+  revalidatePath("/posted");
 }
 
 /** Add a draft to the "to be posted" queue, or take it back out. */
@@ -130,6 +131,7 @@ export async function markPosted(id: string, externalUrl?: string): Promise<void
   }
   revalidatePath("/library");
   revalidatePath("/queue");
+  revalidatePath("/posted");
 }
 
 export async function deletePost(id: string): Promise<void> {
@@ -137,4 +139,5 @@ export async function deletePost(id: string): Promise<void> {
   if (error) throw new Error(error.message);
   revalidatePath("/library");
   revalidatePath("/queue");
+  revalidatePath("/posted");
 }

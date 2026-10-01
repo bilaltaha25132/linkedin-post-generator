@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Radio, SquarePen, Bookmark, PenLine, Star, Radar, Coins, LogOut } from "lucide-react";
+import { Radio, SquarePen, Bookmark, PenLine, Star, Send, Radar, Coins, LogOut } from "lucide-react";
 
 import { LogoMark } from "@/components/logo";
+import { PeakNotice } from "@/components/peak-notice";
 
 const LINKS = [
   { href: "/", label: "Feed", icon: Radio },
@@ -12,6 +13,7 @@ const LINKS = [
   { href: "/saved", label: "Saved", icon: Bookmark },
   { href: "/library", label: "Library", icon: PenLine },
   { href: "/queue", label: "To post", icon: Star },
+  { href: "/posted", label: "Posted", icon: Send },
   { href: "/sources", label: "Sources", icon: Radar },
   { href: "/usage", label: "Usage", icon: Coins },
 ];
@@ -36,7 +38,11 @@ export function NavRail() {
         );
       })}
 
-      <form action="/api/auth/logout" method="post" style={{ marginTop: "auto" }}>
+      <div style={{ marginTop: "auto" }}>
+        <PeakNotice />
+      </div>
+
+      <form action="/api/auth/logout" method="post">
         <button type="submit" className="navlink" style={{ width: "100%" }}>
           <LogOut aria-hidden />
           Sign out
