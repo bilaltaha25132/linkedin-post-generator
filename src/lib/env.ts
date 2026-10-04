@@ -80,9 +80,10 @@ export const env = {
     concurrency: num("MONITOR_CONCURRENCY", 2),
     // Feeds run every pass; web search is the credit-heavy part, so it runs one
     // source at a time and no more often than this.
-    // Under the 8h schedule, so every scheduled pass includes one search even
-    // when GitHub starts it a little early.
-    searchIntervalHours: num("MONITOR_SEARCH_INTERVAL_HOURS", 6),
+    // Under the 12h schedule, so every scheduled pass includes one search even
+    // when GitHub starts it a little early, while a manual scan in between
+    // reads the free feeds without spending a search.
+    searchIntervalHours: num("MONITOR_SEARCH_INTERVAL_HOURS", 10),
     // Wall-clock budget for a scheduled pass (ms), under the 300s Fluid limit.
     budgetMs: num("MONITOR_BUDGET_MS", 240_000),
   }),
