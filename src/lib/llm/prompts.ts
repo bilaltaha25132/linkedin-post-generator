@@ -179,6 +179,53 @@ ${recent}`;
   return { system, user, role: "writer", temperature: 0.9, topP: 0.95, maxTokens: 2000, op: "generate" };
 }
 
+/**
+ * Bilal's note on one take ("shorter", "open with the price", "push back
+ * harder") applied to it. The source stays in view so a note like "use the
+ * benchmark numbers" can pull facts from it rather than inventing them.
+ */
+export function buildRevisePrompt(input: {
+  post: string;
+  instruction: string;
+  discovery: GenerationInput["discovery"];
+  voiceSamples: GenerationInput["voiceSamples"];
+}): ChatOptions {
+  const samples = input.voiceSamples
+    .map((s, i) => `--- SAMPLE ${i + 1}${s.title ? ` (${s.title})` : ""} ---\n${s.content.slice(0, 1500)}`)
+    .join("\n\n");
+
+  const system = `You are Bilal's ghostwriter. He has read a draft of his LinkedIn post and told you how to make it better. Rewrite the post so it does what he asked.
+
+${WRITER_PERSONA}
+
+${VOICE_RULES}
+
+HOW TO REVISE:
+- His note wins over every rule above except the hard bans and the substance rules: if he asks for shorter, longer, a different opening, more edge or a different angle, do it.
+- New facts may come only from the SOURCE ITEM, or from what he says about himself in his note. Never invent anything else.
+- Keep what he didn't ask to change, unless his note calls for a fresh rewrite.
+- The English must be clean and natural: correct grammar, every sentence easy to read on the first pass.
+
+Output only the revised post.`;
+
+  const user = `HIS NOTE
+${input.instruction.slice(0, 1000)}
+
+THE DRAFT
+${input.post.slice(0, 4000)}
+
+SOURCE ITEM
+Title: ${input.discovery.title}
+URL: ${input.discovery.url}
+Content (may be truncated):
+${input.discovery.content.slice(0, 5000)}
+${input.discovery.discussion ? `\n${input.discovery.discussion}\n` : ""}
+SAMPLES OF BILAL'S WRITING (tone only):
+${samples || "(none available: rely on the voice rules)"}`;
+
+  return { system, user, role: "writer", temperature: 0.8, topP: 0.95, maxTokens: 2000, op: "revise" };
+}
+
 // --- Enhancing a post Bilal wrote himself (writer model) ------------------------
 
 export interface EnhanceInput {

@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Sparkles, Copy, Check, RotateCcw, Star, TriangleAlert } from "lucide-react";
+import { Sparkles, Copy, Check, RotateCcw, Star, TriangleAlert, PenLine } from "lucide-react";
 
 import { unwrap } from "@/lib/action-result";
-import { generatePosts } from "@/lib/generate/actions";
+import { generatePosts, revisePost } from "@/lib/generate/actions";
 import { copyForLinkedIn } from "@/lib/linkedin";
 import { upsertDraftForDiscovery, updatePostBody, setPostQueued } from "@/lib/posts/actions";
 import { CarouselStudio } from "@/components/carousel-studio";
@@ -28,6 +28,9 @@ export function Generator({
   const [copied, setCopied] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [queued, setQueued] = useState(false);
+  const [note, setNote] = useState("");
+  const [revising, startRevise] = useTransition();
+  const [reviseError, setReviseError] = useState<string | null>(null);
 
   // One draft row per discovery; the ref survives re-renders so edits update it.
   // postId mirrors the ref as state so the carousel studio re-renders with it.
@@ -95,6 +98,26 @@ export function Generator({
     setSelected(i);
     setBody(variants[i]);
   };
+
+  // The rewrite is added as a new take, so the one it came from is still there.
+  const revise = () =>
+    startRevise(async () => {
+      setReviseError(null);
+      try {
+        const revised = unwrap(await revisePost(discoveryId, body, note));
+        const next = [...variants, revised];
+        setVariants(next);
+        setSelected(next.length - 1);
+        setBody(revised);
+        setNote("");
+        setSaveState("saving");
+        rememberPostId(await upsertDraftForDiscovery({ discoveryId, body: revised, variants: next }));
+        lastSavedRef.current = revised;
+        setSaveState("saved");
+      } catch (err) {
+        setReviseError((err as Error).message);
+      }
+    });
 
   const copy = async () => {
     await copyForLinkedIn(body);
@@ -213,6 +236,36 @@ export function Generator({
               </button>
               <SaveIndicator state={saveState} onRetry={retrySave} />
               <span className="meta-mono push">{countWords(body)} words</span>
+            </div>
+
+            <div className="stack-sm" style={{ marginTop: 20 }}>
+              <label className="lbl" htmlFor="revise-note">
+                Make this take better
+              </label>
+              <div className="row">
+                <input
+                  id="revise-note"
+                  className="field"
+                  style={{ flex: 1 }}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && note.trim() && !revising) revise();
+                  }}
+                  placeholder="e.g. shorter, open with the price, push back harder on the benchmark"
+                />
+                <button className="btn" onClick={revise} disabled={revising || pending || !note.trim() || !body.trim()}>
+                  <PenLine aria-hidden className={revising ? "spin" : undefined} />
+                  {revising ? "Rewriting…" : "Rewrite"}
+                </button>
+              </div>
+              <span className="field-hint">Rewrites the take you&rsquo;re on and adds it as Take {variants.length + 1}.</span>
+              {reviseError && (
+                <p className="notice notice-danger" role="alert">
+                  <TriangleAlert aria-hidden />
+                  {reviseError}
+                </p>
+              )}
             </div>
           </section>
 

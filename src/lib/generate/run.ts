@@ -3,7 +3,7 @@ import "server-only";
 import { getDiscovery } from "@/lib/discoveries/queries";
 import { chat } from "@/lib/llm/client";
 import { embed } from "@/lib/llm/embeddings";
-import { POST_SHAPES, buildGenerationPrompt, formatDiscussion, parseVariants } from "@/lib/llm/prompts";
+import { POST_SHAPES, buildGenerationPrompt, buildRevisePrompt, formatDiscussion, parseVariants } from "@/lib/llm/prompts";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { humanize, voiceSamplesFor } from "@/lib/voice/humanize";
 
@@ -74,4 +74,29 @@ export async function generateForDiscovery(
       : null;
 
   return { variants, similarPosts, duplicateWarning };
+}
+
+/** Rewrite one take following Bilal's note on it; the result becomes a new take. */
+export async function reviseForDiscovery(discoveryId: string, post: string, instruction: string): Promise<string> {
+  if (!instruction.trim()) throw new Error("Say what you'd like changed first.");
+  const discovery = await getDiscovery(discoveryId);
+  if (!discovery) throw new Error("Discovery not found");
+
+  const voiceSamples = await voiceSamplesFor(null);
+  const draft = await chat(
+    buildRevisePrompt({
+      post,
+      instruction,
+      discovery: {
+        title: discovery.title ?? "",
+        url: discovery.url,
+        content: discovery.content_md ?? discovery.snippet ?? discovery.title ?? "",
+        discussion: formatDiscussion(discovery.discussion, discovery.discussion_comments),
+      },
+      voiceSamples,
+    }),
+  );
+  const revised = parseVariants(draft)[0];
+  if (!revised) throw new Error("The writer returned nothing. Try again.");
+  return humanize(revised, voiceSamples);
 }
