@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { AUTHOR_BIO, INTEREST_PROFILE, VOICE_RULES, WRITER_PERSONA } from "@/lib/voice/profile";
+import { AUTHOR_BIO, INTEREST_PROFILE, SUBSTANCE_RULES, VOICE_RULES, WRITER_PERSONA } from "@/lib/voice/profile";
 import type { ChatOptions } from "@/lib/llm/client";
 import type { Discussion, DiscussionComment } from "@/lib/db/types";
 
@@ -110,37 +110,58 @@ export interface GenerationInput {
     /** Formatted public thread (formatDiscussion); empty when there is none. */
     discussion?: string;
   };
-  /** Retrieved samples of Bilal's real writing, closest to this topic. */
-  voiceSamples: { title: string | null; content: string }[];
   /** Recent posts, so the draft builds on them and doesn't repeat. */
   recentPosts: string[];
-  count: number;
+  /** How this take is built; one of POST_SHAPES. */
+  shape: string;
   /** Optional extra steer from the user (a specific take/tone for this post). */
   guidance?: string;
 }
 
-export function buildGenerationPrompt(input: GenerationInput): ChatOptions {
-  const samples = input.voiceSamples
-    .map((s, i) => `--- SAMPLE ${i + 1}${s.title ? ` (${s.title})` : ""} ---\n${s.content.slice(0, 1800)}`)
-    .join("\n\n");
+/**
+ * One per draft. Asking for three variants in one reply gave three copies of
+ * the same arc (fact, "the interesting part", his view, a neat closing line),
+ * and that arc was the most recognisable thing about them.
+ */
+export const POST_SHAPES = [
+  "React first: open with his honest first reaction to the story in plain words, then the facts that explain it.",
+  "Tell it in order: what happened, roughly in the order it happened, with his comments as he goes. No thesis up front.",
+  "Push back: pick the claim in the story (or the thread) he's least convinced by and say why, fairly.",
+  "What it changes: what this means for someone building software this week, kept concrete and modest.",
+  "One small point: a short post, 60 to 120 words, about the single detail he found most telling.",
+];
 
+/**
+ * The first draft is written in Urdu and translated (buildTranslatePrompt).
+ * Every English-first draft scored 100% AI on GPTZero and 80-90% on Sapling,
+ * whatever the style rules or tone, because detectors read word-level
+ * predictability rather than tone; the Urdu-first ones scored 0-1% on both
+ * (2026-10). So this step carries only what to say, no English style rules.
+ */
+export function buildGenerationPrompt(input: GenerationInput): ChatOptions {
   const recent = input.recentPosts.length
     ? input.recentPosts.map((p, i) => `- Post ${i + 1}: ${p.slice(0, 400)}`).join("\n")
     : "(none yet)";
 
-  const system = `You are a ghostwriter for Bilal. You never produce generic "Linkedin AI" slop.
+  const system = `You are Bilal's ghostwriter.
 
 ${WRITER_PERSONA}
 
-${VOICE_RULES}
+Write ONE LinkedIn post about the source item below, in Urdu (Urdu script), the way he'd tell a fellow engineer what he honestly makes of it. Keep technical terms, product and company names, and numbers in English.
 
-You will be given samples of Bilal's ACTUAL writing — match their rhythm, diction, and structure for TONE only. Do not copy their subject matter or drag his past projects in. You will also be given his recent posts: do not repeat their topic or their opening move; build a distinct post.
+Build it this way: ${input.shape}
 
-Generate ${input.count} DISTINCT post variants, each a complete standalone LinkedIn post about the source item below — most should be his sharp take on the news itself, not a personal anecdote. Vary the angle/hook across variants.
+${SUBSTANCE_RULES}
 
-If a PUBLIC DISCUSSION is included, it's how engineers are reacting right now. A variant may engage with that debate ("the thread split on whether..."), agree or push back, but never name or quote commenters, and never state a commenter's claim as fact: facts come only from the source content.
+- His honest opinion: say what's overhyped, unclear or costly, and say where he's unsure.
+- No greeting, no rhetorical opening question, no closing moral, lesson or summary.
+- Say each point directly. Don't announce it ("the real thing is", "the real question is") and don't turn it as "it isn't X, it's Y": those read as AI once translated.
+- 3 or 4 short paragraphs, about 140 to 200 words. No hashtags.
+- Don't repeat the topic or the opening of his recent posts.
 
-Output the posts separated by a line containing exactly ${VARIANT_DELIMITER} and nothing else. No numbering, no preamble, no markdown fences — just the posts and the delimiters between them.`;
+If a PUBLIC DISCUSSION is included, it's how engineers are reacting right now. The post may engage with that debate, agree or push back, but never name or quote commenters, and never state a commenter's claim as fact: facts come only from the source content.
+
+Output only the post.`;
 
   const user = `SOURCE ITEM
 Title: ${input.discovery.title}
@@ -148,15 +169,33 @@ URL: ${input.discovery.url}
 ${input.discovery.angle ? `Suggested angle: ${input.discovery.angle}\n` : ""}Content (may be truncated):
 ${input.discovery.content.slice(0, 5000)}
 ${input.discovery.discussion ? `\n${input.discovery.discussion}\n` : ""}
-${input.guidance ? `EXTRA STEER FROM BILAL: ${input.guidance}\n\n` : ""}BILAL'S REAL WRITING (imitate this voice):
-${samples || "(no samples available — rely on the voice rules above)"}
-
-HIS RECENT POSTS (do not repeat these topics or openings):
+${input.guidance ? `EXTRA STEER FROM BILAL: ${input.guidance}\n\n` : ""}HIS RECENT POSTS:
 ${recent}`;
 
-  // 1.0 keeps DeepSeek's prose lively but coherent; at 1.3 later variants in a
-  // single call reliably degenerated into word-salad (verified 2026-09).
-  return { system, user, role: "writer", temperature: 1.0, maxTokens: 8000, op: "generate" };
+  return { system, user, role: "writer", temperature: 1.0, topP: 0.95, maxTokens: 2000, op: "generate" };
+}
+
+/**
+ * Urdu first draft to the English post. The English style rules live here, kept
+ * short: a long rulebook pulls the wording back toward the model's defaults.
+ * `avoid` lists lines a previous translation slipped into (aiTells).
+ */
+export function buildTranslatePrompt(urdu: string, avoid: string[] = []): ChatOptions {
+  const system = `Translate Bilal's Urdu LinkedIn post into English the way he'd write it himself in English: an engineer from Karachi talking plainly to people he works with.
+
+- Keep every fact exactly as he has it: names, places, numbers. Write lakh and crore the English way (100,000, a million). Keep his ideas, their order and how he joins them.
+- اصل usually needs no English word at all. Never write "the real number/thing/point/work/question". Keep his sentence lengths roughly as they are, long ones long and short ones short.
+- Use contractions (it's, don't, I'd) and plain everyday words. Don't polish it into corporate English, don't add anything, and don't add a conclusion.
+- Never write "However,", "Moreover,", "Speaking of", "The interesting thing is", "The real thing/point/question is", "you have to admit", "Here's the thing", or a "this isn't X, it's Y" turn. If the Urdu uses one of those turns, say the point plainly instead.
+- No em dashes or en dashes, no emojis, no bullet points, no links.
+- End with 2 to 4 specific hashtags on their own final line.
+
+Output only the English post.`;
+
+  const user = `${avoid.length ? `An earlier translation slipped into these AI-sounding lines. Phrase those ideas differently this time:\n${avoid.map((t) => `- ${t}`).join("\n")}\n\n` : ""}THE URDU POST
+${urdu}`;
+
+  return { system, user, role: "writer", temperature: 0.7, topP: 0.95, maxTokens: 2000, op: "translate" };
 }
 
 // --- Enhancing a post Bilal wrote himself (writer model) ------------------------
@@ -185,7 +224,7 @@ ${VOICE_RULES}
 EDITING RULES (these override the persona where they conflict):
 - His ideas, claims, facts, numbers, names and experiences ARE the post. Keep every one of them. If he names his employer, a client or a project himself, keep it.
 - Never add facts, numbers, names, quotes or anecdotes that are not in his draft. That includes his own actions and thoughts: do not write that he tried, tweaked, swapped, assumed or felt anything the draft doesn't say. A lesson may be restated or sharpened; a backstory may not be invented. Where the draft is thin, stay general.
-- Fix what's weak: land the hook within the first ~140 characters, cut filler, tighten sentences, order the ideas so it scans, and close with one genuine question.
+- Fix what's weak: get to the point in the first line or two, cut filler, order the ideas so it scans. Don't polish it smooth: keep his phrasing, his asides and his uneven rhythm, since those are what make it read as his. End where his thought ends; a question only if his draft asks one or clearly wants an answer.
 - If the draft is notes, write the full post from them without padding.
 - LENGTH follows the substance, overriding the length rule above: short notes make a short post, and coming in under 900 characters is fine. Never pad a thin draft with reflection, backstory or technical detail it doesn't contain.
 
@@ -257,6 +296,8 @@ ${VOICE_RULES}
 HOW TO EDIT:
 - Rewrite the sentences that carry those tells so they sound like him: join clipped fragments into real sentences, replace a label-and-colon with an actual sentence, replace a summary line or an aphorism with the specific thought behind it, or cut it.
 - Keep every fact, number, name and claim, and keep his take. Add nothing that isn't in the post.
+- Delete any personal anecdote the post invents about him: a memory, a hobby, a colleague, a conversation, something he tried. His opinions stay; made-up events in his life go.
+- If a sentence doesn't make sense, fix it or cut it.
 - Keep roughly the same length and the same opening fact. Keep the hashtag line as it is.
 - Leave sentences that already sound human alone. This is an edit, not a rewrite from scratch.
 
@@ -265,7 +306,7 @@ Output ONLY the edited post. No notes, no preamble, no quotation marks around it
   const user = `HOW BILAL ACTUALLY WRITES (match this register):
 ${samples || "(no samples available; rely on the voice rules)"}
 
-${tells.length ? `THIS DRAFT CONTAINS THESE AI TELLS, fix each one:\n${tells.map((t) => `- ${t}`).join("\n")}` : "No specific tells were detected; still smooth out anything that reads as generated."}
+${tells.length ? `THESE SENTENCES GIVE IT AWAY AS AI. Rewrite each one as a plain statement of the thought behind it, or cut it:\n${tells.map((t) => `- ${t}`).join("\n")}` : "No specific tells were detected; still smooth out anything that reads as generated."}
 
 THE POST
 ${post}`;

@@ -30,6 +30,8 @@ export interface ChatOptions {
   role?: ModelRole;
   temperature?: number;
   maxTokens?: number;
+  /** Nucleus cutoff. Lets the writer run hot without sampling the junk tail. */
+  topP?: number;
   /** Gemini 3 thinking budget. "low" roughly halves latency on the writer. */
   reasoningEffort?: "low" | "medium" | "high";
   /** Operation label for token-usage accounting (e.g. "relevance", "generate"). */
@@ -48,6 +50,7 @@ export async function chat(opts: ChatOptions): Promise<string> {
       ],
       temperature: opts.temperature ?? 0.4,
       max_tokens: opts.maxTokens ?? 1024,
+      ...(opts.topP ? { top_p: opts.topP } : {}),
       ...(opts.reasoningEffort ? { reasoning_effort: opts.reasoningEffort } : {}),
     },
     { timeout: 110_000 },
