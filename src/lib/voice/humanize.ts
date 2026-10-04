@@ -1,7 +1,7 @@
 import "server-only";
 
 import { chat } from "@/lib/llm/client";
-import { buildHumanizePrompt, buildTranslatePrompt, parseVariants } from "@/lib/llm/prompts";
+import { buildHumanizePrompt, parseVariants } from "@/lib/llm/prompts";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { aiTells } from "@/lib/voice/tells";
 
@@ -11,9 +11,9 @@ export interface VoiceSample {
 }
 
 /**
- * Samples of Bilal's writing for the editor: the closest pieces by embedding, or
- * his most recent blog posts when there's no embedding. Without that fallback a
- * rate-limited embedding left the editor no voice to match. His LinkedIn posts
+ * Samples of Bilal's writing for tone: the closest pieces by embedding, or his
+ * most recent blog posts when there's no embedding. Without that fallback a
+ * rate-limited embedding left the writer no voice to match. His LinkedIn posts
  * were partly AI-assisted, so they aren't used as a voice reference.
  */
 export async function voiceSamplesFor(embedding: number[] | null, count = 3): Promise<VoiceSample[]> {
@@ -29,24 +29,6 @@ export async function voiceSamplesFor(embedding: number[] | null, count = 3): Pr
     .order("created_at", { ascending: false })
     .limit(count);
   return (data ?? []) as VoiceSample[];
-}
-
-/**
- * Turn an Urdu first draft into the English post (see buildGenerationPrompt for
- * why). Retranslates once when the first pass slips into AI-sounding lines,
- * rather than running the English editor, whose rewrites read as generated.
- */
-export async function translateDraft(urdu: string): Promise<string> {
-  const first = parseVariants(await chat(buildTranslatePrompt(urdu)))[0] ?? "";
-  const tells = aiTells(first);
-  if (first && tells.length === 0) return first;
-  try {
-    const second = parseVariants(await chat(buildTranslatePrompt(urdu, tells)))[0];
-    if (second && (!first || aiTells(second).length < tells.length)) return second;
-  } catch {
-    // Keep the first translation.
-  }
-  return first;
 }
 
 const MAX_EDITS = 3;

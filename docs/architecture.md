@@ -44,11 +44,12 @@ Browser (behind password gate, src/proxy.ts)
   ├─ /generate/[id]
   │     generateForDiscovery()  src/lib/generate/run.ts
   │       ├─ embed the discovery (query)
+  │       ├─ match_voice  → closest samples of Bilal's blog writing (tone)
   │       ├─ match_posts  → similar past posts (dedup warning + cohesion)
   │       ├─ recent posts → "don't repeat these"
-  │       ├─ DeepSeek writer → N drafts in Urdu, one per POST_SHAPE
-  │       └─ translateDraft() → each into English; retranslated once if
-  │          src/lib/voice/tells.ts finds AI tells (src/lib/voice/humanize.ts)
+  │       ├─ DeepSeek writer → N drafts, one per POST_SHAPE, in parallel
+  │       └─ humanize pass → each draft edited against the AI tells
+  │          src/lib/voice/tells.ts finds in it (src/lib/voice/humanize.ts)
   │     Carousel Studio (src/lib/carousel + components/carousel-studio.tsx)
   │       └─ DeepSeek → 7-9 slides → editable → jsPDF (1080×1350) download
   ├─ /write       a post he writes himself (discovery_id null)
@@ -135,25 +136,18 @@ peak with when it ends, and Bilal decides whether to wait.
 
 ### Why drafts don't read as AI
 
-Generated drafts are written in Urdu first, then translated into English
-(`buildGenerationPrompt` → `buildTranslatePrompt`). Measured on real detectors
-in 2026-10: every English-first draft scored 100% AI on GPTZero and 80-99% on
-Sapling, whatever the style rules, tone or temperature, and an English
-"humanize" edit didn't move it. Detectors read word-level predictability, not
-tone. The same stories written in Urdu and translated scored 0-1% on Sapling
-and "100% human" on GPTZero, with an old English-first draft at 99.6% as the
-control. So the Urdu step carries only what to say (`SUBSTANCE_RULES`, the
-shape, the source), and the translate step carries a short list of English
-rules. A long rulebook pulls the wording back toward the model's defaults.
+Each draft is written in English, one per `POST_SHAPE` so the three drafts
+don't share the same arc. `VOICE_RULES` in `src/lib/voice/profile.ts` describe
+how people actually write (plain words, contractions, uneven rhythm, real
+doubt) and forbid inventing facts or his experience. `aiTells()` names the
+patterns that give a post away (summary lines, "the real X", the "it's not
+X, it's Y" turn, invented "in my experience" claims); the humanize edit fixes
+the ones a draft contains, and an edit that comes back worse is discarded.
 
-`aiTells()` still names the patterns that give a post away (summary lines,
-"the real X", the "it's not X, it's Y" turn, invented "in my experience"
-claims). When a translation contains any, it's retranslated once with those
-lines listed, and the version with fewer tells is kept. Most of the tells come
-from Urdu idioms (اصل بات, X نہیں بلکہ Y), so the translate prompt names them.
-
-The `/write` path still uses the English editor (`humanize`), since there
-the words are Bilal's own. His published LinkedIn posts were partly
+Tried and dropped (2026-10): writing in Urdu and translating to English. It
+fooled AI detectors (GPTZero 100% human, where English-first drafts score
+100% AI) but the English came out clumsy, and the goal is posts that read
+well, not detector scores. His published LinkedIn posts were partly
 AI-assisted, so they aren't used as a voice reference anywhere.
 
 ## Layers

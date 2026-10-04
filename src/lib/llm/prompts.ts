@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { AUTHOR_BIO, INTEREST_PROFILE, SUBSTANCE_RULES, VOICE_RULES, WRITER_PERSONA } from "@/lib/voice/profile";
+import { AUTHOR_BIO, INTEREST_PROFILE, VOICE_RULES, WRITER_PERSONA } from "@/lib/voice/profile";
 import type { ChatOptions } from "@/lib/llm/client";
 import type { Discussion, DiscussionComment } from "@/lib/db/types";
 
@@ -110,6 +110,8 @@ export interface GenerationInput {
     /** Formatted public thread (formatDiscussion); empty when there is none. */
     discussion?: string;
   };
+  /** Samples of Bilal's own writing (blog pieces), for tone only. */
+  voiceSamples: { title: string | null; content: string }[];
   /** Recent posts, so the draft builds on them and doesn't repeat. */
   recentPosts: string[];
   /** How this take is built; one of POST_SHAPES. */
@@ -132,13 +134,16 @@ export const POST_SHAPES = [
 ];
 
 /**
- * The first draft is written in Urdu and translated (buildTranslatePrompt).
- * Every English-first draft scored 100% AI on GPTZero and 80-90% on Sapling,
- * whatever the style rules or tone, because detectors read word-level
- * predictability rather than tone; the Urdu-first ones scored 0-1% on both
- * (2026-10). So this step carries only what to say, no English style rules.
+ * One draft, written directly in English. A detour through Urdu and back
+ * (2026-10) fooled AI detectors but left the English clumsy ("10 lakh",
+ * half-parsed sentences); Bilal wants the English itself right, so the
+ * writer runs a little cooler and any AI tells go to the humanize edit.
  */
 export function buildGenerationPrompt(input: GenerationInput): ChatOptions {
+  const samples = input.voiceSamples
+    .map((s, i) => `--- SAMPLE ${i + 1}${s.title ? ` (${s.title})` : ""} ---\n${s.content.slice(0, 1500)}`)
+    .join("\n\n");
+
   const recent = input.recentPosts.length
     ? input.recentPosts.map((p, i) => `- Post ${i + 1}: ${p.slice(0, 400)}`).join("\n")
     : "(none yet)";
@@ -147,17 +152,13 @@ export function buildGenerationPrompt(input: GenerationInput): ChatOptions {
 
 ${WRITER_PERSONA}
 
-Write ONE LinkedIn post about the source item below, in Urdu (Urdu script), the way he'd tell a fellow engineer what he honestly makes of it. Keep technical terms, product and company names, and numbers in English.
+${VOICE_RULES}
 
-Build it this way: ${input.shape}
+Write ONE complete LinkedIn post about the source item below, built this way: ${input.shape}
 
-${SUBSTANCE_RULES}
+The English must be clean and natural: correct grammar, every sentence easy to read on the first pass, words a fluent engineer would actually say out loud. Plain beats clever. If a sentence needs reading twice, rewrite it.
 
-- His honest opinion: say what's overhyped, unclear or costly, and say where he's unsure.
-- No greeting, no rhetorical opening question, no closing moral, lesson or summary.
-- Say each point directly. Don't announce it ("the real thing is", "the real question is") and don't turn it as "it isn't X, it's Y": those read as AI once translated.
-- 3 or 4 short paragraphs, about 140 to 200 words. No hashtags.
-- Don't repeat the topic or the opening of his recent posts.
+The SAMPLES are Bilal's own writing. Match their tone and plainness only; don't copy their subject or bring in his past projects. Don't repeat the topic or the opening of his recent posts.
 
 If a PUBLIC DISCUSSION is included, it's how engineers are reacting right now. The post may engage with that debate, agree or push back, but never name or quote commenters, and never state a commenter's claim as fact: facts come only from the source content.
 
@@ -169,33 +170,13 @@ URL: ${input.discovery.url}
 ${input.discovery.angle ? `Suggested angle: ${input.discovery.angle}\n` : ""}Content (may be truncated):
 ${input.discovery.content.slice(0, 5000)}
 ${input.discovery.discussion ? `\n${input.discovery.discussion}\n` : ""}
-${input.guidance ? `EXTRA STEER FROM BILAL: ${input.guidance}\n\n` : ""}HIS RECENT POSTS:
+${input.guidance ? `EXTRA STEER FROM BILAL: ${input.guidance}\n\n` : ""}SAMPLES OF BILAL'S WRITING (tone only):
+${samples || "(none available: rely on the voice rules)"}
+
+HIS RECENT POSTS:
 ${recent}`;
 
-  return { system, user, role: "writer", temperature: 1.0, topP: 0.95, maxTokens: 2000, op: "generate" };
-}
-
-/**
- * Urdu first draft to the English post. The English style rules live here, kept
- * short: a long rulebook pulls the wording back toward the model's defaults.
- * `avoid` lists lines a previous translation slipped into (aiTells).
- */
-export function buildTranslatePrompt(urdu: string, avoid: string[] = []): ChatOptions {
-  const system = `Translate Bilal's Urdu LinkedIn post into English the way he'd write it himself in English: an engineer from Karachi talking plainly to people he works with.
-
-- Keep every fact exactly as he has it: names, places, numbers. Write lakh and crore the English way (100,000, a million). Keep his ideas, their order and how he joins them.
-- اصل usually needs no English word at all. Never write "the real number/thing/point/work/question". Keep his sentence lengths roughly as they are, long ones long and short ones short.
-- Use contractions (it's, don't, I'd) and plain everyday words. Don't polish it into corporate English, don't add anything, and don't add a conclusion.
-- Never write "However,", "Moreover,", "Speaking of", "The interesting thing is", "The real thing/point/question is", "you have to admit", "Here's the thing", or a "this isn't X, it's Y" turn. If the Urdu uses one of those turns, say the point plainly instead.
-- No em dashes or en dashes, no emojis, no bullet points, no links.
-- End with 2 to 4 specific hashtags on their own final line.
-
-Output only the English post.`;
-
-  const user = `${avoid.length ? `An earlier translation slipped into these AI-sounding lines. Phrase those ideas differently this time:\n${avoid.map((t) => `- ${t}`).join("\n")}\n\n` : ""}THE URDU POST
-${urdu}`;
-
-  return { system, user, role: "writer", temperature: 0.7, topP: 0.95, maxTokens: 2000, op: "translate" };
+  return { system, user, role: "writer", temperature: 0.9, topP: 0.95, maxTokens: 2000, op: "generate" };
 }
 
 // --- Enhancing a post Bilal wrote himself (writer model) ------------------------

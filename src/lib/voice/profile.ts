@@ -81,8 +81,8 @@ Reward "would a smart engineer stop scrolling and read THIS specific story?";
 punish "could be any generic AI newsletter blurb from any week."`;
 
 /**
- * What a post may and may not claim. Shared by every writing step, including
- * the Urdu first draft, which gets none of the English style rules.
+ * What a post may and may not claim. Part of VOICE_RULES, kept separate so the
+ * rule about inventing his experience is easy to find and tighten.
  */
 export const SUBSTANCE_RULES = `SUBSTANCE: Every specific comes from the STORY: names, numbers, what happened, the
 tradeoff. Never invent a number, a client, a quote, an experience, or something he tried.

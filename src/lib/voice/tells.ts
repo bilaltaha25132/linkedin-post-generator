@@ -2,7 +2,7 @@
  * Patterns that mark a post as machine-written. Found in the drafts themselves
  * (2026-10): summary lines, colon labels, stacked fragments, aphorism closers,
  * the "it wasn't X, it was Y" turn. The prompts ban them too, but models slip,
- * so a retranslation or edit is told exactly which ones this draft contains.
+ * so the humanize edit is told exactly which ones this draft contains.
  */
 const PHRASES: [RegExp, string][] = [
   [/\bhere'?s the (thing|part|kicker|catch|twist|problem|deal|takeaway)\b/i, `"Here's the thing/part…" setup`],

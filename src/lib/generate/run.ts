@@ -3,9 +3,9 @@ import "server-only";
 import { getDiscovery } from "@/lib/discoveries/queries";
 import { chat } from "@/lib/llm/client";
 import { embed } from "@/lib/llm/embeddings";
-import { POST_SHAPES, buildGenerationPrompt, formatDiscussion } from "@/lib/llm/prompts";
+import { POST_SHAPES, buildGenerationPrompt, formatDiscussion, parseVariants } from "@/lib/llm/prompts";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { translateDraft } from "@/lib/voice/humanize";
+import { humanize, voiceSamplesFor } from "@/lib/voice/humanize";
 
 export interface GenerationResult {
   variants: string[];
@@ -27,9 +27,11 @@ export async function generateForDiscovery(
   const content = discovery.content_md ?? discovery.snippet ?? discovery.title ?? "";
   const queryEmbedding = await embed(`${discovery.title ?? ""}\n\n${content.slice(0, 4000)}`);
 
-  // Without an embedding there's no similar-post check.
+  // Without an embedding there's no similar-post check; voice samples fall back
+  // to his most recent writing.
   const noMatches = Promise.resolve({ data: [] });
-  const [similarRes, recentRes] = await Promise.all([
+  const [voiceSamples, similarRes, recentRes] = await Promise.all([
+    voiceSamplesFor(queryEmbedding),
     queryEmbedding ? db.rpc("match_posts", { query_embedding: queryEmbedding, match_count: 3 }) : noMatches,
     db.from("posts").select("body").order("created_at", { ascending: false }).limit(5),
   ]);
@@ -43,7 +45,7 @@ export async function generateForDiscovery(
   const shapes = [...POST_SHAPES].sort(() => Math.random() - 0.5).slice(0, opts.count ?? 3);
   const takes = await Promise.allSettled(
     shapes.map(async (shape) => {
-      const urdu = await chat(
+      const draft = await chat(
         buildGenerationPrompt({
           discovery: {
             title: discovery.title ?? "",
@@ -52,12 +54,14 @@ export async function generateForDiscovery(
             angle: discovery.suggested_angle,
             discussion: formatDiscussion(discovery.discussion, discovery.discussion_comments),
           },
+          voiceSamples,
           recentPosts,
           shape,
           guidance: opts.guidance,
         }),
       );
-      return urdu.trim() ? translateDraft(urdu) : "";
+      const post = parseVariants(draft)[0];
+      return post ? humanize(post, voiceSamples) : "";
     }),
   );
   const variants = takes.flatMap((t) => (t.status === "fulfilled" && t.value ? [t.value] : []));
