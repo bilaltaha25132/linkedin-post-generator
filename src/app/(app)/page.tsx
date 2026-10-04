@@ -2,7 +2,7 @@ import { FeedList } from "@/components/feed-list";
 import { PageHeader } from "@/components/page-header";
 import { RefreshButton } from "@/components/refresh-button";
 import { SetupNotice } from "@/components/setup-notice";
-import { listDiscoveries } from "@/lib/discoveries/queries";
+import { REJECT_BELOW, listDiscoveries } from "@/lib/discoveries/queries";
 import { supabaseConfigured } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ export const maxDuration = 150;
 export default async function FeedPage() {
   const configured = supabaseConfigured();
   const { items: discoveries, total } = configured
-    ? await listDiscoveries(["new"])
+    ? await listDiscoveries(["new"], { minScore: REJECT_BELOW })
     : { items: [], total: 0 };
 
   return (

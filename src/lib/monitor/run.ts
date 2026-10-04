@@ -135,17 +135,22 @@ async function unseenInTurn(
   cfg: MonitorConfig,
   result: MonitorResult,
 ): Promise<{ source: Source; hit: WireHit; hash: string }[]> {
+  const tooOld: Rejection[] = [];
   const perSource = fetched.map(({ source, hits }) => {
     result.hitsSeen += hits.length;
     return hits.flatMap((hit) => {
-      if (!isFreshEnough(parseRelativeDate(hit.date), cfg.maxAgeDays)) {
+      const published = parseRelativeDate(hit.date);
+      if (!isFreshEnough(published, cfg.maxAgeDays)) {
         result.skippedStale += 1;
+        // Feeds carry their back catalogue, so only searches are worth logging here.
+        if (!FEED_KINDS.has(source.kind)) tooOld.push({ hit, source, reason: "too_old", publishedAt: published });
         return [];
       }
       return [{ source, hit, hash: hashUrl(hit.url) }];
     });
   });
 
+  await recordRejections(tooOld);
   const stored = await storedHashes(perSource.flat().map((c) => c.hash));
   const seen = new Set<string>();
   const unseen = perSource.map((candidates) =>
@@ -230,6 +235,39 @@ async function hitsForSource(source: Source, cfg: MonitorConfig): Promise<WireHi
   }
 }
 
+interface Rejection {
+  hit: WireHit;
+  source: Source;
+  reason: "too_old" | "unreadable";
+  publishedAt: string | null;
+}
+
+/**
+ * Log stories dropped before scoring for the Rejected page. First sighting
+ * wins, and a failed write never costs the pass anything.
+ */
+async function recordRejections(rows: Rejection[]): Promise<void> {
+  if (rows.length === 0) return;
+  await supabaseAdmin()
+    .from("rejections")
+    .upsert(
+      rows.map(({ hit, source, reason, publishedAt }) => ({
+        url: hit.url,
+        url_hash: hashUrl(hit.url),
+        title: hit.title ?? null,
+        source_id: source.id,
+        source_name: hostOf(hit.url),
+        reason,
+        published_at: publishedAt,
+      })),
+      { onConflict: "url_hash", ignoreDuplicates: true },
+    )
+    .then(
+      () => undefined,
+      () => undefined,
+    );
+}
+
 async function ingestHit(hit: WireHit, source: Source, cfg: MonitorConfig): Promise<IngestOutcome> {
   // Scraping is the one credit an item costs, so skip it when the feed already
   // carries the article, or the link is a social post or an HN text thread. A
@@ -248,12 +286,18 @@ async function ingestHit(hit: WireHit, source: Source, cfg: MonitorConfig): Prom
   const content = page?.markdown || hit.content || snippet || "";
   // Nothing to score — e.g. a url source whose page wouldn't scrape. A linked
   // tweet with a lively HN thread still has something to say.
-  if (!content && !thread) return "error";
+  if (!content && !thread) {
+    await recordRejections([{ hit, source, reason: "unreadable", publishedAt: null }]);
+    return "error";
+  }
 
   const publishedAt =
     parseRelativeDate(hit.date) ??
     parseRelativeDate(scrapedMeta(page, "publishedTime", "publishedDate", "date"));
-  if (!isFreshEnough(publishedAt, cfg.maxAgeDays)) return "stale";
+  if (!isFreshEnough(publishedAt, cfg.maxAgeDays)) {
+    await recordRejections([{ hit, source, reason: "too_old", publishedAt }]);
+    return "stale";
+  }
 
   const relevance = await chatJSON({
     ...buildRelevancePrompt({

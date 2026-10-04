@@ -959,6 +959,28 @@ a.brand-link:hover {
   }
 }
 
+.stat-of {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--card-ink-muted);
+}
+.meter {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+.meter > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--brand);
+}
+.usage-section + .usage-section {
+  margin-top: 40px;
+}
+
 /* --- Buttons --------------------------------------------------------------------- */
 .btn {
   display: inline-flex;
@@ -1905,6 +1927,64 @@ label.lbl,
   border-top: 1px solid var(--border-soft);
   border-bottom: none;
   font-weight: 600;
+}
+
+/* Rejected */
+.rejected-table td {
+  vertical-align: top;
+}
+.rejected-date {
+  white-space: nowrap;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.rejected-story {
+  min-width: 260px;
+  max-width: 420px;
+}
+.rejected-story a {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--ink);
+  font-weight: 500;
+  text-decoration: none;
+}
+.rejected-story a:hover {
+  color: var(--brand-ink);
+  text-decoration: underline;
+}
+.rejected-story a svg {
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  margin-top: 4px;
+  opacity: 0.5;
+}
+.rejected-host {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.rejected-finder {
+  white-space: nowrap;
+}
+.rejected-why {
+  min-width: 240px;
+  max-width: 380px;
+}
+.rejected-why p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+.btn-sm {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 /* Sign-in */

@@ -41,6 +41,9 @@ GitHub Actions (04:17, 12:17, 20:17 UTC: every 8h, all DeepSeek off-peak)
 Browser (behind password gate, src/proxy.ts)
   ├─ /            Feed — new discoveries, ranked by score
   ├─ /saved       discoveries set aside
+  ├─ /rejected    what the monitor kept off the wire: scored under
+  │               REJECT_BELOW (45), or dropped before scoring (too old,
+  │               unreadable page; logged to `rejections`)
   ├─ /generate/[id]
   │     generateForDiscovery()  src/lib/generate/run.ts
   │       ├─ embed the discovery (query)
@@ -48,8 +51,10 @@ Browser (behind password gate, src/proxy.ts)
   │       ├─ match_posts  → similar past posts (dedup warning + cohesion)
   │       ├─ recent posts → "don't repeat these"
   │       ├─ DeepSeek writer → N drafts, one per POST_SHAPE, in parallel
-  │       └─ humanize pass → each draft edited against the AI tells
-  │          src/lib/voice/tells.ts finds in it (src/lib/voice/humanize.ts)
+  │       ├─ humanize pass → each draft edited against the AI tells
+  │       │  src/lib/voice/tells.ts finds in it (src/lib/voice/humanize.ts)
+  │       └─ "Make this take better": reviseForDiscovery() rewrites the
+  │          current take from Bilal's note, added as the next take
   │     Carousel Studio (src/lib/carousel + components/carousel-studio.tsx)
   │       └─ DeepSeek → 7-9 slides → editable → jsPDF (1080×1350) download
   ├─ /write       a post he writes himself (discovery_id null)
@@ -60,7 +65,8 @@ Browser (behind password gate, src/proxy.ts)
   ├─ /library     drafts + posted; edit / copy / mark posted; every card can
   │               build, regenerate or edit its carousel
   ├─ /posted      only what's been published, newest first
-  ├─ /usage       DeepSeek token usage + est. cost
+  ├─ /usage       DeepSeek balance (live, /user/balance) + token usage;
+  │               Firecrawl credits left per key (live, /v2/team/credit-usage)
   └─ /sources     manage what the monitor watches
 
 After each scan the cron also emails a digest of top new items
@@ -160,9 +166,20 @@ AI-assisted, so they aren't used as a voice reference anywhere.
 ## Data model
 
 See `supabase/migrations/0001_init.sql`. Tables: `sources`, `discoveries`,
-`posts`, `voice_corpus` (all with a 1024-dim `embedding`). RLS is on with no
+`posts`, `voice_corpus` (all with a 1024-dim `embedding`), plus `rejections` and
+`usage_events`. RLS is on with no
 policies — only the server-side service-role key can read/write. Similarity
 lookups go through the `match_posts` / `match_voice` SQL functions.
+
+### What counts as rejected
+
+Every story that gets scored is stored. Below `REJECT_BELOW` (45, the relevance
+prompt's LOW band) it stays off the wire and shows on `/rejected` with the
+scorer's reason, and can still be drafted from there. Stories dropped before
+scoring go to the `rejections` table: search and page results older than
+`MONITOR_ARTICLE_MAX_AGE_DAYS`, and any story whose page had no readable text.
+Feeds' old entries aren't logged, since every RSS feed carries its back
+catalogue and would repeat them each pass. Duplicates aren't logged either.
 
 ## Not yet built
 

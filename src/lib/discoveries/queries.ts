@@ -12,6 +12,13 @@ export type DiscoveryDetail = Discovery & {
   discussion_comments: DiscussionComment[] | null;
 };
 
+/**
+ * Stories scored below this are rejected: the relevance prompt's LOW band
+ * (generic hype, listicles, press releases). They leave the wire for the
+ * Rejected page instead of sinking to its bottom.
+ */
+export const REJECT_BELOW = 45;
+
 export interface DiscoveryPage {
   items: Discovery[];
   /** Rows matching the status filter, ignoring the render cap below. */
@@ -23,11 +30,16 @@ export interface DiscoveryPage {
 // score/topic filters only ever saw the first page.
 const LIST_LIMIT = 500;
 
-export async function listDiscoveries(statuses: DiscoveryStatus[]): Promise<DiscoveryPage> {
-  const { data, error, count } = await supabaseAdmin()
+export async function listDiscoveries(
+  statuses: DiscoveryStatus[],
+  opts: { minScore?: number } = {},
+): Promise<DiscoveryPage> {
+  let query = supabaseAdmin()
     .from("discoveries")
     .select(LIST_COLUMNS, { count: "exact" })
-    .in("status", statuses)
+    .in("status", statuses);
+  if (opts.minScore) query = query.or(`relevance_score.gte.${opts.minScore},relevance_score.is.null`);
+  const { data, error, count } = await query
     .order("relevance_score", { ascending: false, nullsFirst: false })
     .order("discovered_at", { ascending: false })
     .limit(LIST_LIMIT);
