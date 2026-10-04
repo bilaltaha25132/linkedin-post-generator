@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Inbox, Search, SearchX } from "lucide-react";
 
 import { DiscoveryRow } from "@/components/discovery-row";
+import { EmptyState } from "@/components/page-header";
 import type { Discovery } from "@/lib/db/types";
 
 type Sort = "signal" | "newest";
@@ -60,35 +61,43 @@ export function FeedList({
 
   return (
     <>
-      <div className="toolbar">
-        <div className="toolbar-search">
-          <Search />
+      <div className="toolbar reveal" style={{ "--reveal-delay": "60ms" } as React.CSSProperties}>
+        <label className="search">
+          <Search aria-hidden />
+          <span className="sr-only">Search the wire</span>
           <input
             className="field"
-            placeholder="Search the wire…"
+            type="search"
+            placeholder="Search the wire"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-        </div>
+        </label>
 
-        <div className="seg">
-          <button data-active={!launchesOnly} onClick={() => setLaunchesOnly(false)}>
+        <div className="seg" role="group" aria-label="Show">
+          <button type="button" aria-pressed={!launchesOnly} onClick={() => setLaunchesOnly(false)}>
             Everything
           </button>
-          <button data-active={launchesOnly} onClick={() => setLaunchesOnly(true)}>
-            New releases{launchCount ? ` (${launchCount})` : ""}
+          <button type="button" aria-pressed={launchesOnly} onClick={() => setLaunchesOnly(true)}>
+            New releases
+            {launchCount > 0 && <span className="seg-count">{launchCount}</span>}
           </button>
         </div>
 
-        <div className="seg">
+        <div className="seg" role="group" aria-label="Minimum signal">
           {THRESHOLDS.map((t) => (
-            <button key={t.value} data-active={minScore === t.value} onClick={() => setMinScore(t.value)}>
+            <button key={t.value} type="button" aria-pressed={minScore === t.value} onClick={() => setMinScore(t.value)}>
               {t.label}
             </button>
           ))}
         </div>
 
-        <select className="field toolbar-select" value={topic} onChange={(e) => setTopic(e.target.value)}>
+        <select
+          className="field"
+          aria-label="Topic"
+          value={topic}
+          onChange={(e) => setTopic(e.target.value)}
+        >
           <option value="all">All topics</option>
           {topics.map((t) => (
             <option key={t} value={t}>
@@ -97,31 +106,40 @@ export function FeedList({
           ))}
         </select>
 
-        <select className="field toolbar-select" value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
+        <select
+          className="field"
+          aria-label="Sort"
+          value={sort}
+          onChange={(e) => setSort(e.target.value as Sort)}
+        >
           <option value="signal">Sort: Signal</option>
           <option value="newest">Sort: Newest</option>
         </select>
       </div>
 
       {discoveries.length === 0 ? (
-        <div className="empty">
-          <h3>{emptyTitle}</h3>
-          <p>{emptyHint}</p>
-        </div>
+        <EmptyState icon={Inbox} title={emptyTitle}>
+          {emptyHint}
+        </EmptyState>
       ) : shown.length === 0 ? (
-        <div className="empty">
-          <h3>No matches</h3>
-          <p>Nothing fits these filters. Loosen the search or signal threshold.</p>
-        </div>
+        <EmptyState icon={SearchX} title="No matches">
+          Nothing fits these filters. Loosen the search or signal threshold.
+        </EmptyState>
       ) : (
         <>
-          <p style={{ color: "var(--ink-faint)", fontFamily: "var(--font-mono)", fontSize: 12, margin: "0 0 4px" }}>
+          <p className="result-count" aria-live="polite">
             {shown.length === total ? `${total} signals` : `${shown.length} of ${total} signals`}
-            {discoveries.length < total ? ` · showing the first ${discoveries.length}` : ""}
+            {discoveries.length < total ? `, showing the first ${discoveries.length}` : ""}
           </p>
           <div className="wire">
-            {shown.map((d) => (
-              <DiscoveryRow key={d.id} discovery={d} />
+            {shown.map((d, i) => (
+              <div
+                key={d.id}
+                className="reveal"
+                style={{ "--reveal-delay": `${Math.min(i, 8) * 40 + 100}ms` } as React.CSSProperties}
+              >
+                <DiscoveryRow discovery={d} />
+              </div>
             ))}
           </div>
         </>

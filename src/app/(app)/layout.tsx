@@ -1,10 +1,5 @@
-import { NavRail } from "@/components/nav-rail";
+import { AppShell } from "@/components/app-shell";
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
-  return (
-    <div className="shell">
-      <NavRail />
-      <main className="main">{children}</main>
-    </div>
-  );
+  return <AppShell>{children}</AppShell>;
 }

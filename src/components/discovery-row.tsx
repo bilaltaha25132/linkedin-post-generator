@@ -22,7 +22,7 @@ export function DiscoveryRow({ discovery }: { discovery: Discovery }) {
     <article className="wire-row" data-pending={pending}>
       <SignalScore score={discovery.relevance_score} />
 
-      <div>
+      <div style={{ minWidth: 0 }}>
         <h3>
           <a href={discovery.url} target="_blank" rel="noreferrer">
             {discovery.title ?? discovery.url}
@@ -42,29 +42,36 @@ export function DiscoveryRow({ discovery }: { discovery: Discovery }) {
             </span>
           )}
           {discovery.topics.slice(0, 3).map((t) => (
-            <span key={t}>#{t}</span>
+            <span key={t} className="topic">
+              #{t}
+            </span>
           ))}
         </div>
 
         {discovery.relevance_reason && <p className="reason">{discovery.relevance_reason}</p>}
         <KeyNumbers figures={discovery.key_numbers ?? []} />
-        {discovery.suggested_angle && <p className="angle">{discovery.suggested_angle}</p>}
+        {discovery.suggested_angle && (
+          <p className="angle">
+            <b>Angle</b>
+            {discovery.suggested_angle}
+          </p>
+        )}
       </div>
 
       <div className="row-actions">
         <Link href={`/generate/${discovery.id}`} className="btn btn-primary">
-          <PenLine /> Draft
+          <PenLine aria-hidden /> Draft
         </Link>
         {discovery.status !== "saved" && (
-          <button className="btn-ghost btn" onClick={() => move("saved")} disabled={pending}>
-            <Bookmark /> Save
+          <button className="btn btn-ghost" onClick={() => move("saved")} disabled={pending}>
+            <Bookmark aria-hidden /> Save
           </button>
         )}
-        <button className="btn-ghost btn" onClick={() => move("dismissed")} disabled={pending}>
-          <X /> Dismiss
+        <button className="btn btn-ghost" onClick={() => move("dismissed")} disabled={pending}>
+          <X aria-hidden /> Dismiss
         </button>
-        <a href={discovery.url} target="_blank" rel="noreferrer" className="btn-ghost btn">
-          <ExternalLink /> Source
+        <a href={discovery.url} target="_blank" rel="noreferrer" className="btn btn-ghost">
+          <ExternalLink aria-hidden /> Source
         </a>
       </div>
     </article>

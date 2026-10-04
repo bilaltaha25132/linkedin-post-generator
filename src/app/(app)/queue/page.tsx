@@ -1,3 +1,6 @@
+import { Star } from "lucide-react";
+
+import { EmptyState, PageHeader } from "@/components/page-header";
 import { PostCard } from "@/components/post-card";
 import { SetupNotice } from "@/components/setup-notice";
 import { listPosts } from "@/lib/posts/queries";
@@ -13,22 +16,20 @@ export default async function QueuePage() {
 
   return (
     <>
-      <div className="page-head">
-        <h1>To post</h1>
-        <p>Drafts you&rsquo;ve lined up to publish. Copy one, post it on LinkedIn, then mark it posted.</p>
-      </div>
+      <PageHeader title="To post" eyebrow="Posts">
+        Drafts you&rsquo;ve lined up to publish. Copy one, post it on LinkedIn, then mark it posted.
+      </PageHeader>
 
       {!configured ? (
         <SetupNotice />
       ) : posts.length === 0 ? (
-        <div className="empty">
-          <h3>Nothing queued yet</h3>
-          <p>Like a draft in the Library with &ldquo;Queue&rdquo; and it&rsquo;ll line up here, ready to post.</p>
-        </div>
+        <EmptyState icon={Star} title="Nothing queued yet">
+          Like a draft in the Library with &ldquo;Queue&rdquo; and it&rsquo;ll line up here, ready to post.
+        </EmptyState>
       ) : (
-        <div style={{ display: "grid", gap: 18 }}>
-          {posts.map((p) => (
-            <PostCard key={p.id} post={p} />
+        <div className="stack">
+          {posts.map((p, i) => (
+            <PostCard key={p.id} post={p} index={i} />
           ))}
         </div>
       )}

@@ -1,3 +1,6 @@
+import { PenLine } from "lucide-react";
+
+import { EmptyState, PageHeader } from "@/components/page-header";
 import { PostCard } from "@/components/post-card";
 import { SetupNotice } from "@/components/setup-notice";
 import { listPosts } from "@/lib/posts/queries";
@@ -13,22 +16,20 @@ export default async function LibraryPage() {
 
   return (
     <>
-      <div className="page-head">
-        <h1>Library</h1>
-        <p>Your drafts and everything you&rsquo;ve posted. Edits here feed cohesion — the writer learns what you&rsquo;ve already said.</p>
-      </div>
+      <PageHeader title="Library" eyebrow="Posts">
+        Your drafts and everything you&rsquo;ve posted. Edits here feed cohesion, so the writer learns what you&rsquo;ve already said.
+      </PageHeader>
 
       {!configured ? (
         <SetupNotice />
       ) : posts.length === 0 ? (
-        <div className="empty">
-          <h3>No posts yet</h3>
-          <p>Draft one from the wire and it&rsquo;ll land here.</p>
-        </div>
+        <EmptyState icon={PenLine} title="No posts yet">
+          Draft one from the wire and it&rsquo;ll land here.
+        </EmptyState>
       ) : (
-        <div style={{ display: "grid", gap: 18 }}>
-          {posts.map((p) => (
-            <PostCard key={p.id} post={p} />
+        <div className="stack">
+          {posts.map((p, i) => (
+            <PostCard key={p.id} post={p} index={i} />
           ))}
         </div>
       )}

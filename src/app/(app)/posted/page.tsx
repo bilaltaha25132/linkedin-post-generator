@@ -1,3 +1,6 @@
+import { Send } from "lucide-react";
+
+import { EmptyState, PageHeader } from "@/components/page-header";
 import { PostCard } from "@/components/post-card";
 import { SetupNotice } from "@/components/setup-notice";
 import { listPosts } from "@/lib/posts/queries";
@@ -13,22 +16,20 @@ export default async function PostedPage() {
 
   return (
     <>
-      <div className="page-head">
-        <h1>Posted</h1>
-        <p>Everything you&rsquo;ve published, newest first. The writer reads these so new drafts don&rsquo;t repeat you.</p>
-      </div>
+      <PageHeader title="Posted" eyebrow="Posts">
+        Everything you&rsquo;ve published, newest first. The writer reads these so new drafts don&rsquo;t repeat you.
+      </PageHeader>
 
       {!configured ? (
         <SetupNotice />
       ) : posts.length === 0 ? (
-        <div className="empty">
-          <h3>Nothing posted yet</h3>
-          <p>After you publish a draft on LinkedIn, use Mark posted on its card and it moves here.</p>
-        </div>
+        <EmptyState icon={Send} title="Nothing posted yet">
+          After you publish a draft on LinkedIn, use Mark posted on its card and it moves here.
+        </EmptyState>
       ) : (
-        <div style={{ display: "grid", gap: 18 }}>
-          {posts.map((p) => (
-            <PostCard key={p.id} post={p} />
+        <div className="stack">
+          {posts.map((p, i) => (
+            <PostCard key={p.id} post={p} index={i} />
           ))}
         </div>
       )}

@@ -1,23 +1,14 @@
-import type { Metadata } from "next";
-import { Fraunces, IBM_Plex_Sans, IBM_Plex_Mono, Inter_Tight } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Inter, Inter_Tight } from "next/font/google";
 import "./globals.css";
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
-  subsets: ["latin"],
-  axes: ["opsz", "SOFT"],
-});
+import { THEME_INIT_SCRIPT } from "@/components/theme-script";
 
-const plexSans = IBM_Plex_Sans({
-  variable: "--font-plex-sans",
+// The UI face, shared with the ANTELUS dashboard.
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
-});
-
-const plexMono = IBM_Plex_Mono({
-  variable: "--font-plex-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
+  display: "swap",
 });
 
 // Slide previews only, so they match the Inter Tight embedded in the PDF.
@@ -32,13 +23,24 @@ export const metadata: Metadata = {
   description: "Monitor the wire, write posts worth reading.",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#1c1c1c" },
+  ],
+};
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${fraunces.variable} ${plexSans.variable} ${plexMono.variable} ${interTight.variable}`}
-    >
-      <body>{children}</body>
+    // The inline script sets data-theme before paint, so React must accept it.
+    <html lang="en" className={`${inter.variable} ${interTight.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }

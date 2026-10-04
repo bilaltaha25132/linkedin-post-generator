@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { FileText, Copy, Check, Download, RotateCcw } from "lucide-react";
+import { FileText, Copy, Check, Download, RotateCcw, TriangleAlert } from "lucide-react";
 
 import { unwrap } from "@/lib/action-result";
 import { generateBlogAction, saveBlogForPost } from "@/lib/blog/actions";
@@ -59,52 +59,57 @@ export function BlogStudio({
   };
 
   return (
-    <div className="panel" style={{ display: "grid", gap: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <h3 style={{ fontSize: 18 }}>Blog</h3>
-        <span style={{ color: "var(--ink-faint)", fontSize: 13 }}>
-          A full article on the same story, for your website. Markdown, ready to publish.
+    <section className="panel stack" aria-labelledby="blog-heading">
+      <div className="panel-head" style={{ marginBottom: 0 }}>
+        <span className="panel-icon">
+          <FileText aria-hidden />
         </span>
-        <button className="btn btn-primary" style={{ marginLeft: "auto" }} onClick={build} disabled={pending}>
-          <FileText /> {pending ? "Writing the article…" : blog ? "Rewrite" : "Generate blog"}
+        <h2 id="blog-heading">Blog</h2>
+        <p>A full article on the same story, for your website. Markdown, ready to publish.</p>
+        <button className="btn btn-primary push" onClick={build} disabled={pending}>
+          <FileText aria-hidden className={pending ? "spin" : undefined} />{" "}
+          {pending ? "Writing the article…" : blog ? "Rewrite" : "Generate blog"}
         </button>
       </div>
 
-      {error && <p className="notice" style={{ borderColor: "var(--danger)" }}>{error}</p>}
+      {error && (
+        <p className="notice notice-danger" role="alert">
+          <TriangleAlert aria-hidden />
+          {error}
+        </p>
+      )}
 
       {blog && (
         <>
           <textarea
-            className="field"
+            className="field editor editor-mono"
             rows={20}
             value={blog}
+            aria-label="Blog article in Markdown"
             onChange={(e) => setBlog(e.target.value)}
-            style={{ lineHeight: 1.6, fontFamily: "var(--font-mono)", fontSize: 13 }}
           />
 
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <div className="action-bar">
             <button className="btn" onClick={copy}>
-              {copied ? <Check /> : <Copy />} {copied ? "Copied" : "Copy Markdown"}
+              {copied ? <Check aria-hidden /> : <Copy aria-hidden />} {copied ? "Copied" : "Copy Markdown"}
             </button>
             <button className="btn btn-primary" onClick={() => downloadMarkdown(blog)}>
-              <Download /> Download .md
+              <Download aria-hidden /> Download .md
             </button>
             <button className="btn btn-ghost" onClick={build} disabled={pending}>
-              <RotateCcw /> Rewrite
+              <RotateCcw aria-hidden /> Rewrite
             </button>
-            <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 10 }}>
+            <span className="row push" style={{ gap: 10 }}>
               {postId && saved && (
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <Check style={{ width: 13, height: 13 }} /> Saved to post
+                <span className="status-text status-ok" role="status">
+                  <Check aria-hidden /> Saved to post
                 </span>
               )}
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-faint)" }}>
-                {blogWordCount(blog)} words
-              </span>
+              <span className="meta-mono">{blogWordCount(blog)} words</span>
             </span>
           </div>
         </>
       )}
-    </div>
+    </section>
   );
 }

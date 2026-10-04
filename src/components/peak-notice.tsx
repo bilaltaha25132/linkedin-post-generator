@@ -14,8 +14,12 @@ const subscribe = (onChange: () => void) => {
 const currentMinute = () => Math.floor(Date.now() / 60_000);
 const onServer = () => null;
 
-/** Shown only while DeepSeek bills peak rates, so writing can wait if it isn't urgent. */
-export function PeakNotice() {
+/**
+ * Shown only while DeepSeek bills peak rates, so writing can wait if it isn't
+ * urgent. The sidebar carries it on desktop; on phones, where the sidebar is
+ * folded into a drawer, the `banner` copy sits at the top of the page instead.
+ */
+export function PeakNotice({ banner = false }: { banner?: boolean }) {
   const minute = useSyncExternalStore(subscribe, currentMinute, onServer);
   if (minute === null) return null;
 
@@ -24,11 +28,9 @@ export function PeakNotice() {
 
   const until = ends.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   return (
-    <p className="peak-notice" role="status">
+    <p className={banner ? "peak-notice peak-banner lg-hide" : "peak-notice"} role="status">
       <Clock aria-hidden />
-      <span>
-        DeepSeek peak hours: AI writing costs double until {until}.
-      </span>
+      <span>DeepSeek peak hours: AI writing costs double until {until}.</span>
     </p>
   );
 }

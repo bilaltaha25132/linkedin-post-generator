@@ -1,4 +1,5 @@
 import { FeedList } from "@/components/feed-list";
+import { PageHeader } from "@/components/page-header";
 import { SetupNotice } from "@/components/setup-notice";
 import { listDiscoveries } from "@/lib/discoveries/queries";
 import { supabaseConfigured } from "@/lib/supabase/server";
@@ -13,10 +14,9 @@ export default async function SavedPage() {
 
   return (
     <>
-      <div className="page-head">
-        <h1>Saved</h1>
-        <p>Items you set aside to write about later.</p>
-      </div>
+      <PageHeader title="Saved" eyebrow="Wire">
+        Items you set aside to write about later.
+      </PageHeader>
 
       {!configured ? (
         <SetupNotice />

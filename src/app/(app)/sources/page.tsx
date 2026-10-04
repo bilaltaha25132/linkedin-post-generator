@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/page-header";
 import { SetupNotice } from "@/components/setup-notice";
 import { SourcesManager } from "@/components/sources-manager";
 import { listSources } from "@/lib/sources/queries";
@@ -11,13 +12,10 @@ export default async function SourcesPage() {
 
   return (
     <>
-      <div className="page-head">
-        <h1>Sources</h1>
-        <p>
-          What the monitor watches. Feeds and Hacker News are read every pass and cost no credits;
-          search queries and pages use Firecrawl, so they take turns. Turn off what&rsquo;s noisy.
-        </p>
-      </div>
+      <PageHeader title="Sources" eyebrow="Desk">
+        What the monitor watches. Feeds and Hacker News are read every pass and cost no credits; search queries and
+        pages use Firecrawl, so they take turns. Turn off what&rsquo;s noisy.
+      </PageHeader>
 
       {configured ? <SourcesManager sources={sources} /> : <SetupNotice />}
     </>

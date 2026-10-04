@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, useTransition } from "react";
-import { LayoutGrid, Download, RotateCcw, Trash2, Check, Copy, Pencil } from "lucide-react";
+import { LayoutGrid, Download, RotateCcw, Trash2, Check, Copy, Pencil, TriangleAlert } from "lucide-react";
 
 import { unwrap } from "@/lib/action-result";
 import { generateCarouselAction, saveCarouselForPost } from "@/lib/carousel/actions";
@@ -84,14 +84,19 @@ export function CarouselStudio({
   const remove = (i: number) => setSlides((prev) => prev.filter((_, idx) => idx !== i));
 
   const buildLabel = pending ? "Designing slides…" : slides.length ? "Regenerate" : "Build carousel";
-  const errorNote = error && <p className="notice" style={{ borderColor: "var(--danger)" }}>{error}</p>;
+  const errorNote = error && (
+    <p className="notice notice-danger" role="alert">
+      <TriangleAlert aria-hidden />
+      {error}
+    </p>
+  );
 
   if (inline && slides.length === 0) {
     return (
-      <div style={{ display: "grid", gap: 8, borderTop: "1px solid var(--line)", paddingTop: 14 }}>
+      <div className="stack-sm" style={{ paddingTop: 12, borderTop: "1px solid var(--border-soft)" }}>
         <div>
-          <button className="btn btn-ghost" onClick={build} disabled={pending}>
-            <LayoutGrid /> {buildLabel}
+          <button className="btn btn-ghost" onClick={build} disabled={pending} style={{ marginLeft: -10 }}>
+            <LayoutGrid aria-hidden className={pending ? "spin" : undefined} /> {buildLabel}
           </button>
         </div>
         {errorNote}
@@ -101,55 +106,47 @@ export function CarouselStudio({
 
   const actions = (
     <>
-      <button className={inline ? "btn btn-ghost" : "btn btn-primary"} onClick={() => downloadDeck(slides, title)}>
-        <Download /> Download PDF
+      <button className={inline ? "btn" : "btn btn-primary"} onClick={() => downloadDeck(slides, title)}>
+        <Download aria-hidden /> Download PDF
       </button>
       <button className="btn btn-ghost" onClick={build} disabled={pending}>
-        <RotateCcw /> {buildLabel}
+        <RotateCcw aria-hidden className={pending ? "spin" : undefined} /> {buildLabel}
       </button>
       {inline && (
-        <button className="btn btn-ghost" onClick={() => setEditing(!editing)}>
-          {editing ? <Check /> : <Pencil />} {editing ? "Done editing" : "Edit slides"}
+        <button className="btn btn-ghost" onClick={() => setEditing(!editing)} aria-expanded={editing}>
+          {editing ? <Check aria-hidden /> : <Pencil aria-hidden />} {editing ? "Done editing" : "Edit slides"}
         </button>
       )}
       {postId && saved && (
-        <span
-          style={{
-            marginLeft: "auto",
-            fontFamily: "var(--font-mono)",
-            fontSize: 12,
-            color: "var(--accent)",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          <Check style={{ width: 13, height: 13 }} /> Saved to post
+        <span className="status-text status-ok push" role="status">
+          <Check aria-hidden /> Saved to post
         </span>
       )}
     </>
   );
 
   return (
-    <div
-      className={inline ? undefined : "panel"}
-      style={{ display: "grid", gap: 16, ...(inline ? { borderTop: "1px solid var(--line)", paddingTop: 14 } : {}) }}
+    <section
+      className={inline ? "stack" : "panel stack"}
+      style={inline ? { paddingTop: 14, borderTop: "1px solid var(--border-soft)" } : undefined}
+      aria-label="Carousel"
     >
       {inline ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span className="chip">
-            <LayoutGrid style={{ width: 13, height: 13 }} /> Carousel · {slides.length} slides
+        <div className="row">
+          <span className="chip chip-lavender">
+            <LayoutGrid aria-hidden /> Carousel, {slides.length} slides
           </span>
         </div>
       ) : (
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <h3 style={{ fontSize: 18 }}>Carousel</h3>
-          <span style={{ color: "var(--ink-faint)", fontSize: 13 }}>
-            A swipeable PDF deck to attach to the post — carousels earn the most reach.
+        <div className="panel-head" style={{ marginBottom: 0 }}>
+          <span className="panel-icon">
+            <LayoutGrid aria-hidden />
           </span>
+          <h2>Carousel</h2>
+          <p>A swipeable PDF deck to attach to the post. Carousels earn the most reach.</p>
           {slides.length === 0 && (
-            <button className="btn btn-primary" style={{ marginLeft: "auto" }} onClick={build} disabled={pending}>
-              <LayoutGrid /> {buildLabel}
+            <button className="btn btn-primary push" onClick={build} disabled={pending}>
+              <LayoutGrid aria-hidden className={pending ? "spin" : undefined} /> {buildLabel}
             </button>
           )}
         </div>
@@ -159,23 +156,16 @@ export function CarouselStudio({
 
       {slides.length > 0 && (
         <>
-          <div style={{ display: "grid", gap: 6 }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+          <div className="stack-sm" style={{ gap: 6 }}>
+            <div className="row" style={{ alignItems: "baseline", flexWrap: "nowrap" }}>
               <label className="lbl" htmlFor={titleId} style={{ marginBottom: 0 }}>
                 Document title
               </label>
-              <span
-                style={{
-                  marginLeft: "auto",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 12,
-                  color: "var(--ink-faint)",
-                }}
-              >
+              <span className="meta-mono push">
                 {title.length}/{LINKEDIN_TITLE_MAX}
               </span>
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="row" style={{ flexWrap: "nowrap" }}>
               <input
                 id={titleId}
                 className="field"
@@ -185,48 +175,58 @@ export function CarouselStudio({
                 onChange={(e) => setTitle(e.target.value)}
               />
               <button className="btn" onClick={copyTitle}>
-                {titleCopied ? <Check /> : <Copy />} {titleCopied ? "Copied" : "Copy"}
+                {titleCopied ? <Check aria-hidden /> : <Copy aria-hidden />} {titleCopied ? "Copied" : "Copy"}
               </button>
             </div>
-            <p style={{ margin: 0, color: "var(--ink-faint)", fontSize: 13 }}>
-              LinkedIn asks for this when you upload the deck as a document.
-            </p>
+            <p className="field-hint">LinkedIn asks for this when you upload the deck as a document.</p>
           </div>
 
-          <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8, opacity: pending ? 0.5 : 1 }}>
+          <div className="slides scroll-slim" data-pending={pending}>
             {slides.map((s, i) => (
               <SlideCard key={i} slide={s} index={i} total={slides.length} width={inline ? 180 : 220} />
             ))}
           </div>
 
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>{actions}</div>
+          <div className="action-bar">{actions}</div>
 
           {editing && (
-            <div style={{ display: "grid", gap: 12 }}>
-              <p style={{ color: "var(--ink-faint)", fontSize: 13 }}>
-                Wrap the end of a heading in [square brackets] to set it in grey.
-              </p>
-              {slides.map((s, i) => (
-                <div key={i} style={{ display: "grid", gap: 6, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span className="chip">{i === 0 ? "Cover" : i === slides.length - 1 ? "CTA" : `Slide ${i + 1}`}</span>
-                    <button
-                      className="btn btn-ghost"
-                      style={{ marginLeft: "auto" }}
-                      onClick={() => remove(i)}
-                      aria-label="Remove slide"
-                    >
-                      <Trash2 />
-                    </button>
+            <div className="stack-sm">
+              <p className="field-hint">Wrap the end of a heading in [square brackets] to set it in grey.</p>
+              {slides.map((s, i) => {
+                const name = i === 0 ? "Cover" : i === slides.length - 1 ? "CTA" : `Slide ${i + 1}`;
+                return (
+                  <div key={i} className="slide-editor">
+                    <div className="row" style={{ flexWrap: "nowrap" }}>
+                      <span className="chip">{name}</span>
+                      <button
+                        className="btn btn-ghost btn-icon btn-danger push"
+                        onClick={() => remove(i)}
+                        aria-label={`Remove ${name.toLowerCase()}`}
+                        title="Remove slide"
+                      >
+                        <Trash2 aria-hidden />
+                      </button>
+                    </div>
+                    <input
+                      className="field"
+                      aria-label={`${name} heading`}
+                      value={s.heading}
+                      onChange={(e) => edit(i, { heading: e.target.value })}
+                    />
+                    <textarea
+                      className="field"
+                      rows={2}
+                      aria-label={`${name} body`}
+                      value={s.body}
+                      onChange={(e) => edit(i, { body: e.target.value })}
+                    />
                   </div>
-                  <input className="field" value={s.heading} onChange={(e) => edit(i, { heading: e.target.value })} />
-                  <textarea className="field" rows={2} value={s.body} onChange={(e) => edit(i, { body: e.target.value })} />
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </>
       )}
-    </div>
+    </section>
   );
 }

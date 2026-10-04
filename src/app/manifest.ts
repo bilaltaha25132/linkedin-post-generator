@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Monitor the wire, write posts worth reading.",
     start_url: "/",
     display: "standalone",
-    background_color: "#15171b",
-    theme_color: "#2c40bd",
+    background_color: "#ffffff",
+    theme_color: "#4c98fd",
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icon-512.png", sizes: "512x512", type: "image/png" },

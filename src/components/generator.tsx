@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Sparkles, Copy, Check, RotateCcw, Star } from "lucide-react";
+import { Sparkles, Copy, Check, RotateCcw, Star, TriangleAlert } from "lucide-react";
 
 import { unwrap } from "@/lib/action-result";
 import { generatePosts } from "@/lib/generate/actions";
@@ -129,84 +129,92 @@ export function Generator({
     });
 
   return (
-    <div style={{ display: "grid", gap: 20 }}>
-      <div className="panel" style={{ display: "grid", gap: 12 }}>
-        <div>
-          <label className="lbl" htmlFor="guidance">
-            Steer the draft (optional)
-          </label>
-          <input
-            id="guidance"
-            className="field"
-            value={guidance}
-            onChange={(e) => setGuidance(e.target.value)}
-            placeholder="A specific take, tone, or hook you want"
-          />
+    <div className="stack">
+      <section className="panel">
+        <div className="panel-head">
+          <span className="panel-icon">
+            <Sparkles aria-hidden />
+          </span>
+          <h2>Drafts</h2>
+          <p>Three takes in your voice, checked against what you&rsquo;ve posted before.</p>
         </div>
-        <div>
-          <button className="btn btn-primary" onClick={generate} disabled={pending}>
-            <Sparkles />
-            {pending ? "Writing in your voice…" : variants.length ? "Regenerate" : "Write drafts"}
-          </button>
+        <div className="stack-sm">
+          <div>
+            <label className="lbl" htmlFor="guidance">
+              Steer the draft (optional)
+            </label>
+            <input
+              id="guidance"
+              className="field"
+              value={guidance}
+              onChange={(e) => setGuidance(e.target.value)}
+              placeholder="A specific take, tone, or hook you want"
+            />
+          </div>
+          <div className="row">
+            <button className="btn btn-primary" onClick={generate} disabled={pending}>
+              <Sparkles aria-hidden className={pending ? "spin" : undefined} />
+              {pending ? "Writing in your voice…" : variants.length ? "Regenerate" : "Write drafts"}
+            </button>
+            {pending && (
+              <span className="field-hint" role="status">
+                The writer drafts three takes and checks them against what you&rsquo;ve posted before. Give it a few
+                seconds.
+              </span>
+            )}
+          </div>
+          {error && (
+            <p className="notice notice-danger" role="alert">
+              <TriangleAlert aria-hidden />
+              {error}
+            </p>
+          )}
         </div>
-        {pending && (
-          <p style={{ color: "var(--ink-soft)", fontSize: 13 }}>
-            The writer drafts three takes and checks them against what you&rsquo;ve posted before. Give it a few seconds.
-          </p>
-        )}
-        {error && <p className="notice" style={{ borderColor: "var(--danger)" }}>{error}</p>}
-      </div>
+      </section>
 
-      {warning && <p className="notice">{warning}</p>}
+      {warning && (
+        <p className="notice" role="status">
+          <TriangleAlert aria-hidden />
+          {warning}
+        </p>
+      )}
 
       {variants.length > 0 && (
         <>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {variants.map((_, i) => (
-              <button
-                key={i}
-                className="btn"
-                data-active={i === selected}
-                onClick={() => pick(i)}
-                style={i === selected ? { borderColor: "var(--accent)", color: "var(--accent)" } : undefined}
-              >
-                Take {i + 1}
+          <section className="panel">
+            <div className="panel-head">
+              <h2 id="draft-heading">Your post</h2>
+              <div className="seg push" role="group" aria-label="Takes">
+                {variants.map((_, i) => (
+                  <button key={i} type="button" aria-pressed={i === selected} onClick={() => pick(i)}>
+                    Take {i + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <textarea
+              className="field editor"
+              rows={16}
+              value={body}
+              aria-labelledby="draft-heading"
+              onChange={(e) => setBody(e.target.value)}
+            />
+
+            <div className="action-bar" style={{ marginTop: 12 }}>
+              <button className="btn btn-primary" onClick={copy} title="Copy with the line spacing LinkedIn keeps">
+                {copied ? <Check aria-hidden /> : <Copy aria-hidden />} {copied ? "Copied" : "Copy"}
               </button>
-            ))}
-          </div>
-
-          <textarea
-            className="field"
-            rows={16}
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            style={{ lineHeight: 1.6 }}
-          />
-
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <button
-              className="btn"
-              onClick={copy}
-              title="Copy with the line spacing LinkedIn keeps"
-            >
-              {copied ? <Check /> : <Copy />} {copied ? "Copied" : "Copy"}
-            </button>
-            <button className="btn btn-ghost" onClick={generate} disabled={pending}>
-              <RotateCcw /> New takes
-            </button>
-            <button
-              className="btn"
-              onClick={queue}
-              disabled={pending || !body.trim()}
-              style={queued ? { borderColor: "var(--accent)", color: "var(--accent)" } : undefined}
-            >
-              <Star fill={queued ? "currentColor" : "none"} /> {queued ? "Queued to post" : "Queue to post"}
-            </button>
-            <SaveIndicator state={saveState} onRetry={retrySave} />
-            <span style={{ marginLeft: "auto", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-faint)" }}>
-              {countWords(body)} words
-            </span>
-          </div>
+              <button className="btn" onClick={queue} disabled={pending || !body.trim()} aria-pressed={queued}>
+                <Star aria-hidden fill={queued ? "currentColor" : "none"} /> {queued ? "Queued to post" : "Queue to post"}
+              </button>
+              <button className="btn btn-ghost" onClick={generate} disabled={pending}>
+                <RotateCcw aria-hidden /> New takes
+              </button>
+              <SaveIndicator state={saveState} onRetry={retrySave} />
+              <span className="meta-mono push">{countWords(body)} words</span>
+            </div>
+          </section>
 
           <CarouselStudio discoveryId={discoveryId} postBody={body} postId={postId} />
 
@@ -216,4 +224,3 @@ export function Generator({
     </div>
   );
 }
-

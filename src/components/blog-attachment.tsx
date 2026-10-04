@@ -19,45 +19,25 @@ export function BlogAttachment({ blog }: { blog: string }) {
   };
 
   return (
-    <div style={{ display: "grid", gap: 10, borderTop: "1px solid var(--line)", paddingTop: 14 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <span className="chip">
-          <FileText style={{ width: 13, height: 13 }} /> Blog · {blogWordCount(blog)} words
+    <div className="attachment">
+      <div className="attachment-head">
+        <span className="chip chip-blue">
+          <FileText aria-hidden /> Blog, {blogWordCount(blog)} words
         </span>
-        <span style={{ color: "var(--ink-soft)", fontSize: 13, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {blogTitle(blog)}
-        </span>
-        <span style={{ display: "inline-flex", gap: 8, marginLeft: "auto" }}>
-          <button className="btn btn-ghost" onClick={() => setOpen((v) => !v)}>
-            {open ? <ChevronUp /> : <ChevronDown />} {open ? "Hide" : "Preview"}
+        <span className="attachment-title">{blogTitle(blog)}</span>
+        <span className="row" style={{ gap: 2 }}>
+          <button className="btn btn-ghost" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+            {open ? <ChevronUp aria-hidden /> : <ChevronDown aria-hidden />} {open ? "Hide" : "Preview"}
           </button>
           <button className="btn btn-ghost" onClick={copy}>
-            {copied ? <Check /> : <Copy />} {copied ? "Copied" : "Copy"}
+            {copied ? <Check aria-hidden /> : <Copy aria-hidden />} {copied ? "Copied" : "Copy"}
           </button>
-          <button className="btn btn-ghost" onClick={() => downloadMarkdown(blog)}>
-            <Download /> .md
+          <button className="btn btn-ghost" onClick={() => downloadMarkdown(blog)} aria-label="Download Markdown">
+            <Download aria-hidden /> .md
           </button>
         </span>
       </div>
-      {open && (
-        <pre
-          style={{
-            whiteSpace: "pre-wrap",
-            fontFamily: "var(--font-mono)",
-            fontSize: 12.5,
-            lineHeight: 1.6,
-            color: "var(--ink-soft)",
-            background: "var(--paper)",
-            border: "1px solid var(--line)",
-            borderRadius: "var(--radius)",
-            padding: 14,
-            maxHeight: 340,
-            overflow: "auto",
-          }}
-        >
-          {blog}
-        </pre>
-      )}
+      {open && <pre className="preview-pre scroll-slim">{blog}</pre>}
     </div>
   );
 }

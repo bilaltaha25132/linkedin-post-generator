@@ -17,7 +17,7 @@ export function RefreshButton() {
         const r = unwrap(await runMonitorNow());
         setNote(
           `${r.newDiscoveries} new from ${r.sourcesRun} sources` +
-            (r.errors.length ? ` · ${r.errors.length} errors` : ""),
+            (r.errors.length ? `, ${r.errors.length} errors` : ""),
         );
       } catch (err) {
         setNote((err as Error).message);
@@ -25,13 +25,16 @@ export function RefreshButton() {
     });
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      <button className="btn" onClick={run} disabled={pending}>
-        <RefreshCw style={pending ? { animation: "spin 1s linear infinite" } : undefined} />
+    <>
+      {note && (
+        <span className="status-text" role="status">
+          {note}
+        </span>
+      )}
+      <button className="btn btn-dark" onClick={run} disabled={pending}>
+        <RefreshCw aria-hidden className={pending ? "spin" : undefined} />
         {pending ? "Scanning the wire…" : "Scan now"}
       </button>
-      {note && <span style={{ color: "var(--ink-soft)", fontSize: 13 }}>{note}</span>}
-      <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
-    </div>
+    </>
   );
 }

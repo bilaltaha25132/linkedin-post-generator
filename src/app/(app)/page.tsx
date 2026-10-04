@@ -1,4 +1,5 @@
 import { FeedList } from "@/components/feed-list";
+import { PageHeader } from "@/components/page-header";
 import { RefreshButton } from "@/components/refresh-button";
 import { SetupNotice } from "@/components/setup-notice";
 import { listDiscoveries } from "@/lib/discoveries/queries";
@@ -16,16 +17,10 @@ export default async function FeedPage() {
 
   return (
     <>
-      <div className="page-head">
-        <h1>The wire</h1>
-        <p>
-          What the monitor surfaced, ranked by how strong a post you could write from it. Draft the
-          ones worth your audience&rsquo;s attention; dismiss the noise.
-        </p>
-        <div style={{ marginTop: 18 }}>
-          <RefreshButton />
-        </div>
-      </div>
+      <PageHeader title="The wire" eyebrow="Feed" action={configured ? <RefreshButton /> : undefined}>
+        What the monitor surfaced, ranked by how strong a post you could write from it. Draft the ones worth your
+        audience&rsquo;s attention; dismiss the noise.
+      </PageHeader>
 
       {!configured ? (
         <SetupNotice />
