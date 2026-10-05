@@ -20,7 +20,7 @@ This mirrors the pattern proven in the `mizan` project.
 ## Flow
 
 ```
-GitHub Actions (04:17, 16:17 UTC: twice a day, both DeepSeek off-peak)
+GitHub Actions (04:17 UTC: once a day, DeepSeek off-peak)
   └─► GET /api/public/cron/monitor   (Bearer CRON_SECRET, 300s Fluid limit)
         └─ runMonitor()  src/lib/monitor/run.ts
              ├─ every pass, read all feeds (free):

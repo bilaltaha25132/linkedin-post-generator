@@ -5,12 +5,12 @@ name: monitor
 # CRON_SECRET (Settings > Secrets and variables > Actions).
 on:
   schedule:
-    # Twice a day, 12 hours apart, to keep Firecrawl credits in step with the
-    # free monthly allowance. Both runs fall in DeepSeek's off-peak (half-price)
-    # window: peak is 01-04 and 06-10 UTC on weekdays (src/lib/llm/peak.ts).
-    # 04:17 leaves 1h40m of slack before peak for GitHub's scheduling delays;
-    # minute 17 dodges the top-of-hour queue.
-    - cron: "17 4,16 * * *"
+    # Once a day, to keep Firecrawl credits inside the free monthly allowance.
+    # It runs in DeepSeek's off-peak (half-price) window: peak is 01-04 and
+    # 06-10 UTC on weekdays (src/lib/llm/peak.ts). 04:17 leaves 1h40m of slack
+    # before peak for GitHub's scheduling delays; minute 17 dodges the
+    # top-of-hour queue.
+    - cron: "17 4 * * *"
   workflow_dispatch: {} # manual "Run workflow" button
 
 jobs:
