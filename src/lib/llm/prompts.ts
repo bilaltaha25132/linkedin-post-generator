@@ -362,17 +362,28 @@ export const SLIDE_DELIMITER = "===|SLIDE|===";
 export interface Slide {
   heading: string;
   body: string;
+  /** A figure from the paper the deck is about, shown under the heading. */
+  figure?: { src: string; caption: string };
 }
 
-/** Parse a delimiter-separated carousel into slides (first line = heading). */
-export function parseCarousel(text: string): Slide[] {
+/**
+ * Parse a delimiter-separated carousel into slides (first line = heading). A
+ * "FIGURE: n" line picks figure n from `figures` for that slide.
+ */
+export function parseCarousel(text: string, figures: { src: string; caption: string }[] = []): Slide[] {
+  const used = new Set<number>();
   return text
     .split(SLIDE_DELIMITER)
     .map((chunk) => stripDashes(chunk.replace(/^```+\w*|```+$/g, "").trim()))
     .filter(Boolean)
     .map((chunk) => {
       const lines = chunk.split("\n").map((l) => l.trim()).filter(Boolean);
-      return { heading: lines[0] ?? "", body: lines.slice(1).join("\n") };
+      const figureLine = lines.findIndex((l) => /^FIGURE:\s*\d+\s*$/i.test(l));
+      const n = figureLine > 0 ? Number(/\d+/.exec(lines[figureLine])![0]) : 0;
+      if (figureLine > 0) lines.splice(figureLine, 1);
+      const figure = n >= 1 && n <= figures.length && !used.has(n) ? figures[n - 1] : undefined;
+      if (figure) used.add(n);
+      return { heading: lines[0] ?? "", body: lines.slice(1).join("\n"), ...(figure ? { figure } : {}) };
     })
     .filter((s) => s.heading.length > 0);
 }
@@ -382,7 +393,14 @@ export function buildCarouselPrompt(input: {
   content: string;
   angle?: string | null;
   postBody?: string;
+  /** Captions of the paper's figures, when the deck is about a paper. */
+  figureCaptions?: string[];
 }): ChatOptions {
+  const figureRules = input.figureCaptions?.length
+    ? `
+
+FIGURES: this deck is about a research paper, and its figures are listed below. On 2 or 3 body slides, show the figure that proves the slide's point by adding a last line "FIGURE: <number>". Pick figures with results (charts, tables, comparisons) or the method overview, never two slides with the same figure. A slide with a figure keeps its body to ONE short line (under 20 words), since the figure takes most of the slide. The cover and the last slide never get a figure.`
+    : "";
   const system = `You turn a topic into a LinkedIn carousel (a swipeable PDF deck) written as Bilal.
 
 ${WRITER_PERSONA}
@@ -412,13 +430,16 @@ Put a broker in front
 Every action gets audited before it runs, not after.
 ${SLIDE_DELIMITER}
 Your move
-Where does your write boundary sit? Tell me below.`;
+Where does your write boundary sit? Tell me below.${figureRules}`;
 
+  const figures = input.figureCaptions?.length
+    ? `\n\nFIGURES IN THE PAPER:\n${input.figureCaptions.map((c, i) => `${i + 1}. ${c}`).join("\n")}`
+    : "";
   const user = `TOPIC
 Title: ${input.title}
 ${input.angle ? `Angle: ${input.angle}\n` : ""}Source (may be truncated):
-${input.content.slice(0, 4000)}
-${input.postBody ? `\nThe companion post (align the carousel with it):\n${input.postBody.slice(0, 1500)}` : ""}`;
+${input.content.slice(0, input.figureCaptions?.length ? 8000 : 4000)}
+${input.postBody ? `\nThe companion post (align the carousel with it):\n${input.postBody.slice(0, 1500)}` : ""}${figures}`;
 
   return { system, user, role: "writer", temperature: 0.7, maxTokens: 3000, op: "carousel" };
 }

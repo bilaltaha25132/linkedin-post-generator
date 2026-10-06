@@ -3,12 +3,13 @@ import { jsPDF } from "jspdf";
 import type { Slide } from "@/lib/llm/prompts";
 import { CAROUSEL_HANDLE, headingRuns, type HeadingRun } from "@/lib/carousel/heading";
 import {
+  FIGURE,
   GAP,
-  GREEN,
   MARGIN as M,
   SLIDE_H as H,
   SLIDE_W as W,
   TYPE,
+  figureLabel,
   slideKind,
   themeFor,
   type SlideKind,
@@ -27,7 +28,10 @@ export async function buildCarouselPdf(
   title: string,
   handle = CAROUSEL_HANDLE,
 ): Promise<jsPDF> {
-  const family = await loadSlideFonts();
+  const [family, figures] = await Promise.all([
+    loadSlideFonts(),
+    Promise.all(slides.map((s) => (s.figure ? loadImage(s.figure.src) : null))),
+  ]);
   const doc = new jsPDF({ unit: "px", format: [W, H], orientation: "portrait" });
   // Carries the document title LinkedIn asks for, so the file describes itself
   // wherever it lands — including the PDF a reader can download.
@@ -41,7 +45,12 @@ export async function buildCarouselPdf(
     canvas.height = H * SCALE;
     const ctx = canvas.getContext("2d")!;
     ctx.scale(SCALE, SCALE);
-    drawSlide(ctx, family, slide, kind, handle, i + 1, slides.length);
+    const figure = figures[i];
+    if (figure && slide.figure && kind === "body") {
+      drawFigureSlide(ctx, family, slide, figure, slide.figure.caption, handle, i + 1, slides.length);
+    } else {
+      drawSlide(ctx, family, slide, kind, handle, i + 1, slides.length);
+    }
     doc.addImage(canvas, "PNG", 0, 0, W, H, undefined, "FAST");
   });
 
@@ -78,22 +87,7 @@ function drawSlide(
   total: number,
 ) {
   const theme = themeFor(kind);
-  ctx.fillStyle = theme.bg;
-  ctx.fillRect(0, 0, W, H);
-  ctx.textBaseline = "top";
-
-  // Eyebrow: a green square and the author, the site's section-label treatment.
-  ctx.fillStyle = GREEN;
-  ctx.fillRect(M, M + 7, 16, 16);
-  setFont(ctx, family, TYPE.label);
-  ctx.fillStyle = theme.label;
-  ctx.fillText(handle, M + 32, M);
-  if (kind !== "cover") {
-    ctx.fillStyle = theme.counter;
-    ctx.textAlign = "right";
-    ctx.fillText(`${n} / ${total}`, W - M, M);
-    ctx.textAlign = "left";
-  }
+  drawFrame(ctx, family, theme, kind, handle, n, total);
 
   const headingStyle = kind === "cover" ? TYPE.coverHeading : TYPE.heading;
   const maxW = W - 2 * M;
@@ -122,6 +116,107 @@ function drawSlide(
 
   if (kind === "cover") drawSwipe(ctx, family, theme);
   if (kind === "cta") drawFollowButton(ctx, family, theme, handle, y + GAP.button);
+}
+
+/** Background, the author's name, and the page counter on all but the cover. */
+function drawFrame(
+  ctx: CanvasRenderingContext2D,
+  family: string,
+  theme: SlideTheme,
+  kind: SlideKind,
+  handle: string,
+  n: number,
+  total: number,
+) {
+  ctx.fillStyle = theme.bg;
+  ctx.fillRect(0, 0, W, H);
+  ctx.textBaseline = "top";
+  setFont(ctx, family, TYPE.label);
+  ctx.fillStyle = theme.label;
+  ctx.fillText(handle, M, M);
+  if (kind !== "cover") {
+    ctx.fillStyle = theme.counter;
+    ctx.textAlign = "right";
+    ctx.fillText(`${n} / ${total}`, W - M, M);
+    ctx.textAlign = "left";
+  }
+}
+
+/**
+ * A body slide carrying a figure from the paper: the heading on top, the
+ * figure on a white panel filling the middle, the body line and a "Figure n
+ * from the paper" credit below it.
+ */
+function drawFigureSlide(
+  ctx: CanvasRenderingContext2D,
+  family: string,
+  slide: Slide,
+  image: HTMLImageElement,
+  caption: string,
+  handle: string,
+  n: number,
+  total: number,
+) {
+  const theme = themeFor("body");
+  drawFrame(ctx, family, theme, "body", handle, n, total);
+
+  const maxW = W - 2 * M;
+  const headingLines = wrap(ctx, family, headingRuns(slide.heading), maxW, FIGURE.heading);
+  const bodyLines = slide.body ? wrap(ctx, family, [{ text: slide.body, muted: false }], maxW, FIGURE.body) : [];
+
+  const top = M + 96;
+  const headingH = headingLines.length * FIGURE.heading.size * FIGURE.heading.lineHeight;
+  const credit = TYPE.caption.size * TYPE.caption.lineHeight;
+  const bodyH = bodyLines.length * FIGURE.body.size * FIGURE.body.lineHeight;
+  const below = (bodyLines.length ? FIGURE.gap + bodyH : 0) + 24 + credit;
+  const room = Math.max(240, H - M - below - top - headingH - FIGURE.gap);
+
+  // Contain the figure, never upscaled past 2x; the panel hugs a wide figure
+  // instead of leaving a white band above and below it.
+  const boxW = maxW - 2 * FIGURE.pad;
+  const scale = Math.min(boxW / image.naturalWidth, (room - 2 * FIGURE.pad) / image.naturalHeight, 2);
+  const panelH = image.naturalHeight * scale + 2 * FIGURE.pad;
+
+  // Centre the whole block between the eyebrow and the foot, like text slides.
+  let y = top + (H - M - top - (headingH + FIGURE.gap + panelH + below)) / 2;
+  for (const line of headingLines) {
+    drawLine(ctx, family, line, M, y, FIGURE.heading, theme.ink, theme.tail);
+    y += FIGURE.heading.size * FIGURE.heading.lineHeight;
+  }
+  y += FIGURE.gap;
+
+  ctx.fillStyle = FIGURE.panel;
+  ctx.fillRect(M, y, maxW, panelH);
+  const w = image.naturalWidth * scale;
+  const h = image.naturalHeight * scale;
+  ctx.drawImage(image, M + (maxW - w) / 2, y + (panelH - h) / 2, w, h);
+  y += panelH;
+
+  setFont(ctx, family, TYPE.caption);
+  ctx.fillStyle = theme.label;
+  ctx.fillText(figureLabel(caption), M, y + 16);
+  y += 24 + credit;
+
+  if (bodyLines.length) {
+    y += FIGURE.gap - 24;
+    for (const line of bodyLines) {
+      drawLine(ctx, family, line, M, y, FIGURE.body, theme.body, theme.body);
+      y += FIGURE.body.size * FIGURE.body.lineHeight;
+    }
+  }
+}
+
+/** A figure image ready to draw, or null when it can't be loaded. */
+function loadImage(src: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    // arXiv sends an open CORS header; without this the canvas is tainted and
+    // the PDF can't read it back.
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
 }
 
 /** Bottom rule with a right-aligned "Swipe" and a drawn arrow. */

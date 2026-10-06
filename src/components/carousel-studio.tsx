@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, useTransition } from "react";
-import { LayoutGrid, Download, RotateCcw, Trash2, Check, Copy, Pencil, TriangleAlert } from "lucide-react";
+import { LayoutGrid, Download, RotateCcw, Trash2, Check, Copy, Pencil, TriangleAlert, Image as ImageIcon } from "lucide-react";
 
 import { unwrap } from "@/lib/action-result";
 import { generateCarouselAction, saveCarouselForPost } from "@/lib/carousel/actions";
+import { figureLabel } from "@/lib/carousel/design";
 import { LINKEDIN_TITLE_MAX, titleFromCover } from "@/lib/carousel/title";
 import { SlideCard, downloadDeck } from "@/components/slide-card";
 import type { Slide } from "@/lib/llm/prompts";
@@ -220,6 +221,17 @@ export function CarouselStudio({
                       value={s.body}
                       onChange={(e) => edit(i, { body: e.target.value })}
                     />
+                    {s.figure && (
+                      <div className="row" style={{ flexWrap: "nowrap" }}>
+                        <span className="field-hint" style={{ margin: 0 }}>
+                          <ImageIcon aria-hidden style={{ width: 14, height: 14, verticalAlign: -2 }} />{" "}
+                          {figureLabel(s.figure.caption)}
+                        </span>
+                        <button className="btn btn-ghost btn-sm push" onClick={() => edit(i, { figure: undefined })}>
+                          Remove figure
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}

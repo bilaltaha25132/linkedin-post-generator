@@ -11,9 +11,9 @@ on:
     # (src/lib/llm/peak.ts); 04:17 leaves slack for GitHub's delays.
     - cron: "17 4 * * *"
     # Light passes read only the free sources (feeds, HN, papers, models) every
-    # two hours, so a story is on the wire within hours of breaking. Ones that
-    # land in peak hours are skipped by the route and cost nothing.
-    - cron: "47 */2 * * *"
+    # hour, so a story is on the wire, and a breaking one in the inbox, within
+    # the hour. The repo is public, so these Actions minutes are free.
+    - cron: "47 * * * *"
   workflow_dispatch: {} # manual "Run workflow" button
 
 jobs:
@@ -24,6 +24,6 @@ jobs:
         run: |
           code=$(curl -sS --max-time 330 -o /tmp/body -w "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.APP_URL }}/api/public/cron/monitor${{ github.event.schedule == '47 */2 * * *' && '?mode=light' || '' }}")
+            "${{ secrets.APP_URL }}/api/public/cron/monitor${{ github.event.schedule == '47 * * * *' && '?mode=light' || '' }}")
           echo "HTTP $code"; cat /tmp/body; echo
           test "$code" = "200"

@@ -1,7 +1,7 @@
 "use client";
 
 import { CAROUSEL_HANDLE, headingRuns } from "@/lib/carousel/heading";
-import { GAP, GREEN, MARGIN, SLIDE_FONT_CSS, SLIDE_W, TYPE, slideKind, themeFor } from "@/lib/carousel/design";
+import { FIGURE, GAP, MARGIN, SLIDE_FONT_CSS, SLIDE_W, TYPE, figureLabel, slideKind, themeFor } from "@/lib/carousel/design";
 import type { Slide } from "@/lib/llm/prompts";
 
 /** The PDF page in miniature: every size is the page's px scaled to `width`. */
@@ -21,7 +21,9 @@ export function SlideCard({
   const isCover = kind === "cover";
   const isCta = kind === "cta";
   const theme = themeFor(kind);
-  const heading = isCover ? TYPE.coverHeading : TYPE.heading;
+  const figure = kind === "body" ? slide.figure : undefined;
+  const heading = figure ? FIGURE.heading : isCover ? TYPE.coverHeading : TYPE.heading;
+  const body = figure ? FIGURE.body : TYPE.body;
 
   return (
     <div
@@ -40,8 +42,7 @@ export function SlideCard({
         fontFamily: SLIDE_FONT_CSS,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: px(16), fontSize: px(TYPE.label.size), color: theme.label }}>
-        <span style={{ width: px(16), height: px(16), background: GREEN, flex: "none" }} />
+      <div style={{ display: "flex", alignItems: "center", fontSize: px(TYPE.label.size), color: theme.label }}>
         {CAROUSEL_HANDLE}
         {!isCover && (
           <span style={{ marginLeft: "auto", color: theme.counter }}>
@@ -50,7 +51,17 @@ export function SlideCard({
         )}
       </div>
 
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", paddingBottom: px(48) }}>
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          paddingTop: figure ? px(16) : 0,
+          paddingBottom: px(48),
+        }}
+      >
         <div
           style={{
             fontWeight: heading.weight,
@@ -69,13 +80,41 @@ export function SlideCard({
             ),
           )}
         </div>
+        {figure && (
+          <>
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                marginTop: px(FIGURE.gap),
+                background: FIGURE.panel,
+                padding: px(FIGURE.pad),
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {/* A remote arXiv figure at thumbnail size; next/image would proxy it for nothing. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={figure.src}
+                alt={figure.caption}
+                crossOrigin="anonymous"
+                style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+              />
+            </div>
+            <div style={{ marginTop: px(16), fontSize: px(TYPE.caption.size), color: theme.label }}>
+              {figureLabel(figure.caption)}
+            </div>
+          </>
+        )}
         {slide.body && (
           <div
             style={{
-              marginTop: px(GAP.body),
-              fontSize: px(TYPE.body.size),
-              lineHeight: TYPE.body.lineHeight,
-              letterSpacing: `${TYPE.body.track}em`,
+              marginTop: px(figure ? FIGURE.gap : GAP.body),
+              fontSize: px(body.size),
+              lineHeight: body.lineHeight,
+              letterSpacing: `${body.track}em`,
               color: theme.body,
               whiteSpace: "pre-line",
             }}

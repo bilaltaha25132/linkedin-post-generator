@@ -20,7 +20,7 @@ This mirrors the pattern proven in the `mizan` project.
 ## Flow
 
 ```
-GitHub Actions: light pass every 2h (:47), full pass 04:17 UTC (DeepSeek off-peak)
+GitHub Actions: light pass hourly (:47), full pass 04:17 UTC (DeepSeek off-peak)
   └─► GET /api/public/cron/monitor[?mode=light]   (Bearer CRON_SECRET, 300s Fluid limit)
         └─ runMonitor({ mode })  src/lib/monitor/run.ts
              ├─ every pass, read all feeds (free):
@@ -74,8 +74,11 @@ Browser (behind password gate, src/proxy.ts)
   │               Firecrawl credits left per key (live, /v2/team/credit-usage)
   └─ /sources     manage what the monitor watches
 
-After each scan the cron also emails a digest of top new items
-(src/lib/notify, via Resend) and marks them notified so none repeat.
+After every scan the cron emails each breaking story on its own (score 80+, or a
+launch at 75+, found in the last 12 hours; at most 3 a pass), so Bilal can post
+first. The full daily pass also emails a digest of the rest above
+NOTIFY_MIN_SCORE. Both go through Resend (src/lib/notify) and mark what they
+send notified, so nothing repeats.
 Post/carousel voice follows 2025-26 LinkedIn best practice — see
 [ADR 0005](decisions/0005-linkedin-best-practices-and-carousels.md).
 ```
@@ -88,7 +91,18 @@ continuation on its own line ("Four rules, / on every engagement."): a
 at their first clause break (`src/lib/carousel/heading.ts`). Content slides sit
 on warm paper `#f0eeea`; the cover and closing slide are black. All colours and
 type sizes live in `src/lib/carousel/design.ts`, shared by the PDF renderer and
-the on-screen preview (`components/slide-card.tsx`) so they can't drift.
+the on-screen preview (`components/slide-card.tsx`) so they can't drift. The
+author name sits alone in the top corner; the green square beside it was dropped
+at Bilal's request (2026-10).
+
+A deck about an arXiv paper shows the paper's own figures. `paperFigures`
+(`src/lib/feeds/figures.ts`) reads them, with captions, from the paper's HTML
+edition. The writer sees the captions and tags 2 or 3 body slides with
+`FIGURE: n`, and the figure is stored on the slide (`Slide.figure`). Those slides
+set the heading smaller, put the figure on a white panel sized to it, and credit
+it as "Figure n from the paper". arXiv serves figures with an open CORS header,
+so the canvas can draw them without a proxy. A figure that fails to load leaves
+an ordinary text slide, and the slide editor can remove one.
 
 **The font is Season Sans, and it is not in this repo.** Its Displaay licence
 forbids redistributing, modifying, or publicly hosting the file. It lives in a
@@ -112,11 +126,11 @@ not the story.
 ### Light and full passes
 
 Being first on a story matters more than reading every corner of the web, so
-the free sources are read every two hours ("light" passes: feeds, HN, papers,
+the free sources are read every hour ("light" passes: feeds, HN, papers,
 models, and the free page fetch) and Firecrawl runs once a day ("full" pass:
 rotating searches, plus a scrape when the free fetch can't read a page). The
 "Scan now" button runs a light pass, so pressing it never spends credits.
-Light passes that land in DeepSeek's peak hours are skipped by the route.
+Light passes run in DeepSeek's peak hours too; only the full pass is held back.
 
 ### Research papers and new models
 

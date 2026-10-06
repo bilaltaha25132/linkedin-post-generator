@@ -75,10 +75,30 @@ export const TYPE = {
   body: { weight: 400, size: 40, lineHeight: 1.45, track: -0.01 },
   label: { weight: 400, size: 28, lineHeight: 1.2, track: 0 },
   button: { weight: 500, size: 28, lineHeight: 1.2, track: 0 },
+  caption: { weight: 400, size: 24, lineHeight: 1.2, track: 0 },
 } satisfies Record<string, TextStyle>;
 
 /** Space between heading and body, and above the CTA button. */
 export const GAP = { body: 52, button: 80 };
+
+/**
+ * A paper's figure sits on a white panel: figures are drawn for white pages,
+ * and the warm paper behind a chart reads as a stain. Heading and body get a
+ * smaller size on these slides so the figure can take most of the page.
+ */
+export const FIGURE = {
+  panel: "#ffffff",
+  pad: 28,
+  gap: 40,
+  heading: { weight: 400, size: 64, lineHeight: 1.06, track: -0.035 },
+  body: { weight: 400, size: 34, lineHeight: 1.4, track: -0.01 },
+} satisfies Record<string, unknown>;
+
+/** "Figure 3 from the paper", from a caption like "Figure 3: Overview of ...". */
+export function figureLabel(caption: string): string {
+  const n = /^(?:Figure|Fig\.?)\s*(\d+)/i.exec(caption)?.[1];
+  return n ? `Figure ${n} from the paper` : "Figure from the paper";
+}
 
 /** CSS stack: the licensed brand font, else the Inter Tight webfont. */
 export const SLIDE_FONT_CSS = `"Season Sans", var(--font-slide), system-ui, sans-serif`;
