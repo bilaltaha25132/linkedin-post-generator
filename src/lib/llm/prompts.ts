@@ -362,15 +362,15 @@ export const SLIDE_DELIMITER = "===|SLIDE|===";
 export interface Slide {
   heading: string;
   body: string;
-  /** A figure from the paper the deck is about, shown under the heading. */
-  figure?: { src: string; caption: string };
+  /** A figure from the source (a paper's, a lab's chart), shown under the heading. */
+  figure?: { src: string; caption: string; credit?: string };
 }
 
 /**
  * Parse a delimiter-separated carousel into slides (first line = heading). A
  * "FIGURE: n" line picks figure n from `figures` for that slide.
  */
-export function parseCarousel(text: string, figures: { src: string; caption: string }[] = []): Slide[] {
+export function parseCarousel(text: string, figures: NonNullable<Slide["figure"]>[] = []): Slide[] {
   const used = new Set<number>();
   return text
     .split(SLIDE_DELIMITER)
@@ -393,13 +393,13 @@ export function buildCarouselPrompt(input: {
   content: string;
   angle?: string | null;
   postBody?: string;
-  /** Captions of the paper's figures, when the deck is about a paper. */
+  /** What each of the source's figures shows, when it has any. */
   figureCaptions?: string[];
 }): ChatOptions {
   const figureRules = input.figureCaptions?.length
     ? `
 
-FIGURES: this deck is about a research paper, and its figures are listed below. On 2 or 3 body slides, show the figure that proves the slide's point by adding a last line "FIGURE: <number>". Pick figures with results (charts, tables, comparisons) or the method overview, never two slides with the same figure. A slide with a figure keeps its body to ONE short line (under 20 words), since the figure takes most of the slide. The cover and the last slide never get a figure.`
+FIGURES: the source's own figures are listed below, each described by its caption or the text around it. On 2 or 3 body slides, show the figure that proves the slide's point by adding a last line "FIGURE: <number>". Pick figures with results (benchmark charts, tables, comparisons) or a diagram of how it works, never two slides with the same figure. Skip decorative images: hero banners, artwork, photos of people, logos. If no figure clearly fits, use none. A slide with a figure keeps its body to ONE short line (under 20 words), since the figure takes most of the slide. The cover and the last slide never get a figure.`
     : "";
   const system = `You turn a topic into a LinkedIn carousel (a swipeable PDF deck) written as Bilal.
 
@@ -433,7 +433,7 @@ Your move
 Where does your write boundary sit? Tell me below.${figureRules}`;
 
   const figures = input.figureCaptions?.length
-    ? `\n\nFIGURES IN THE PAPER:\n${input.figureCaptions.map((c, i) => `${i + 1}. ${c}`).join("\n")}`
+    ? `\n\nFIGURES IN THE SOURCE:\n${input.figureCaptions.map((c, i) => `${i + 1}. ${c}`).join("\n")}`
     : "";
   const user = `TOPIC
 Title: ${input.title}

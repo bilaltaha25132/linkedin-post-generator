@@ -1,7 +1,7 @@
 "use client";
 
 import { CAROUSEL_HANDLE, headingRuns } from "@/lib/carousel/heading";
-import { FIGURE, GAP, MARGIN, SLIDE_FONT_CSS, SLIDE_W, TYPE, figureLabel, slideKind, themeFor } from "@/lib/carousel/design";
+import { FIGURE, GAP, MARGIN, SLIDE_FONT_CSS, SLIDE_W, TYPE, figureLabel, figureSrc, slideKind, themeFor } from "@/lib/carousel/design";
 import type { Slide } from "@/lib/llm/prompts";
 
 /** The PDF page in miniature: every size is the page's px scaled to `width`. */
@@ -94,17 +94,17 @@ export function SlideCard({
                 justifyContent: "center",
               }}
             >
-              {/* A remote arXiv figure at thumbnail size; next/image would proxy it for nothing. */}
+              {/* A remote figure at thumbnail size; next/image would re-encode it for nothing. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={figure.src}
+                src={figureSrc(figure.src)}
                 alt={figure.caption}
                 crossOrigin="anonymous"
                 style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
               />
             </div>
             <div style={{ marginTop: px(16), fontSize: px(TYPE.caption.size), color: theme.label }}>
-              {figureLabel(figure.caption)}
+              {figureLabel(figure)}
             </div>
           </>
         )}

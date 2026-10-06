@@ -10,6 +10,7 @@ import {
   SLIDE_W as W,
   TYPE,
   figureLabel,
+  figureSrc,
   slideKind,
   themeFor,
   type SlideKind,
@@ -30,7 +31,7 @@ export async function buildCarouselPdf(
 ): Promise<jsPDF> {
   const [family, figures] = await Promise.all([
     loadSlideFonts(),
-    Promise.all(slides.map((s) => (s.figure ? loadImage(s.figure.src) : null))),
+    Promise.all(slides.map((s) => (s.figure ? loadImage(figureSrc(s.figure.src)) : null))),
   ]);
   const doc = new jsPDF({ unit: "px", format: [W, H], orientation: "portrait" });
   // Carries the document title LinkedIn asks for, so the file describes itself
@@ -47,7 +48,7 @@ export async function buildCarouselPdf(
     ctx.scale(SCALE, SCALE);
     const figure = figures[i];
     if (figure && slide.figure && kind === "body") {
-      drawFigureSlide(ctx, family, slide, figure, slide.figure.caption, handle, i + 1, slides.length);
+      drawFigureSlide(ctx, family, slide, figure, figureLabel(slide.figure), handle, i + 1, slides.length);
     } else {
       drawSlide(ctx, family, slide, kind, handle, i + 1, slides.length);
     }
@@ -143,16 +144,16 @@ function drawFrame(
 }
 
 /**
- * A body slide carrying a figure from the paper: the heading on top, the
- * figure on a white panel filling the middle, the body line and a "Figure n
- * from the paper" credit below it.
+ * A body slide carrying one of the source's figures: the heading on top, the
+ * figure on a white panel in the middle, then its credit ("Figure 3 from the
+ * paper", "From mistral.ai") and the body line.
  */
 function drawFigureSlide(
   ctx: CanvasRenderingContext2D,
   family: string,
   slide: Slide,
   image: HTMLImageElement,
-  caption: string,
+  credit: string,
   handle: string,
   n: number,
   total: number,
@@ -166,9 +167,9 @@ function drawFigureSlide(
 
   const top = M + 96;
   const headingH = headingLines.length * FIGURE.heading.size * FIGURE.heading.lineHeight;
-  const credit = TYPE.caption.size * TYPE.caption.lineHeight;
+  const creditH = TYPE.caption.size * TYPE.caption.lineHeight;
   const bodyH = bodyLines.length * FIGURE.body.size * FIGURE.body.lineHeight;
-  const below = (bodyLines.length ? FIGURE.gap + bodyH : 0) + 24 + credit;
+  const below = (bodyLines.length ? FIGURE.gap + bodyH : 0) + 24 + creditH;
   const room = Math.max(240, H - M - below - top - headingH - FIGURE.gap);
 
   // Contain the figure, never upscaled past 2x; the panel hugs a wide figure
@@ -194,8 +195,8 @@ function drawFigureSlide(
 
   setFont(ctx, family, TYPE.caption);
   ctx.fillStyle = theme.label;
-  ctx.fillText(figureLabel(caption), M, y + 16);
-  y += 24 + credit;
+  ctx.fillText(credit, M, y + 16);
+  y += 24 + creditH;
 
   if (bodyLines.length) {
     y += FIGURE.gap - 24;

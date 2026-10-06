@@ -6,6 +6,7 @@ import { Inbox, Search, SearchX } from "lucide-react";
 import { DiscoveryRow } from "@/components/discovery-row";
 import { EmptyState } from "@/components/page-header";
 import type { Discovery } from "@/lib/db/types";
+import { ORIGIN_LABEL, originOf, type Origin } from "@/lib/discoveries/origin";
 
 type Sort = "signal" | "newest";
 const THRESHOLDS = [
@@ -31,6 +32,12 @@ export function FeedList({
   const [topic, setTopic] = useState("all");
   const [minScore, setMinScore] = useState(0);
   const [launchesOnly, setLaunchesOnly] = useState(false);
+  const [origin, setOrigin] = useState<Origin | "all">("all");
+  const originCounts = useMemo(() => {
+    const counts: Partial<Record<Origin, number>> = {};
+    for (const d of discoveries) counts[originOf(d)] = (counts[originOf(d)] ?? 0) + 1;
+    return counts;
+  }, [discoveries]);
   const launchCount = useMemo(() => discoveries.filter((d) => d.is_launch).length, [discoveries]);
 
   const topics = useMemo(() => {
@@ -44,6 +51,7 @@ export function FeedList({
     const filtered = discoveries.filter((d) => {
       if ((d.relevance_score ?? 0) < minScore) return false;
       if (launchesOnly && !d.is_launch) return false;
+      if (origin !== "all" && originOf(d) !== origin) return false;
       if (topic !== "all" && !d.topics.includes(topic)) return false;
       if (q) {
         const hay = `${d.title ?? ""} ${d.suggested_angle ?? ""} ${d.source_name ?? ""}`.toLowerCase();
@@ -57,7 +65,7 @@ export function FeedList({
         : Date.parse(b.discovered_at) - Date.parse(a.discovered_at),
     );
     return filtered;
-  }, [discoveries, query, sort, topic, minScore, launchesOnly]);
+  }, [discoveries, query, sort, topic, minScore, launchesOnly, origin]);
 
   return (
     <>
@@ -91,6 +99,20 @@ export function FeedList({
             </button>
           ))}
         </div>
+
+        <select
+          className="field"
+          aria-label="From"
+          value={origin}
+          onChange={(e) => setOrigin(e.target.value as Origin | "all")}
+        >
+          <option value="all">From: every source</option>
+          {(Object.keys(ORIGIN_LABEL) as Origin[]).map((o) => (
+            <option key={o} value={o}>
+              {ORIGIN_LABEL[o]} ({originCounts[o] ?? 0})
+            </option>
+          ))}
+        </select>
 
         <select
           className="field"

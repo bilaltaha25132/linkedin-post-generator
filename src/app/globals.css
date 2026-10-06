@@ -1523,6 +1523,10 @@ label.lbl,
   font-size: 11px;
   font-weight: 600;
 }
+.paper-tag {
+  background: var(--card-rose);
+  color: var(--card-ink);
+}
 .thread-link {
   display: inline-flex;
   align-items: center;

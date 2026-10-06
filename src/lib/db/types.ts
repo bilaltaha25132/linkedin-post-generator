@@ -48,6 +48,8 @@ export interface Discovery {
   discussion: Discussion | null;
   status: DiscoveryStatus;
   discovered_at: string;
+  /** The source that found it; null once that source is deleted. */
+  sources?: { kind: SourceKind; label: string } | null;
 }
 
 export type PostStatus = "draft" | "queued" | "posted";
@@ -55,6 +57,7 @@ export type PostStatus = "draft" | "queued" | "posted";
 export interface CarouselSlide {
   heading: string;
   body: string;
+  figure?: { src: string; caption: string; credit?: string };
 }
 
 export interface Post {

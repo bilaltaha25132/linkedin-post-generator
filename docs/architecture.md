@@ -95,14 +95,22 @@ the on-screen preview (`components/slide-card.tsx`) so they can't drift. The
 author name sits alone in the top corner; the green square beside it was dropped
 at Bilal's request (2026-10).
 
-A deck about an arXiv paper shows the paper's own figures. `paperFigures`
-(`src/lib/feeds/figures.ts`) reads them, with captions, from the paper's HTML
-edition. The writer sees the captions and tags 2 or 3 body slides with
-`FIGURE: n`, and the figure is stored on the slide (`Slide.figure`). Those slides
-set the heading smaller, put the figure on a white panel sized to it, and credit
-it as "Figure n from the paper". arXiv serves figures with an open CORS header,
-so the canvas can draw them without a proxy. A figure that fails to load leaves
-an ordinary text slide, and the slide editor can remove one.
+A deck shows the source's own figures when it has any. `sourceFigures`
+(`src/lib/feeds/figures.ts`) reads an arXiv paper's figures and captions from
+its HTML edition, a Hugging Face model card's images from its README, and any
+other page's article images, described by figcaption, alt text, the heading and
+paragraph above them and the file name. News publishers (`NO_FIGURE_HOSTS`)
+get none: their images are licensed photos, not the source's own work. The
+writer sees the descriptions, tags 2 or 3 body slides with `FIGURE: n` (or none
+if nothing fits), and the figure is stored on the slide (`Slide.figure`, with a
+`credit` such as "Figure 3 from the paper" or "From mistral.ai"). Those slides
+set the heading smaller, put the figure on a white panel sized to it, and print
+the credit under it. arXiv serves figures with an open CORS header, so the
+canvas draws them directly; every other figure loads through `/api/figure`, a
+signed-in-only relay that fetches public https images (no private hosts, no
+SVG, 10 MB cap) so the canvas sees them as same-origin and can export the PDF.
+A figure that fails to load leaves an ordinary text slide, and the slide editor
+can remove one.
 
 **The font is Season Sans, and it is not in this repo.** Its Displaay licence
 forbids redistributing, modifying, or publicly hosting the file. It lives in a
@@ -172,6 +180,11 @@ page. Thread stats and publication dates are excluded by the prompt.
 `is_launch` marks a story that announces a newly released AI model, product or
 tool. Launches get a "New release" tag and filter on the wire, and lead the email
 digest at a lower score bar (55), so a release reaches Bilal by the next pass.
+
+The wire's "From" filter groups items by where they came from
+(`originOf` in `src/lib/discoveries/origin.ts`): research and papers (the
+papers source, any arXiv link wherever it was found, and research feeds such as
+METR), new open models, news and blogs, Hacker News, and web search.
 
 Search sources rotate one per pass, so the number of them sets how often each is
 revisited. Keep that list short and specific.

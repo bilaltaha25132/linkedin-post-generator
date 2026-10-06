@@ -5,7 +5,7 @@ import type { Discovery, DiscoveryStatus, DiscussionComment } from "@/lib/db/typ
 
 // Columns excluding the large embedding vector — never needed by the UI.
 const LIST_COLUMNS =
-  "id,url,url_hash,title,source_name,source_id,published_at,snippet,topics,relevance_score,relevance_reason,suggested_angle,key_numbers,is_launch,discussion,status,discovered_at";
+  "id,url,url_hash,title,source_name,source_id,published_at,snippet,topics,relevance_score,relevance_reason,suggested_angle,key_numbers,is_launch,discussion,status,discovered_at,sources(kind,label)";
 
 export type DiscoveryDetail = Discovery & {
   content_md: string | null;
@@ -44,7 +44,8 @@ export async function listDiscoveries(
     .order("discovered_at", { ascending: false })
     .limit(LIST_LIMIT);
   if (error) throw new Error(error.message);
-  return { items: (data ?? []) as Discovery[], total: count ?? 0 };
+  // The sources join is to-one; the generated types widen it to an array.
+  return { items: (data ?? []) as unknown as Discovery[], total: count ?? 0 };
 }
 
 export async function getDiscovery(id: string): Promise<DiscoveryDetail | null> {
@@ -54,5 +55,5 @@ export async function getDiscovery(id: string): Promise<DiscoveryDetail | null> 
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  return (data as DiscoveryDetail | null) ?? null;
+  return (data as unknown as DiscoveryDetail | null) ?? null;
 }

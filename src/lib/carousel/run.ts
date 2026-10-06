@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getDiscovery } from "@/lib/discoveries/queries";
-import { paperFigures, type PaperFigure } from "@/lib/feeds/figures";
+import { sourceFigures, type SourceFigure } from "@/lib/feeds/figures";
 import { chat } from "@/lib/llm/client";
 import { buildCarouselPrompt, parseCarousel, SLIDE_DELIMITER, type Slide } from "@/lib/llm/prompts";
 
@@ -35,8 +35,8 @@ async function promptFor({ discoveryId, postBody }: CarouselSource) {
   if (discoveryId) {
     const discovery = await getDiscovery(discoveryId);
     if (!discovery) throw new Error("Discovery not found");
-    // A deck about a paper shows the paper's own charts on its key slides.
-    const figures: PaperFigure[] = await paperFigures(discovery.url);
+    // A deck shows the source's own charts (a paper's, a lab's) on its key slides.
+    const figures: SourceFigure[] = await sourceFigures(discovery.url);
     const prompt = buildCarouselPrompt({
       title: discovery.title ?? "",
       content: discovery.content_md ?? discovery.snippet ?? discovery.title ?? "",

@@ -82,7 +82,7 @@ export const TYPE = {
 export const GAP = { body: 52, button: 80 };
 
 /**
- * A paper's figure sits on a white panel: figures are drawn for white pages,
+ * A source's figure sits on a white panel: figures are drawn for white pages,
  * and the warm paper behind a chart reads as a stain. Heading and body get a
  * smaller size on these slides so the figure can take most of the page.
  */
@@ -94,10 +94,21 @@ export const FIGURE = {
   body: { weight: 400, size: 34, lineHeight: 1.4, track: -0.01 },
 } satisfies Record<string, unknown>;
 
-/** "Figure 3 from the paper", from a caption like "Figure 3: Overview of ...". */
-export function figureLabel(caption: string): string {
-  const n = /^(?:Figure|Fig\.?)\s*(\d+)/i.exec(caption)?.[1];
+/** The credit under a figure: "Figure 3 from the paper", "From mistral.ai". */
+export function figureLabel(figure: { caption: string; credit?: string }): string {
+  if (figure.credit) return figure.credit;
+  // Decks saved before credits existed held only arXiv figures.
+  const n = /^(?:Figure|Fig\.?)\s*(\d+)/i.exec(figure.caption)?.[1];
   return n ? `Figure ${n} from the paper` : "Figure from the paper";
+}
+
+/**
+ * Where the browser loads a figure from. arXiv sends CORS headers, so the
+ * canvas can draw its images directly; anything else goes through /api/figure
+ * so the canvas sees it as same-origin and can export the PDF.
+ */
+export function figureSrc(src: string): string {
+  return src.startsWith("https://arxiv.org/") ? src : `/api/figure?src=${encodeURIComponent(src)}`;
 }
 
 /** CSS stack: the licensed brand font, else the Inter Tight webfont. */

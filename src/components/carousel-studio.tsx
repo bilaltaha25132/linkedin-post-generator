@@ -225,7 +225,7 @@ export function CarouselStudio({
                       <div className="row" style={{ flexWrap: "nowrap" }}>
                         <span className="field-hint" style={{ margin: 0 }}>
                           <ImageIcon aria-hidden style={{ width: 14, height: 14, verticalAlign: -2 }} />{" "}
-                          {figureLabel(s.figure.caption)}
+                          {figureLabel(s.figure)}
                         </span>
                         <button className="btn btn-ghost btn-sm push" onClick={() => edit(i, { figure: undefined })}>
                           Remove figure

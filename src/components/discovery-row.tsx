@@ -9,6 +9,7 @@ import { LocalTime } from "@/components/local-time";
 import { SignalScore } from "@/components/signal-score";
 import { setDiscoveryStatus } from "@/lib/discoveries/actions";
 import type { Discovery } from "@/lib/db/types";
+import { paperLink } from "@/lib/papers";
 
 export function DiscoveryRow({ discovery }: { discovery: Discovery }) {
   const [pending, startTransition] = useTransition();
@@ -31,6 +32,7 @@ export function DiscoveryRow({ discovery }: { discovery: Discovery }) {
 
         <div className="meta">
           {discovery.is_launch && <span className="launch-tag">New release</span>}
+          {paperLink(discovery.url) && <span className="launch-tag paper-tag">Paper</span>}
           {discovery.source_name && <span>{discovery.source_name}</span>}
           {discovery.discussion && <DiscussionLink discussion={discovery.discussion} />}
           <span>
