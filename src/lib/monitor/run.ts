@@ -3,11 +3,23 @@ import { hashUrl } from "@/lib/dedup/url-hash";
 import { search, scrape, type FirecrawlScrapeHit } from "@/lib/firecrawl/client";
 import { isFreshEnough, parseRelativeDate } from "@/lib/firecrawl/dates";
 import { findThread, topComments, topStories } from "@/lib/feeds/hacker-news";
+import { fetchPage } from "@/lib/feeds/page";
+import { trendingModels } from "@/lib/feeds/models";
+import { dailyPapers } from "@/lib/feeds/papers";
 import { readFeed } from "@/lib/feeds/rss";
 import { chatJSON } from "@/lib/llm/client";
 import { buildRelevancePrompt, formatDiscussion, relevanceSchema } from "@/lib/llm/prompts";
+import { paperFullTextUrl } from "@/lib/papers";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { Discussion, DiscussionComment, Source } from "@/lib/db/types";
+
+/**
+ * "light" reads only the free sources (feeds, Hacker News, papers) and never
+ * touches Firecrawl, so it can run every couple of hours. "full" adds the
+ * rotating web search and page sources, and may scrape what the free page
+ * fetch can't read.
+ */
+export type MonitorMode = "light" | "full";
 
 export interface MonitorResult {
   sourcesRun: number;
@@ -36,11 +48,11 @@ type IngestOutcome = "new" | "duplicate" | "stale" | "error";
 
 // Read on every pass: free, and current to the hour. Search and page sources
 // cost credits and rotate instead.
-const FEED_KINDS = new Set<Source["kind"]>(["hn", "rss"]);
+const FEED_KINDS = new Set<Source["kind"]>(["hn", "rss", "papers", "models"]);
 const HN_WINDOW_HOURS = 24;
 // Newest entries considered per feed. Some feeds carry their whole archive.
 const FEED_ITEMS = 10;
-// A feed's own text above this length is the article; no need to pay for a scrape.
+// A feed's own text above this length is the article; no need to fetch the page.
 const FULL_TEXT_CHARS = 1500;
 // Stop starting items this long before the deadline, so the last scrape and
 // scoring finish inside the function limit.
@@ -52,7 +64,8 @@ const ITEM_TAIL_MS = 40_000;
  * score and store the rest, a few at a time, until the time budget runs out.
  * Anything left over is still in its feed for the next pass.
  */
-export async function runMonitor(opts: { budgetMs?: number } = {}): Promise<MonitorResult> {
+export async function runMonitor(opts: { budgetMs?: number; mode?: MonitorMode } = {}): Promise<MonitorResult> {
+  const mode = opts.mode ?? "full";
   const db = supabaseAdmin();
   const cfg = env.monitor();
   const deadline = Date.now() + (opts.budgetMs ?? cfg.budgetMs);
@@ -76,7 +89,7 @@ export async function runMonitor(opts: { budgetMs?: number } = {}): Promise<Moni
 
   const feeds = sources.filter((s) => FEED_KINDS.has(s.kind));
   const rotating = sources.filter((s) => !FEED_KINDS.has(s.kind));
-  const toRead = [...feeds, ...(searchDue(rotating, cfg) ? rotating.slice(0, 1) : [])];
+  const toRead = [...feeds, ...(mode === "full" && searchDue(rotating, cfg) ? rotating.slice(0, 1) : [])];
 
   const fetched = await Promise.all(
     toRead.map(async (source) => {
@@ -105,7 +118,7 @@ export async function runMonitor(opts: { budgetMs?: number } = {}): Promise<Moni
       if (count >= cfg.maxItemsPerSource) continue;
       taken.set(source.id, count + 1);
       try {
-        const outcome = await ingestHit(hit, source, cfg);
+        const outcome = await ingestHit(hit, source, cfg, mode);
         if (outcome === "new") result.newDiscoveries += 1;
         else if (outcome === "duplicate") result.skippedDuplicate += 1;
         else if (outcome === "stale") result.skippedStale += 1;
@@ -225,6 +238,28 @@ async function hitsForSource(source: Source, cfg: MonitorConfig): Promise<WireHi
         content: item.content,
       }));
     }
+    case "papers": {
+      const minUpvotes = Number.parseInt(source.value, 10) || 15;
+      const papers = await dailyPapers(minUpvotes);
+      return papers.map((paper) => ({
+        url: paper.url,
+        title: paper.title,
+        date: paper.date,
+        description: paper.summary,
+        content: paper.text,
+      }));
+    }
+    case "models": {
+      const minLikes = Number.parseInt(source.value, 10) || 300;
+      const models = await trendingModels(minLikes);
+      return models.map((model) => ({
+        url: model.url,
+        title: `${model.id}: new model on Hugging Face`,
+        date: model.date,
+        description: model.summary,
+        content: model.text,
+      }));
+    }
     case "search": {
       const hits = await search(`${source.value} ${EXCLUDE_QUERY}`, cfg.searchLimit, cfg.timeRange);
       return hits.filter((hit) => !isExcludedHost(hit.url));
@@ -268,23 +303,40 @@ async function recordRejections(rows: Rejection[]): Promise<void> {
     );
 }
 
-async function ingestHit(hit: WireHit, source: Source, cfg: MonitorConfig): Promise<IngestOutcome> {
-  // Scraping is the one credit an item costs, so skip it when the feed already
-  // carries the article, or the link is a social post or an HN text thread. A
-  // failed scrape degrades to the feed's own text rather than losing the story.
-  const needsScrape =
-    (hit.content?.length ?? 0) < FULL_TEXT_CHARS &&
-    !isExcludedHost(hit.url) &&
-    hostOf(hit.url) !== "news.ycombinator.com";
-  const [page, thread] = await Promise.all([
-    needsScrape ? scrape(hit.url).catch(() => null) : null,
+async function ingestHit(
+  hit: WireHit,
+  source: Source,
+  cfg: MonitorConfig,
+  mode: MonitorMode,
+): Promise<IngestOutcome> {
+  // Fetch the article ourselves when the feed doesn't carry it, and pay for a
+  // Firecrawl scrape only on a full pass when that fetch came back thin. A
+  // paper always gets its arXiv full text, which is where the results are. A
+  // social post or an HN text thread has no article to fetch.
+  const fullText = paperFullTextUrl(hit.url);
+  const wantsText =
+    Boolean(fullText) ||
+    ((hit.content?.length ?? 0) < FULL_TEXT_CHARS &&
+      !isExcludedHost(hit.url) &&
+      hostOf(hit.url) !== "news.ycombinator.com");
+  const [fetched, thread] = await Promise.all([
+    wantsText ? fetchPage(fullText ?? hit.url) : null,
     threadFor(hit),
   ]);
+  const fetchedText = fetched?.text ?? "";
+  const page =
+    wantsText && !fullText && mode === "full" && fetchedText.length < FULL_TEXT_CHARS
+      ? await scrape(hit.url).catch(() => null)
+      : null;
 
-  const title = hit.title ?? scrapedMeta(page, "title") ?? (source.kind === "url" ? source.label : null);
-  const snippet = hit.description || scrapedMeta(page, "description") || null;
-  const content = page?.markdown || hit.content || snippet || "";
-  // Nothing to score — e.g. a url source whose page wouldn't scrape. A linked
+  const title =
+    hit.title ?? fetched?.title ?? scrapedMeta(page, "title") ?? (source.kind === "url" ? source.label : null);
+  const snippet = hit.description || fetched?.description || scrapedMeta(page, "description") || null;
+  const feedText = hit.content ?? "";
+  const content = fullText
+    ? [feedText, fetchedText && `Full text:\n${fetchedText}`].filter(Boolean).join("\n\n")
+    : page?.markdown || (fetchedText.length > feedText.length ? fetchedText : feedText) || snippet || "";
+  // Nothing to score — e.g. a url source whose page wouldn't load. A linked
   // tweet with a lively HN thread still has something to say.
   if (!content && !thread) {
     await recordRejections([{ hit, source, reason: "unreadable", publishedAt: null }]);
@@ -293,6 +345,7 @@ async function ingestHit(hit: WireHit, source: Source, cfg: MonitorConfig): Prom
 
   const publishedAt =
     parseRelativeDate(hit.date) ??
+    parseRelativeDate(fetched?.published) ??
     parseRelativeDate(scrapedMeta(page, "publishedTime", "publishedDate", "date"));
   if (!isFreshEnough(publishedAt, cfg.maxAgeDays)) {
     await recordRejections([{ hit, source, reason: "too_old", publishedAt }]);

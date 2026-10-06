@@ -11,6 +11,8 @@ const KIND_FIELDS: Record<SourceKind, { label: string; placeholder: string }> = 
   hn: { label: "Minimum points on Hacker News", placeholder: "100" },
   search: { label: "What to search for", placeholder: "e.g. agent memory architectures" },
   url: { label: "Page to watch", placeholder: "https://…" },
+  papers: { label: "Minimum upvotes on Hugging Face Daily Papers", placeholder: "15" },
+  models: { label: "Minimum likes on a new Hugging Face model", placeholder: "300" },
 };
 
 const KIND_NAMES: Record<SourceKind, string> = {
@@ -18,6 +20,8 @@ const KIND_NAMES: Record<SourceKind, string> = {
   hn: "hacker news",
   search: "search",
   url: "page",
+  papers: "papers",
+  models: "models",
 };
 
 const KIND_CHIPS: Record<SourceKind, string> = {
@@ -25,6 +29,8 @@ const KIND_CHIPS: Record<SourceKind, string> = {
   hn: "chip chip-amber",
   search: "chip chip-lavender",
   url: "chip chip-mint",
+  papers: "chip chip-rose",
+  models: "chip chip-mint",
 };
 
 export function SourcesManager({ sources }: { sources: Source[] }) {
@@ -75,6 +81,8 @@ export function SourcesManager({ sources }: { sources: Source[] }) {
               >
                 <option value="rss">RSS feed</option>
                 <option value="hn">Hacker News</option>
+                <option value="papers">Research papers</option>
+                <option value="models">New open models</option>
                 <option value="search">Search query</option>
                 <option value="url">Page URL</option>
               </select>
@@ -87,7 +95,7 @@ export function SourcesManager({ sources }: { sources: Source[] }) {
                 id="source-value"
                 className="field"
                 value={value}
-                inputMode={kind === "hn" ? "numeric" : undefined}
+                inputMode={kind === "hn" || kind === "papers" || kind === "models" ? "numeric" : undefined}
                 onChange={(e) => setValue(e.target.value)}
                 placeholder={KIND_FIELDS[kind].placeholder}
               />

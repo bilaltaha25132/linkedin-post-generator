@@ -5,12 +5,15 @@ name: monitor
 # CRON_SECRET (Settings > Secrets and variables > Actions).
 on:
   schedule:
-    # Once a day, to keep Firecrawl credits inside the free monthly allowance.
-    # It runs in DeepSeek's off-peak (half-price) window: peak is 01-04 and
-    # 06-10 UTC on weekdays (src/lib/llm/peak.ts). 04:17 leaves 1h40m of slack
-    # before peak for GitHub's scheduling delays; minute 17 dodges the
-    # top-of-hour queue.
+    # The full pass (web search + Firecrawl fallback) runs once a day, to keep
+    # credits inside the free monthly allowance. It sits in DeepSeek's off-peak
+    # (half-price) window: peak is 01-04 and 06-10 UTC on weekdays
+    # (src/lib/llm/peak.ts); 04:17 leaves slack for GitHub's delays.
     - cron: "17 4 * * *"
+    # Light passes read only the free sources (feeds, HN, papers, models) every
+    # two hours, so a story is on the wire within hours of breaking. Ones that
+    # land in peak hours are skipped by the route and cost nothing.
+    - cron: "47 */2 * * *"
   workflow_dispatch: {} # manual "Run workflow" button
 
 jobs:
@@ -21,6 +24,6 @@ jobs:
         run: |
           code=$(curl -sS --max-time 330 -o /tmp/body -w "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.APP_URL }}/api/public/cron/monitor")
+            "${{ secrets.APP_URL }}/api/public/cron/monitor${{ github.event.schedule == '47 */2 * * *' && '?mode=light' || '' }}")
           echo "HTTP $code"; cat /tmp/body; echo
           test "$code" = "200"

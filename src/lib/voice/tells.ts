@@ -14,7 +14,7 @@ const PHRASES: [RegExp, string][] = [
   [/\bnot (just |only )?(a |an |about )?[^.!?\n]{1,40}\.\s+(it'?s|it is|it was|that'?s|that is)\b/i, `"Not X. It's Y." antithesis`],
   [/\b(\w+) (wasn'?t|isn'?t|was not|is not) the (\w+)\.\s+the \3 (was|is)\b/i, `"X wasn't the bottleneck. The bottleneck was Y." turn`],
   // Reflective pivots the drafts kept reaching for once the older tells were banned.
-  [/\b(i keep (coming back to|chewing on|thinking about|returning to|poking at|replaying)|the (part|bit|thing|question) i keep|worth sitting with|sit with that|what (bothers|strikes|interests|gets) me|my read is|the interesting (part|bit|thing|number|question)( here)? (is|isn'?t|in))\b/i, `a stock reflective pivot ("the part I keep coming back to", "worth sitting with")`],
+  [/\b(i keep (coming back to|chewing on|thinking about|returning to|poking at|replaying)|the (part|bit|thing|question) i keep|worth sitting with|sit with that|(i'?d|i would) sit with|what (bothers|strikes|interests|gets) me|my read is|the interesting (part|bit|thing|number|question)( here)? (is|isn'?t|in))\b/i, `a stock reflective pivot ("the part I keep coming back to", "worth sitting with")`],
   // Wikipedia's "signs of AI writing": participle tails and copula avoidance.
   [/,\s+(highlighting|underscoring|showcasing|emphasizing|emphasising|reflecting|signaling|signalling|cementing|solidifying)\b/i, `a ", highlighting/underscoring…" tail`],
   [/\b(serves|stands|acts) as (a|an|the)\b|\bboasts\b/i, `"serves as / stands as" instead of "is"`],

@@ -3,7 +3,8 @@ import "server-only";
 import { getDiscovery } from "@/lib/discoveries/queries";
 import { chat } from "@/lib/llm/client";
 import { embed } from "@/lib/llm/embeddings";
-import { POST_SHAPES, buildGenerationPrompt, buildRevisePrompt, formatDiscussion, parseVariants } from "@/lib/llm/prompts";
+import { PAPER_SHAPES, POST_SHAPES, buildGenerationPrompt, buildRevisePrompt, formatDiscussion, parseVariants } from "@/lib/llm/prompts";
+import { paperLink, withPaperLink } from "@/lib/papers";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { humanize, voiceSamplesFor } from "@/lib/voice/humanize";
 
@@ -42,7 +43,9 @@ export async function generateForDiscovery(
   }));
   const recentPosts = ((recentRes.data ?? []) as { body: string }[]).map((r) => r.body);
 
-  const shapes = [...POST_SHAPES].sort(() => Math.random() - 0.5).slice(0, opts.count ?? 3);
+  // A paper post always carries the paper's link, so readers can check the numbers.
+  const paper = paperLink(discovery.url);
+  const shapes = [...(paper ? PAPER_SHAPES : POST_SHAPES)].sort(() => Math.random() - 0.5).slice(0, opts.count ?? 3);
   const takes = await Promise.allSettled(
     shapes.map(async (shape) => {
       const draft = await chat(
@@ -58,10 +61,13 @@ export async function generateForDiscovery(
           recentPosts,
           shape,
           guidance: opts.guidance,
+          paper: Boolean(paper),
         }),
       );
       const post = parseVariants(draft)[0];
-      return post ? humanize(post, voiceSamples) : "";
+      if (!post) return "";
+      const human = await humanize(post, voiceSamples);
+      return paper ? withPaperLink(human, paper) : human;
     }),
   );
   const variants = takes.flatMap((t) => (t.status === "fulfilled" && t.value ? [t.value] : []));
@@ -98,5 +104,7 @@ export async function reviseForDiscovery(discoveryId: string, post: string, inst
   );
   const revised = parseVariants(draft)[0];
   if (!revised) throw new Error("The writer returned nothing. Try again.");
-  return humanize(revised, voiceSamples);
+  const human = await humanize(revised, voiceSamples);
+  const paper = paperLink(discovery.url);
+  return paper ? withPaperLink(human, paper) : human;
 }

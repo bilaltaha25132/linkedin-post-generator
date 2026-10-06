@@ -1,6 +1,6 @@
 // Row shapes mirroring supabase/migrations/0001_init.sql.
 
-export type SourceKind = "search" | "rss" | "url" | "hn";
+export type SourceKind = "search" | "rss" | "url" | "hn" | "papers" | "models";
 
 export interface Source {
   id: string;

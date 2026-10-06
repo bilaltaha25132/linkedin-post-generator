@@ -69,6 +69,14 @@ can add a real take:
 - A real incident: an outage, a breach, a model or product doing something unexpected in the wild.
 - Engineering war stories of any kind; RAG, agents and LLMs in production are his
   home turf, so he can go deepest there.
+- A research paper with a striking, concrete result a builder can use (2x faster
+  inference, 40% fewer tokens, a small model beating a big one), named and measured.
+  Papers are where he gets ahead of the feed: score a strong one as high as a launch.
+- A new open-weight model with real benchmark numbers in its model card.
+
+BEING FIRST matters: a story from the last few hours, before the newsletters pick it
+up, is worth more than the same story a week later. A paper with only vague claims,
+no numbers, or a narrow academic niche stays below 50 however new it is.
 
 Score MEDIUM (45-74): solid and informative, but a little niche, undated, or only
 mildly novel — the kind of thing that's true but wouldn't stop a feed.

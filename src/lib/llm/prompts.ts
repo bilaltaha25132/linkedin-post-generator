@@ -118,6 +118,8 @@ export interface GenerationInput {
   shape: string;
   /** Optional extra steer from the user (a specific take/tone for this post). */
   guidance?: string;
+  /** Set when the source is a research paper: it gets more room and its own shapes. */
+  paper?: boolean;
 }
 
 /**
@@ -131,6 +133,17 @@ export const POST_SHAPES = [
   "Push back: pick the claim in the story (or the thread) he's least convinced by and say why, fairly.",
   "What it changes: what this means for someone building software this week, kept concrete and modest.",
   "One small point: a short post, 60 to 120 words, about the single detail he found most telling.",
+];
+
+/**
+ * Paper posts that get read lead with the result, show two to four headline
+ * numbers, and say what changes for builders. That short list of results is
+ * the one place a list beats prose, so the breakdown lifts the ban on lists.
+ */
+export const PAPER_SHAPES = [
+  'Paper breakdown: open with the most striking result in one plain sentence. Then what the researchers did, in two or three sentences anyone in tech can follow. Then the headline results as a short list of 2 to 4 lines, each starting with "- " and carrying a real number from the paper (this list is allowed despite the ban on lists). Then why it matters for people building with AI, and one honest caveat.',
+  "Builder's angle: what this paper changes for someone shipping AI products this year. Name the method, give the key numbers from the paper, and say plainly where it would and wouldn't help. Prose only.",
+  "Skeptic's read: take the paper's headline claim seriously, give its numbers, then say what you'd want to see before believing it holds up in production (the benchmark, the scale, the cost). Fair, not dismissive. Prose only.",
 ];
 
 /**
@@ -155,7 +168,7 @@ ${WRITER_PERSONA}
 ${VOICE_RULES}
 
 Write ONE complete LinkedIn post about the source item below, built this way: ${input.shape}
-
+${input.paper ? "\nThe source is a research paper. Explain it so a busy engineer gets it on one read: define any jargon, and take every number from the paper itself. A paper post may run to 1,800 characters. Don't add the paper's link: it is appended afterwards.\n" : ""}
 The English must be clean and natural: correct grammar, every sentence easy to read on the first pass, words a fluent engineer would actually say out loud. Plain beats clever. If a sentence needs reading twice, rewrite it.
 
 The SAMPLES are Bilal's own writing. Match their tone and plainness only; don't copy their subject or bring in his past projects. Don't repeat the topic or the opening of his recent posts.
@@ -168,7 +181,7 @@ Output only the post.`;
 Title: ${input.discovery.title}
 URL: ${input.discovery.url}
 ${input.discovery.angle ? `Suggested angle: ${input.discovery.angle}\n` : ""}Content (may be truncated):
-${input.discovery.content.slice(0, 5000)}
+${input.discovery.content.slice(0, input.paper ? 12_000 : 5000)}
 ${input.discovery.discussion ? `\n${input.discovery.discussion}\n` : ""}
 ${input.guidance ? `EXTRA STEER FROM BILAL: ${input.guidance}\n\n` : ""}SAMPLES OF BILAL'S WRITING (tone only):
 ${samples || "(none available: rely on the voice rules)"}
@@ -326,7 +339,7 @@ HOW TO EDIT:
 - Keep every fact, number, name and claim, and keep his take. Add nothing that isn't in the post.
 - Delete any personal anecdote the post invents about him: a memory, a hobby, a colleague, a conversation, something he tried. His opinions stay; made-up events in his life go.
 - If a sentence doesn't make sense, fix it or cut it.
-- Keep roughly the same length and the same opening fact. Keep the hashtag line as it is.
+- Keep roughly the same length and the same opening fact. Keep the hashtag line as it is, and keep a short "- " list of a paper's results if the post has one.
 - Leave sentences that already sound human alone. This is an edit, not a rewrite from scratch.
 
 Output ONLY the edited post. No notes, no preamble, no quotation marks around it.`;

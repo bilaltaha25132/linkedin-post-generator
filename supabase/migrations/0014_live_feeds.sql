@@ -4,7 +4,8 @@
 -- switched off on /sources stay off.
 
 alter table sources drop constraint if exists sources_kind_check;
-alter table sources add constraint sources_kind_check check (kind in ('search', 'rss', 'url', 'hn'));
+-- The allowed kinds are set by the newest migration that adds one (0018):
+-- every file re-runs on db:migrate, so an older list here would reject newer rows.
 
 -- `discussion` is the thread's headline numbers, light enough for the feed;
 -- `discussion_comments` is only read on the draft page.
@@ -30,4 +31,9 @@ from (values
   ('rss', 'https://github.blog/feed/', 'GitHub'),
   ('rss', 'https://www.reddit.com/r/LocalLLaMA/top/.rss?t=day', 'r/LocalLLaMA')
 ) as seed(kind, value, label)
-where not exists (select 1 from sources s where s.value = seed.value);
+-- hn, papers and models are one source each, and their value (a threshold) can be
+-- edited on /sources, so they match on kind: matching on value re-seeded a duplicate.
+where not exists (
+  select 1 from sources s
+  where s.value = seed.value or (seed.kind in ('hn', 'papers', 'models') and s.kind = seed.kind)
+);

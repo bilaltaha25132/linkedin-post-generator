@@ -11,7 +11,7 @@ tool designed to cost nothing to run.
 | App + hosting | Next.js 16 (App Router) on **Vercel Hobby** | Free tier |
 | Data | **Supabase** Postgres + `pgvector` | Free tier |
 | Scheduler | **GitHub Actions** cron → cron endpoint | Free minutes; sidesteps Vercel Hobby's once-a-day cron cap |
-| Monitoring | **Hacker News** + **RSS** feeds; **Firecrawl** v2 search/scrape | Feeds are public; Firecrawl free tier, round-robined across two accounts |
+| Monitoring | **Hacker News**, **RSS** feeds, **Hugging Face** papers + models; **Firecrawl** v2 search/scrape | Feeds and Hugging Face are public; Firecrawl free tier, round-robined across two accounts |
 | Chat (writing + scoring) | **DeepSeek** `deepseek-chat`, OpenAI-compatible | Cheap ([ADR 0003](decisions/0003-deepseek-for-chat.md)) |
 | Embeddings | **Google Gemini** `gemini-embedding-001` @ 1024 dims | Free tier ([ADR 0002](decisions/0002-llm-provider-gemini.md)) |
 
@@ -20,19 +20,24 @@ This mirrors the pattern proven in the `mizan` project.
 ## Flow
 
 ```
-GitHub Actions (04:17 UTC: once a day, DeepSeek off-peak)
-  └─► GET /api/public/cron/monitor   (Bearer CRON_SECRET, 300s Fluid limit)
-        └─ runMonitor()  src/lib/monitor/run.ts
+GitHub Actions: light pass every 2h (:47), full pass 04:17 UTC (DeepSeek off-peak)
+  └─► GET /api/public/cron/monitor[?mode=light]   (Bearer CRON_SECRET, 300s Fluid limit)
+        └─ runMonitor({ mode })  src/lib/monitor/run.ts
              ├─ every pass, read all feeds (free):
              │    hn      → Hacker News front page, via Algolia (src/lib/feeds/hacker-news.ts)
-             │    rss     → RSS/Atom feeds of labs and writers (src/lib/feeds/rss.ts)
-             ├─ at most every MONITOR_SEARCH_INTERVAL_HOURS, one rotating source:
+             │    rss     → RSS/Atom feeds of labs, newsrooms, writers (src/lib/feeds/rss.ts)
+             │    papers  → Hugging Face Daily Papers, by upvotes (src/lib/feeds/papers.ts)
+             │    models  → new trending Hugging Face models + card (src/lib/feeds/models.ts)
+             ├─ full passes only, at most every MONITOR_SEARCH_INTERVAL_HOURS, one rotating source:
              │    search  → Firecrawl v2 /search (news + web), snippets only
              │    url     → one entry, page fetched below
              ├─ drop stale items and stored url_hashes in one query, before any spend
              ├─ interleave sources; take ≤ MONITOR_MAX_ITEMS_PER_SOURCE from each
              └─ per item, two at a time until the budget runs out:
-                  ├─ scrape → Firecrawl v1 /scrape, unless the feed carries the article
+                  ├─ fetch  → plain HTTP fetch of the page (src/lib/feeds/page.ts), free;
+                  │           arXiv papers read their full text from arxiv.org/html
+                  ├─ scrape → Firecrawl v1 /scrape, full passes only, when the feed
+                  │           and the free fetch both came back thin
                   ├─ HN thread + top comments (hn stories carry theirs; others are
                   │  looked up by URL)
                   ├─ relevance gate → DeepSeek → {score, reason, topics, angle, key_numbers, launch}
@@ -103,6 +108,32 @@ Keys are round-robined and fall back on the other when one returns 402.
 Social and video hosts (`EXCLUDED_HOSTS` in `src/lib/monitor/run.ts`) are
 excluded from every search — they scored worst and are reactions to a story,
 not the story.
+
+### Light and full passes
+
+Being first on a story matters more than reading every corner of the web, so
+the free sources are read every two hours ("light" passes: feeds, HN, papers,
+models, and the free page fetch) and Firecrawl runs once a day ("full" pass:
+rotating searches, plus a scrape when the free fetch can't read a page). The
+"Scan now" button runs a light pass, so pressing it never spends credits.
+Light passes that land in DeepSeek's peak hours are skipped by the route.
+
+### Research papers and new models
+
+`papers` reads Hugging Face Daily Papers for today and yesterday and keeps the
+ones above the source's minimum upvotes; a paper is dated by the day it is on
+the list, since a day's list carries papers first submitted days earlier.
+`models` keeps models under a week old that are trending on Hugging Face,
+skipping quantisations and fine-tune re-uploads, and is dated when it is seen
+trending. A paper's draft is written from its full text (up to 12k chars) with
+its own shapes (`PAPER_SHAPES` in `src/lib/llm/prompts.ts`), where a short list
+of headline results is allowed, and every take on a paper ends with
+"Paper: <arXiv link>" above the hashtags (`withPaperLink`, `src/lib/papers.ts`).
+That is the one exception to the no-links rule.
+
+The `sources_kind_check` constraint is defined only in the newest migration that
+adds a kind (currently 0018). `db:migrate` re-runs every file, so an older file
+that re-added an older list would reject newer rows.
 
 ### Where the wire comes from
 

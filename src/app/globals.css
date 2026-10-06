@@ -1282,6 +1282,10 @@ label.lbl,
   background: var(--card-amber);
   color: var(--card-ink);
 }
+.chip-rose {
+  background: var(--card-rose);
+  color: var(--card-ink);
+}
 .chip-brand {
   background: var(--brand-600);
   color: #ffffff;

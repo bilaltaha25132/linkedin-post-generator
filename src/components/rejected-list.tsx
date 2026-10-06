@@ -15,13 +15,15 @@ const REASONS: { value: RejectionReason | "all"; label: string }[] = [
   { value: "unreadable", label: "Unreadable" },
 ];
 
-type Finder = "all" | "firecrawl" | "hn" | "rss";
+type Finder = "all" | "firecrawl" | "hn" | "rss" | "papers" | "models";
 
 const FINDER_LABEL: Record<string, string> = {
   search: "Firecrawl search",
   url: "Firecrawl page",
   hn: "Hacker News",
   rss: "RSS",
+  papers: "Research papers",
+  models: "New open models",
 };
 
 const finderOf = (item: RejectedItem): Finder =>
@@ -109,6 +111,8 @@ export function RejectedList({ items }: { items: RejectedItem[] }) {
           <option value="firecrawl">Found by: Firecrawl</option>
           <option value="hn">Found by: Hacker News</option>
           <option value="rss">Found by: RSS</option>
+          <option value="papers">Found by: Research papers</option>
+          <option value="models">Found by: New open models</option>
         </select>
       </div>
 

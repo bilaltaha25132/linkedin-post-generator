@@ -15,6 +15,8 @@ export async function addSource(input: {
     const value = input.value.trim();
     if (!value) throw new Error("Source value is required");
     if (input.kind === "hn" && !/^\d+$/.test(value)) throw new Error("Hacker News needs a minimum number of points");
+    if (input.kind === "papers" && !/^\d+$/.test(value)) throw new Error("Papers need a minimum number of upvotes");
+    if (input.kind === "models" && !/^\d+$/.test(value)) throw new Error("Models need a minimum number of likes");
     if ((input.kind === "rss" || input.kind === "url") && !/^https?:\/\/\S+$/i.test(value)) {
       throw new Error("Enter a full http(s) address");
     }

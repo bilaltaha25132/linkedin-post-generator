@@ -31,7 +31,9 @@ async function handle(req: NextRequest) {
   }
 
   try {
-    const result = await runMonitor();
+    // ?mode=light is the frequent free pass; the daily one leaves it off.
+    const mode = req.nextUrl.searchParams.get("mode") === "light" ? "light" : "full";
+    const result = await runMonitor({ mode });
 
     // WhatsApp digest is best-effort — never let a notification failure fail the scan.
     let notified = 0;
