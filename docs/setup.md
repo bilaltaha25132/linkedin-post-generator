@@ -117,3 +117,16 @@ test. It calls `/api/public/cron/monitor` with the bearer token.
 `?digest=1` for the email digest. Optional tuning in Vercel: `JOBS_MAX_SOURCES_PER_RUN`
 (24), `JOBS_MAX_SCORED_PER_RUN` (30), `JOBS_ALERT_MIN_SCORE` (80),
 `JOBS_DIGEST_MIN_SCORE` (60), `JOBS_BUDGET_MS` (200000).
+
+`.github/workflows/leads.yml` uses the same two secrets and calls
+`/api/public/cron/leads` three times a day. Hacker News and Freelancer.com need
+no keys. Each of these turns on another lane when set in Vercel, and `/leads`
+shows which are on:
+
+- `TAVILY_API_KEY` — [tavily.com](https://tavily.com), 1,000 free searches a
+  month; a pass uses 3.
+- `EXA_API_KEY` — [exa.ai](https://exa.ai), a free monthly credit; a pass uses 2.
+- `REDDIT_CLIENT_ID` and `REDDIT_CLIENT_SECRET` — a "script" app at
+  [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps).
+
+Optional tuning: `LEADS_ALERT_MIN_SCORE` (75), `LEADS_MAX_SCORED_PER_RUN` (20).

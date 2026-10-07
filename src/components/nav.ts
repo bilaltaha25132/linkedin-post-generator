@@ -2,6 +2,7 @@ import {
   Ban,
   Bookmark,
   Briefcase,
+  Handshake,
   Coins,
   MessagesSquare,
   PenLine,
@@ -41,7 +42,10 @@ export const NAV_GROUPS: { title: string; links: NavLink[] }[] = [
   },
   {
     title: "Career",
-    links: [{ href: "/jobs", label: "Jobs", icon: Briefcase }],
+    links: [
+      { href: "/jobs", label: "Jobs", icon: Briefcase },
+      { href: "/leads", label: "Leads", icon: Handshake },
+    ],
   },
   {
     title: "Desk",

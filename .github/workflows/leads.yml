@@ -1,0 +1,21 @@
+name: leads
+
+# The Leads tab's pass: HN, Freelancer.com, and Reddit/Tavily/Exa when their keys
+# are set; contract roles from Jobs; scoring; alerts and follow-up nudges.
+# Three times a day, since the search indexes don't move faster. Same secrets as monitor.yml.
+on:
+  schedule:
+    - cron: "20 3,11,17 * * *"
+  workflow_dispatch: {} # manual "Run workflow" button
+
+jobs:
+  leads:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger leads pass
+        run: |
+          code=$(curl -sS --max-time 330 -o /tmp/body -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/public/cron/leads")
+          echo "HTTP $code"; cat /tmp/body; echo
+          test "$code" = "200"

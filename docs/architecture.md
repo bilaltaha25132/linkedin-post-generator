@@ -274,6 +274,20 @@ tokens and never fetched. Setup and rules: [email-bridge.md](email-bridge.md).
 search on `/jobs`, post search on Engage and Leads); `link_opens` remembers
 when each was last opened.
 
+### Leads
+
+`/leads` lists people who want an AI engineer, as a pipeline (New, In
+progress, Closed) rather than applications. `src/lib/leads/sources.ts` pulls
+the HN "Seeking freelancer" thread, Freelancer.com's public projects API, and,
+when their keys are set, Reddit and the Tavily and Exa indexes of public
+LinkedIn posts (URL and snippet only). Contract roles from Jobs and recruiter
+messages from the email bridge join them. Items older than 14 days, or with no
+sign of AI work, never reach the model. `score.ts` classifies each (noise is
+hidden), scores it 0-100 with caps for bots and unpaid or annotation work, and
+writes an opener in his voice. Marking a lead contacted sets a follow-up six
+days out; `notify.ts` emails strong new leads and nudges that came due. Fresh
+LinkedIn post searches are links he opens himself.
+
 ### Engage
 
 `/engage` drafts comments on other people's LinkedIn posts; he edits and posts
@@ -302,7 +316,8 @@ with LinkedIn search links, and Rounds: the people on his watchlist
 See `supabase/migrations/0001_init.sql`. Tables: `sources`, `discoveries`,
 `posts`, `voice_corpus` (all with a 1024-dim `embedding`), plus `rejections` and
 `usage_events`, and for jobs `job_sources`, `job_profile` and `jobs`
-(`0020_jobs.sql`). RLS is on with no
+(`0020_jobs.sql`). The growth tables (Engage, Leads, network, analytics, the
+email bridge) are in `0022_grow.sql`. RLS is on with no
 policies — only the server-side service-role key can read/write. Similarity
 lookups go through the `match_posts` / `match_voice` SQL functions.
 
