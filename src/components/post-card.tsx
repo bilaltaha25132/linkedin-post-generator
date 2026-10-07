@@ -10,6 +10,7 @@ import { cancelSchedule, publishToLinkedIn, schedulePost, stageCarousel } from "
 import { copyForLinkedIn } from "@/lib/linkedin";
 import { CarouselStudio } from "@/components/carousel-studio";
 import { BlogAttachment } from "@/components/blog-attachment";
+import { PreflightList } from "@/components/preflight-list";
 import type { Post } from "@/lib/db/types";
 
 export function PostCard({ post, index = 0 }: { post: Post; index?: number }) {
@@ -123,6 +124,8 @@ export function PostCard({ post, index = 0 }: { post: Post; index?: number }) {
       ) : (
         <p className="post-body">{post.body}</p>
       )}
+
+      {post.status !== "posted" && <PreflightList body={editing ? draft : post.body} carousel={slides.length > 0} />}
 
       {!editing && (
         <CarouselStudio

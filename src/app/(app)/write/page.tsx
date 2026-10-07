@@ -7,7 +7,8 @@ export const dynamic = "force-dynamic";
 // Enhance runs the writer, a voice edit and a fact-check in turn.
 export const maxDuration = 180;
 
-export default function WritePage() {
+export default async function WritePage({ searchParams }: { searchParams: Promise<{ idea?: string }> }) {
+  const { idea } = await searchParams;
   return (
     <>
       <PageHeader title="Write" eyebrow="Posts">
@@ -15,7 +16,7 @@ export default function WritePage() {
         deserves one. Everything saves to your drafts as you go.
       </PageHeader>
 
-      {supabaseConfigured() ? <Writer /> : <SetupNotice />}
+      {supabaseConfigured() ? <Writer initialIdea={idea?.slice(0, 2000) ?? ""} /> : <SetupNotice />}
     </>
   );
 }

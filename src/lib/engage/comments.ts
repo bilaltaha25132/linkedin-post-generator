@@ -2,6 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 
+import { embedTopStories } from "@/lib/discoveries/embed";
 import { chatJSON } from "@/lib/llm/client";
 import { embed } from "@/lib/llm/embeddings";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -72,6 +73,8 @@ export async function draftComments(capturedId: string): Promise<DraftedComment[
 
   let story: Story | null = null;
   if (embedding) {
+    // Scans don't embed stories, so the strongest recent ones are embedded here first.
+    await embedTopStories({ hours: 72, limit: 12 });
     const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
     const { data } = await db.rpc("match_discoveries", { query_embedding: embedding, match_count: 1, since });
     const top = (data as (Story & { similarity: number })[] | null)?.[0];

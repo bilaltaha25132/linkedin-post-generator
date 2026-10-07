@@ -4,6 +4,7 @@ import {
   Briefcase,
   Handshake,
   Coins,
+  Compass,
   MessagesSquare,
   PenLine,
   Radar,
@@ -38,7 +39,10 @@ export const NAV_GROUPS: { title: string; links: NavLink[] }[] = [
   },
   {
     title: "Grow",
-    links: [{ href: "/engage", label: "Engage", icon: MessagesSquare }],
+    links: [
+      { href: "/plan", label: "Plan", icon: Compass },
+      { href: "/engage", label: "Engage", icon: MessagesSquare },
+    ],
   },
   {
     title: "Career",

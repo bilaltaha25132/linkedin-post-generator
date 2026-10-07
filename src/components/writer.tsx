@@ -15,9 +15,10 @@ const MIN_SAVE_CHARS = 20;
 
 const TAB_LABELS = ["Your draft", "Polish", "Rewrite"];
 
-export function Writer() {
+/** `initialIdea` comes from a "Post this next" suggestion; it isn't saved until he edits it. */
+export function Writer({ initialIdea = "" }: { initialIdea?: string }) {
   const [pending, startTransition] = useTransition();
-  const [body, setBody] = useState("");
+  const [body, setBody] = useState(initialIdea);
   const [guidance, setGuidance] = useState("");
   // versions[0] is the text as it stood before enhancing; the rest are the writer's.
   const [versions, setVersions] = useState<string[]>([]);
@@ -29,7 +30,7 @@ export function Writer() {
   const [postId, setPostId] = useState<string | null>(null);
 
   const postIdRef = useRef<string | null>(null);
-  const lastSavedRef = useRef("");
+  const lastSavedRef = useRef(initialIdea);
   // Saves run one after another, so a slow first save can't race a second one
   // into creating a duplicate draft.
   const saveChainRef = useRef<Promise<void>>(Promise.resolve());

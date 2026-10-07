@@ -130,13 +130,13 @@ create table if not exists pillars (
 insert into pillars (name, description, target_share, position)
 select * from (values
   ('AI engineering in practice',
-   'RAG, agents, evals, cost and latency, pgvector, production failures and fixes, how to build LLM systems that work.',
+   'How he builds LLM systems that hold up in production: RAG pipelines, agents and tool use, evals, retrieval quality, cost and latency, pgvector, prompts, and the failures he hit and fixed. Hands-on lessons, not news.',
    0.40::real, 1),
   ('AI news with an engineer''s take',
-   'New model releases, research papers, tooling launches and benchmarks, and what they change for people building with AI.',
+   'A new model, paper, benchmark or tool just came out: release notes, benchmark tables, model cards, pricing, open weights, and his read on what it changes for people building with AI.',
    0.35::real, 2),
   ('Build in public and career',
-   'His own projects and client work, numbers from what he shipped, lessons from working remotely for global teams, career in AI engineering.',
+   'His own projects and client work, what he shipped and the numbers from it, Signal Desk, working remotely from Karachi for teams in the Gulf, UK and US, and hiring and careers in AI engineering.',
    0.25::real, 3)
 ) as seed(name, description, target_share, position)
 where not exists (select 1 from pillars);

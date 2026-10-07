@@ -304,6 +304,31 @@ to comments on his own posts (`engagement_events`), the day's top wire topics
 with LinkedIn search links, and Rounds: the people on his watchlist
 (`watch_people`), most overdue first, each linking to their recent activity.
 
+### Plan
+
+`/plan` answers "what should I post next?". `src/lib/plan/next.ts` embeds the
+week's strongest wire stories on demand (`embedTopStories`), gives each its
+nearest pillar (`discovery_pillars`, `0024_strategist.sql`), and ranks them by
+wire score, freshness, pillar fit, a boost for a pillar missing from his last
+six posts, and skills his strong job matches ask for. Follow-ups to a post that
+reached 1.5x his median, a carousel repurpose of a strong text post from 3-6
+weeks ago, and a build-in-public nudge (one in four posts) join the list, and
+each suggestion gets the next free Tue-Thu 6 pm PKT slot (`slot.ts`). If fewer
+than 8 of his last 10 posts sit within `ON_PILLAR` (0.6) of a pillar, only
+on-pillar ideas show.
+
+His numbers come from LinkedIn's own exports, parsed in the browser with fflate
+(`parse.ts`): the analytics .xlsx (account or single post) and the data archive
+.zip (`Shares.csv`, every post he has written). `import.ts` matches the three ID
+styles (activity URL, share URN, our publisher's URN) by URL, then URN, then
+day plus text, embeds imported posts and assigns pillars (`assign_pillars`).
+`metrics.ts` reports reach as a multiple of his trailing-90-day median, with
+every bucket showing its n and anything under five marked weak. Pillars are
+edited on the page; changing a description re-embeds it and re-sorts every
+post. `preflight.ts` runs quiet checks (length, hook, hashtags, links, bait,
+save-worthiness, dashes, generated-sounding phrases) under every unposted draft,
+and cadence checks (24h, four a week, same format three times) on scheduled ones.
+
 ## Layers
 
 - `src/lib/<domain>/` — `queries.ts` (reads, `server-only`), `actions.ts` (`"use server"` mutations). Mirrors mizan.
@@ -317,7 +342,8 @@ See `supabase/migrations/0001_init.sql`. Tables: `sources`, `discoveries`,
 `posts`, `voice_corpus` (all with a 1024-dim `embedding`), plus `rejections` and
 `usage_events`, and for jobs `job_sources`, `job_profile` and `jobs`
 (`0020_jobs.sql`). The growth tables (Engage, Leads, network, analytics, the
-email bridge) are in `0022_grow.sql`. RLS is on with no
+email bridge) are in `0022_grow.sql`; `0024_strategist.sql` adds the pillar
+functions. RLS is on with no
 policies — only the server-side service-role key can read/write. Similarity
 lookups go through the `match_posts` / `match_voice` SQL functions.
 
@@ -342,5 +368,8 @@ catalogue and would repeat them each pass. Duplicates aren't logged either.
   it".
 - Discussion is captured once, at ingest. A thread that grows afterwards isn't
   refreshed.
+- Plan has no topic clusters of his posts, release-day carousel skeletons,
+  series tracking or newsletter meter yet, and pre-flight doesn't compare a
+  draft with his profile. Format and weekday tables need three posts per bucket.
 - Post quality depends on the voice corpus being populated — run
   `scripts/import-voice.mjs` (see [setup](setup.md)).
