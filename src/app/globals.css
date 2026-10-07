@@ -823,6 +823,21 @@ a.brand-link:hover {
   display: grid;
   gap: 12px;
 }
+.stack-xs {
+  display: grid;
+  gap: 6px;
+}
+.list-plain {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.truncate {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .row {
   display: flex;
   align-items: center;

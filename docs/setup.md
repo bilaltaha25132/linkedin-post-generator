@@ -68,6 +68,11 @@ Create the LinkedIn developer app and add `LINKEDIN_CLIENT_ID`,
 Connect LinkedIn**. Locally, run the dev server on port 3000: that's the only
 localhost callback registered with LinkedIn.
 
+### Optional: the email bridge
+
+Forwards LinkedIn's emails (job alerts, comments, invitations, messages) from
+your Gmail. Add `EMAIL_INGEST_SECRET` and follow [email-bridge.md](email-bridge.md).
+
 Scheduled posts are sent by `.github/workflows/publish.yml` every 10 minutes,
 with the same `APP_URL` and `CRON_SECRET` secrets as the other workflows.
 GitHub can start scheduled runs late, so a post goes out within about 10 to 20

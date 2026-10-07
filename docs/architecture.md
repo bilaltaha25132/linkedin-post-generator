@@ -260,6 +260,20 @@ The profile it scores against is the single `job_profile` row, edited on
 `/settings`. New company boards are added from the Boards panel on `/jobs` by
 pasting a careers URL; the ATS is detected and test-pulled before saving.
 
+### Email bridge
+
+LinkedIn's own emails come in through `/api/public/ingest/email`, pushed every
+10 minutes by an Apps Script on the owner's Gmail and verified with HMAC
+(`EMAIL_INGEST_SECRET`). Raw emails are stored, then `src/lib/email/parse.ts`
+turns them into job cards (`ingestJobs`, source `linkedin_alert`, scored in
+the same request), engagement events and fresh posts for Engage, connections,
+and recruiter-message leads. Links are stored cleaned of tracking and login
+tokens and never fetched. Setup and rules: [email-bridge.md](email-bridge.md).
+
+`src/lib/links/deep.ts` builds the LinkedIn search links the app shows (job
+search on `/jobs`, post search on Engage and Leads); `link_opens` remembers
+when each was last opened.
+
 ## Layers
 
 - `src/lib/<domain>/` — `queries.ts` (reads, `server-only`), `actions.ts` (`"use server"` mutations). Mirrors mizan.

@@ -106,4 +106,20 @@ export const env = {
     digestMinScore: num("JOBS_DIGEST_MIN_SCORE", 60),
     budgetMs: num("JOBS_BUDGET_MS", 200_000),
   }),
+
+  // HMAC key shared with the Gmail Apps Script (scripts/gmail-bridge.gs).
+  emailIngestSecret: () => req("EMAIL_INGEST_SECRET"),
+
+  // Optional search keys for Leads and Engage. Each lane is skipped when its key is missing.
+  search: () => ({
+    tavilyKey: process.env.TAVILY_API_KEY ?? "",
+    exaKey: process.env.EXA_API_KEY ?? "",
+    redditId: process.env.REDDIT_CLIENT_ID ?? "",
+    redditSecret: process.env.REDDIT_CLIENT_SECRET ?? "",
+  }),
+
+  leads: () => ({
+    alertMinScore: num("LEADS_ALERT_MIN_SCORE", 75),
+    maxScoredPerRun: num("LEADS_MAX_SCORED_PER_RUN", 20),
+  }),
 };

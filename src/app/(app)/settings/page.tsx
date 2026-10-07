@@ -1,9 +1,11 @@
 import { Briefcase, Link2, TriangleAlert } from "lucide-react";
 
+import { EmailBridgePanel } from "@/components/email-bridge-panel";
 import { JobProfileForm } from "@/components/job-profile-form";
 import { LinkedInDisconnect } from "@/components/linkedin-disconnect";
 import { PageHeader } from "@/components/page-header";
 import { SetupNotice } from "@/components/setup-notice";
+import { listRecentEmails, type EmailRow } from "@/lib/email/queries";
 import { getJobProfile } from "@/lib/jobs/queries";
 import type { JobProfile } from "@/lib/jobs/types";
 import { RECONNECT_WINDOW_DAYS, daysLeft, getLinkedInAccount, type LinkedInAccount } from "@/lib/publish/queries";
@@ -35,8 +37,16 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
   let loadError: string | null = null;
   let profile: JobProfile | null = null;
   let profileError: string | null = null;
+  let emails: EmailRow[] = [];
+  let emailError: string | null = null;
   if (configured) {
-    const [linkedIn, jobProfile] = await Promise.allSettled([getLinkedInAccount(), getJobProfile()]);
+    const [linkedIn, jobProfile, recentEmails] = await Promise.allSettled([
+      getLinkedInAccount(),
+      getJobProfile(),
+      listRecentEmails(),
+    ]);
+    if (recentEmails.status === "fulfilled") emails = recentEmails.value;
+    else emailError = errorText(recentEmails.reason);
     if (linkedIn.status === "fulfilled") account = linkedIn.value;
     else loadError = errorText(linkedIn.reason);
     if (jobProfile.status === "fulfilled") profile = jobProfile.value;
@@ -117,6 +127,12 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
               </p>
             )}
           </section>
+
+          <EmailBridgePanel
+            emails={emails}
+            error={emailError}
+            configured={Boolean(process.env.EMAIL_INGEST_SECRET)}
+          />
         </div>
       )}
     </>

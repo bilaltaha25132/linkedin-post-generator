@@ -110,8 +110,20 @@ interface Classified {
 }
 
 async function pullSource(source: JobSource): Promise<{ pulled: number; added: number; closed: number }> {
-  const db = supabaseAdmin();
   const { jobs, complete } = await PULLERS[source.kind](source);
+  return ingestJobs(source, jobs, complete);
+}
+
+/**
+ * Filters, dedups and stores one source's postings, and marks the source pulled.
+ * `complete` means the list is every open role on that board, so missing ones closed.
+ */
+export async function ingestJobs(
+  source: JobSource,
+  jobs: RawJob[],
+  complete: boolean,
+): Promise<{ pulled: number; added: number; closed: number }> {
+  const db = supabaseAdmin();
   const ats = ATS_KINDS.has(source.kind);
   // IDs are only unique within one company's board.
   const idOf = (raw: RawJob) => (ats ? `${source.token}:${raw.sourceId}` : raw.sourceId);
@@ -283,7 +295,7 @@ interface QueuedJob {
 }
 
 /** Score unscored open roles, his top region first, then the newest. */
-async function scoreBacklog(limit: number, deadline: number): Promise<{ scored: number; errors: string[] }> {
+export async function scoreBacklog(limit: number, deadline: number): Promise<{ scored: number; errors: string[] }> {
   const db = supabaseAdmin();
   const profile = await getJobProfile();
   const regions = [...profile.regions, ...ALL_REGIONS.filter((r) => !profile.regions.includes(r))];
