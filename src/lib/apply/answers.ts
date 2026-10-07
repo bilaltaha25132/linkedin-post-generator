@@ -130,6 +130,10 @@ ${profileFacts(ctx.profile)}
 Rules:
 - Read the whole job ad first. If the ad or a question sets a test ("start your answer with the phrase ..."), follow it exactly.
 - Choice questions: answer only from the facts. If the facts don't settle it, answer null and say in flag what he must decide.
+- Select-all questions: pick only the options the facts show; name in flag any he may want to add himself.
+- Questions about him that the facts don't cover (nationality, people he knows there, working style, habits): give your best guess and always flag "Confirm".
+- A question that asks for a specific event (a bug, a failure, a conflict, "a time when"): tell only an event the facts describe, with only the details they give. If the facts hold no such event, answer null and flag "Needs your real story", naming the project it could come from. Never make up what happened, a cause, or a lesson.
+- "What would you do differently" may suggest changes, but anything stated as having happened must be in the facts.
 - Yes/no about a skill or experience: yes only if the facts show it; otherwise "No" with flag "honest gap".
 - Free text: answer the question in the first sentence; one concrete story with a real number from the facts, tied to one specific thing in the ad; 80 to 150 words unless a limit is given (stay under it). If he lacks what's asked, answer honestly with the nearest real experience and flag "adjacent experience".
 - Short text fields: a short plain answer.

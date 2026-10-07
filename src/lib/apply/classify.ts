@@ -69,6 +69,8 @@ export function classify(field: Pick<FormField, "label" | "key" | "type">): Kind
   const short = label.length <= 60 && field.type !== "textarea";
   for (const [kind, re] of RULES) {
     if (kind !== "yours" && CONTACT.has(kind) && !short) continue;
+    // "Do you have 3+ years of ...?" wants yes or no, not his count of years.
+    if (kind === "years" && /^(do|does|have|are|is)\b/i.test(label)) continue;
     if (re.test(label) || (kind === "yours" && /^(longitude|latitude)$/i.test(field.key))) return kind;
   }
   if (field.type === "file") return "resume";
