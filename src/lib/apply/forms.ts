@@ -249,7 +249,15 @@ const lever: Reader = async ({ board, id }) => {
 };
 
 const workable: Reader = async ({ id }) => {
-  type F = { id: string; label: string; type: string; required: boolean; maxLength?: number; options?: { value: string }[] };
+  type F = {
+    id: string;
+    label: string;
+    type: string;
+    required: boolean;
+    maxLength?: number;
+    options?: { value: string }[];
+    singleOption?: boolean;
+  };
   const sections = (await (await get(`https://apply.workable.com/api/v1/jobs/${encodeURIComponent(id)}/form`)).json()) as { fields: F[] }[];
   const TYPES: Record<string, FieldType> = {
     text: "text",
@@ -267,7 +275,8 @@ const workable: Reader = async ({ id }) => {
     s.fields.map((f) => ({
       key: f.id,
       label: f.label,
-      type: TYPES[f.type] ?? "text",
+      // "multiple" is any choice list; singleOption makes it pick-one.
+      type: f.type === "multiple" && f.singleOption ? ("select" as const) : (TYPES[f.type] ?? "text"),
       required: f.required,
       ...(f.maxLength && f.maxLength < 10_000 ? { maxLength: f.maxLength } : {}),
       ...(f.options?.length ? { options: f.options.map((o) => o.value.trim()) } : {}),

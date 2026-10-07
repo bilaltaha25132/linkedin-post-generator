@@ -570,12 +570,15 @@ export function FormStep({
   const [notices, setNotices] = useState(initialNotices);
   const [pasted, setPasted] = useState("");
   const [showPaste, setShowPaste] = useState(!canRead);
+  // Each draft remounts the rows; they hold their own edit state.
+  const [round, setRound] = useState(0);
 
   const prepare = (text?: string) =>
     run(
       () => prepareAnswers(jobId, text),
       (d) => {
         setAnswers(d.answers);
+        setRound((r) => r + 1);
         setNotices(d.form.notices);
         setShowPaste(false);
       },
@@ -622,7 +625,7 @@ export function FormStep({
             Paste each answer into the form yourself. Nothing here is sent anywhere. Edits save when you leave a box.
           </p>
           {answers.map((a) => (
-            <AnswerRow key={a.key} jobId={jobId} a={a} />
+            <AnswerRow key={`${round}:${a.key}`} jobId={jobId} a={a} />
           ))}
         </div>
       )}
