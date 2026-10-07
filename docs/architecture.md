@@ -68,11 +68,23 @@ Browser (behind password gate, src/proxy.ts)
   │       └─ fact-check pass → strips specifics his draft doesn't contain
   │     autosaves to drafts; carousel built from the post body on request
   ├─ /library     drafts + posted; edit / copy / mark posted; every card can
-  │               build, regenerate or edit its carousel
+  │               build, regenerate or edit its carousel, and Publish it
+  │     Publish (src/lib/publish, components/post-card.tsx), one confirm per post:
+  │       ├─ carousel: jsPDF in the browser → signed upload to the private
+  │       │  `outbox` bucket (Vercel caps request bodies at 4.5 MB) → server
+  │       │  sends it to LinkedIn's Documents API, then deletes it
+  │       ├─ POST /rest/posts as the member, commentary escaped for LinkedIn's
+  │       │  "little" format (toCommentary), blank lines kept (forLinkedIn)
+  │       └─ stores the share URN (posts.linkedin_urn) and marks it posted
   ├─ /posted      only what's been published, newest first
   ├─ /usage       DeepSeek balance (live, /user/balance) + token usage;
   │               Firecrawl credits left per key (live, /v2/team/credit-usage)
-  └─ /sources     manage what the monitor watches
+  ├─ /sources     manage what the monitor watches
+  └─ /settings    LinkedIn connection: /api/linkedin/connect → LinkedIn consent →
+                  /api/linkedin/callback (state cookie check, token exchange,
+                  AES-GCM sealed with TOKEN_ENCRYPTION_KEY into `linkedin_auth`).
+                  Tokens last 60 days with no refresh; every page shows a
+                  reconnect notice in the last 5 days.
 
 After every scan the cron emails each breaking story on its own (score 80+, or a
 launch at 75+, found in the last 12 hours; at most 3 a pass), so Bilal can post

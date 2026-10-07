@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Copy, Check, Pencil, Trash2, Send, ExternalLink, Star } from "lucide-react";
+import { Copy, Check, Pencil, Trash2, Send, ExternalLink, Star, Share2, TriangleAlert } from "lucide-react";
 
+import { unwrap } from "@/lib/action-result";
+import { titleFromCover } from "@/lib/carousel/title";
 import { deletePost, markPosted, setPostQueued, updatePostBody } from "@/lib/posts/actions";
+import { publishToLinkedIn, stageCarousel } from "@/lib/publish/actions";
 import { copyForLinkedIn } from "@/lib/linkedin";
 import { CarouselStudio } from "@/components/carousel-studio";
 import { BlogAttachment } from "@/components/blog-attachment";
@@ -15,6 +18,11 @@ export function PostCard({ post, index = 0 }: { post: Post; index?: number }) {
   const [draft, setDraft] = useState(post.body);
   const [copied, setCopied] = useState(false);
   const [postingUrl, setPostingUrl] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [withCarousel, setWithCarousel] = useState(true);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const slides = post.carousel ?? [];
+  const attachCarousel = withCarousel && slides.length > 0;
 
   const copy = async () => {
     await copyForLinkedIn(post.body);
@@ -32,6 +40,32 @@ export function PostCard({ post, index = 0 }: { post: Post; index?: number }) {
     startTransition(async () => {
       await markPosted(post.id, postingUrl?.trim() || undefined);
       setPostingUrl(null);
+    });
+
+  // The carousel PDF is drawn in the browser (it needs the page's fonts), staged
+  // in private storage, then handed to LinkedIn by the server.
+  const publish = () =>
+    startTransition(async () => {
+      setPublishError(null);
+      try {
+        let carouselPath: string | undefined;
+        if (attachCarousel) {
+          const { path, uploadUrl } = unwrap(await stageCarousel(post.id));
+          const { buildCarouselPdf } = await import("@/lib/carousel/pdf");
+          const pdf = await buildCarouselPdf(slides, post.carousel_title?.trim() || titleFromCover(slides));
+          const res = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": "application/pdf" },
+            body: pdf.output("blob"),
+          });
+          if (!res.ok) throw new Error(`Couldn't upload the carousel PDF (HTTP ${res.status}). Nothing was posted.`);
+          carouselPath = path;
+        }
+        unwrap(await publishToLinkedIn(post.id, carouselPath));
+        setPublishing(false);
+      } catch (err) {
+        setPublishError(err instanceof Error ? err.message : String(err));
+      }
     });
 
   const statusChip =
@@ -134,9 +168,24 @@ export function PostCard({ post, index = 0 }: { post: Post; index?: number }) {
             )}
             {post.status !== "posted" && (
               <button
+                className="btn"
+                aria-expanded={publishing}
+                onClick={() => {
+                  setPublishing(!publishing);
+                  setPostingUrl(null);
+                }}
+              >
+                <Share2 aria-hidden /> Publish
+              </button>
+            )}
+            {post.status !== "posted" && (
+              <button
                 className="btn btn-ghost"
                 aria-expanded={postingUrl !== null}
-                onClick={() => setPostingUrl(postingUrl === null ? "" : null)}
+                onClick={() => {
+                  setPostingUrl(postingUrl === null ? "" : null);
+                  setPublishing(false);
+                }}
               >
                 <Send aria-hidden /> Mark posted
               </button>
@@ -162,6 +211,35 @@ export function PostCard({ post, index = 0 }: { post: Post; index?: number }) {
           </>
         )}
       </footer>
+
+      {publishing && !editing && (
+        <div className="stack-sm">
+          <p className="small">
+            Publish this post to your LinkedIn profile now
+            {attachCarousel ? `, with its ${slides.length}-slide carousel as a PDF` : ""}? It goes out publicly, once.
+          </p>
+          {slides.length > 0 && (
+            <label className="row small">
+              <input type="checkbox" checked={withCarousel} onChange={(e) => setWithCarousel(e.target.checked)} />
+              Attach the carousel
+            </label>
+          )}
+          <div className="row">
+            <button className="btn btn-primary" onClick={publish} disabled={pending}>
+              <Share2 aria-hidden /> {pending ? "Publishing…" : "Publish to LinkedIn"}
+            </button>
+            <button className="btn btn-ghost" onClick={() => setPublishing(false)} disabled={pending}>
+              Cancel
+            </button>
+          </div>
+          {publishError && (
+            <p className="notice notice-danger" role="alert">
+              <TriangleAlert aria-hidden />
+              <span>{publishError}</span>
+            </p>
+          )}
+        </div>
+      )}
 
       {postingUrl !== null && !editing && (
         <div className="row" style={{ flexWrap: "nowrap" }}>

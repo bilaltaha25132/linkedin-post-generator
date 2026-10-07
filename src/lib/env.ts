@@ -54,6 +54,14 @@ export const env = {
   authSecret: () => req("AUTH_SECRET"),
   cronSecret: () => req("CRON_SECRET"),
 
+  // LinkedIn developer app (Share on LinkedIn + OpenID Connect). The encryption
+  // key, 32 random bytes in base64, seals the member's token at rest.
+  linkedin: () => ({
+    clientId: req("LINKEDIN_CLIENT_ID"),
+    clientSecret: req("LINKEDIN_CLIENT_SECRET"),
+    encryptionKey: req("TOKEN_ENCRYPTION_KEY"),
+  }),
+
   // Email digest via Resend. Unconfigured (no key/recipient) = notifications off.
   email: () => ({
     apiKey: process.env.RESEND_API_KEY ?? "",

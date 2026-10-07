@@ -1,4 +1,16 @@
-import { Ban, Bookmark, Coins, PenLine, Radar, Radio, Send, SquarePen, Star, type LucideIcon } from "lucide-react";
+import {
+  Ban,
+  Bookmark,
+  Coins,
+  PenLine,
+  Radar,
+  Radio,
+  Send,
+  Settings,
+  SquarePen,
+  Star,
+  type LucideIcon,
+} from "lucide-react";
 
 export type NavLink = { href: string; label: string; icon: LucideIcon };
 
@@ -26,6 +38,7 @@ export const NAV_GROUPS: { title: string; links: NavLink[] }[] = [
     links: [
       { href: "/sources", label: "Sources", icon: Radar },
       { href: "/usage", label: "Usage", icon: Coins },
+      { href: "/settings", label: "Settings", icon: Settings },
     ],
   },
 ];

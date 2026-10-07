@@ -35,6 +35,12 @@ LLM_API_KEY=sk-...your DeepSeek key...
    (`0001_init.sql`, then `0002_seed_sources.sql`). `0001` enables `pgvector`,
    creates the tables, and adds the `match_*` functions.
 
+   Or set `SUPABASE_DB_URL` and run `node --env-file=.env.local scripts/migrate.mjs`,
+   which applies them all (they're idempotent). The direct `db.<ref>.supabase.co`
+   host is IPv6-only; on an IPv4-only network use the **Session pooler** URI from
+   Supabase → Connect instead (user `postgres.<ref>`, host
+   `aws-0-<region>.pooler.supabase.com`, port 5432).
+
 ## 3. Load your voice
 
 ```
@@ -53,6 +59,14 @@ Carousels render in Season Sans when it has been uploaded to the private
 ```
 node --env-file=.env.local scripts/upload-brand-font.mjs path/to/font.woff2
 ```
+
+### Optional: publishing to LinkedIn
+
+Create the LinkedIn developer app and add `LINKEDIN_CLIENT_ID`,
+`LINKEDIN_CLIENT_SECRET` and `TOKEN_ENCRYPTION_KEY`
+([growth/linkedin-setup.md](growth/linkedin-setup.md)), then **Settings →
+Connect LinkedIn**. Locally, run the dev server on port 3000: that's the only
+localhost callback registered with LinkedIn.
 
 ## 4. Run
 
