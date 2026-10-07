@@ -73,6 +73,13 @@ localhost callback registered with LinkedIn.
 Forwards LinkedIn's emails (job alerts, comments, invitations, messages) from
 your Gmail. Add `EMAIL_INGEST_SECRET` and follow [email-bridge.md](email-bridge.md).
 
+### Optional: sharing posts into Engage
+
+On Android or desktop Chrome, install the deployed app (browser menu, Install
+app); it then appears in LinkedIn's share sheet and opens `/share`. On desktop,
+the bookmarklet on `/engage` does the same with the highlighted post text. On
+iPhone, a Shortcut that opens `<APP_URL>/share?url=<shared URL>` works.
+
 Scheduled posts are sent by `.github/workflows/publish.yml` every 10 minutes,
 with the same `APP_URL` and `CRON_SECRET` secrets as the other workflows.
 GitHub can start scheduled runs late, so a post goes out within about 10 to 20

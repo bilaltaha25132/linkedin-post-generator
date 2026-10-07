@@ -3,6 +3,7 @@ import {
   Bookmark,
   Briefcase,
   Coins,
+  MessagesSquare,
   PenLine,
   Radar,
   Radio,
@@ -35,6 +36,10 @@ export const NAV_GROUPS: { title: string; links: NavLink[] }[] = [
     ],
   },
   {
+    title: "Grow",
+    links: [{ href: "/engage", label: "Engage", icon: MessagesSquare }],
+  },
+  {
     title: "Career",
     links: [{ href: "/jobs", label: "Jobs", icon: Briefcase }],
   },
@@ -63,6 +68,7 @@ export function isActive(href: string, pathname: string): boolean {
 /** Breadcrumb trail for the top bar. The draft page belongs to the feed. */
 export function crumbsFor(pathname: string): { label: string; href?: string }[] {
   if (pathname.startsWith("/generate/")) return [{ label: "Feed", href: "/" }, { label: "Draft" }];
+  if (pathname.startsWith("/share")) return [{ label: "Engage", href: "/engage" }, { label: "Share" }];
   const link = NAV_GROUPS.flatMap((g) => g.links).find((l) => isActive(l.href, pathname));
   return [{ label: link?.label ?? "Signal Desk" }];
 }

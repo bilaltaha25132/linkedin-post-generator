@@ -274,6 +274,22 @@ tokens and never fetched. Setup and rules: [email-bridge.md](email-bridge.md).
 search on `/jobs`, post search on Engage and Leads); `link_opens` remembers
 when each was last opened.
 
+### Engage
+
+`/engage` drafts comments on other people's LinkedIn posts; he edits and posts
+them himself. Nothing reads LinkedIn: a post arrives with its text through the
+share sheet (the PWA `share_target` in `src/app/manifest.ts` opens `/share`),
+the bookmarklet, a paste, or a "new post" email from someone whose bell he
+rang. `src/lib/engage/comments.ts` embeds the post, matches it to a wire story
+(`match_discoveries`, `0023_match_discoveries.sql`), and writes up to four
+shapes (field note, counterpoint, question, from the source) grounded in
+`AUTHOR_BIO`. A second, utility-model pass scores each on a 12-point rubric,
+with hard fails (dashes, links, hashtags, more than one question, under 15
+words) checked in code too; `PASS_SCORE` is 9. The page also carries replies
+to comments on his own posts (`engagement_events`), the day's top wire topics
+with LinkedIn search links, and Rounds: the people on his watchlist
+(`watch_people`), most overdue first, each linking to their recent activity.
+
 ## Layers
 
 - `src/lib/<domain>/` — `queries.ts` (reads, `server-only`), `actions.ts` (`"use server"` mutations). Mirrors mizan.
@@ -306,6 +322,9 @@ catalogue and would repeat them each pass. Duplicates aren't logged either.
   call. Enterprise ATS (Workday, Oracle, SuccessFactors), Sabbar, the
   Bundesagentur API, Google Jobs and Adzuna aren't pulled.
 
+- Engage can't see a post's age unless the link carries an activity ID, and
+  doesn't know whether a comment was actually posted until he taps "I posted
+  it".
 - Discussion is captured once, at ingest. A thread that grows afterwards isn't
   refreshed.
 - Post quality depends on the voice corpus being populated — run
