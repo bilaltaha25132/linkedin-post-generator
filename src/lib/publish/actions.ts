@@ -4,14 +4,10 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 
 import { attempt, type ActionResult } from "@/lib/action-result";
-import { clampTitle, titleFromCover } from "@/lib/carousel/title";
-import { markPosted } from "@/lib/posts/actions";
-import { createPost, postUrl, revokeToken, toCommentary, uploadDocument } from "@/lib/publish/linkedin-api";
-import { linkedInCredentials } from "@/lib/publish/queries";
+import { revokeToken } from "@/lib/publish/linkedin-api";
+import { getLinkedInAccount, linkedInCredentials } from "@/lib/publish/queries";
+import { OUTBOX, publishPost } from "@/lib/publish/run";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import type { Slide } from "@/lib/llm/prompts";
-
-const OUTBOX = "outbox";
 
 /** A one-time upload URL for the carousel PDF the browser is about to build. */
 export async function stageCarousel(postId: string): Promise<ActionResult<{ path: string; uploadUrl: string }>> {
@@ -24,56 +20,80 @@ export async function stageCarousel(postId: string): Promise<ActionResult<{ path
 }
 
 /**
- * Publishes one post to LinkedIn now, with its staged carousel PDF when given,
- * then marks it posted with the link. Runs only from the confirm step on a post
+ * Publishes one post to LinkedIn now. Runs only from the confirm step on a post
  * card: every post goes out on its own click, as LinkedIn's API terms require.
  */
 export async function publishToLinkedIn(postId: string, carouselPath?: string): Promise<ActionResult<{ url: string }>> {
   if (carouselPath && !carouselPath.startsWith(`${postId}/`)) {
     return { ok: false, error: "That carousel file belongs to another post." };
   }
-  try {
-    return await attempt(() => publish(postId, carouselPath));
-  } finally {
-    // The staged PDF is only a hand-off, whatever the outcome.
-    if (carouselPath) await supabaseAdmin().storage.from(OUTBOX).remove([carouselPath]);
-  }
+  return attempt(() => publishPost(postId, carouselPath));
 }
 
-async function publish(postId: string, carouselPath?: string): Promise<{ url: string }> {
-  const db = supabaseAdmin();
-  const { data: post, error } = await db
-    .from("posts")
-    .select("body,carousel,carousel_title,linkedin_urn")
-    .eq("id", postId)
-    .single();
-  if (error) throw new Error(error.message);
-  if (post.linkedin_urn) throw new Error("This post is already on LinkedIn.");
-  const { token, author } = await linkedInCredentials();
-
-  let document: { urn: string; title: string } | undefined;
-  if (carouselPath) {
-    const { data: pdf, error: downloadError } = await db.storage.from(OUTBOX).download(carouselPath);
-    if (downloadError || !pdf) throw new Error("The carousel PDF didn't reach the server. Try again.");
-    const title = clampTitle(post.carousel_title ?? "") || titleFromCover((post.carousel ?? []) as Slide[]);
-    document = { urn: await uploadDocument(token, author, pdf), title };
+/**
+ * Approves one post to go out at a set time; the publish cron sends it. The
+ * carousel PDF is staged now, since only the browser can draw it.
+ */
+export async function schedulePost(
+  postId: string,
+  at: string,
+  carouselPath?: string,
+): Promise<ActionResult<{ at: string }>> {
+  if (carouselPath && !carouselPath.startsWith(`${postId}/`)) {
+    return { ok: false, error: "That carousel file belongs to another post." };
   }
+  const result = await attempt(async () => {
+    const when = new Date(at);
+    if (Number.isNaN(when.getTime())) throw new Error("Pick a date and time.");
+    if (when.getTime() < Date.now() + 5 * 60_000) throw new Error("Pick a time at least five minutes from now.");
+    const account = await getLinkedInAccount();
+    if (!account) throw new Error("LinkedIn isn't connected yet. Connect it in Settings first.");
+    if (when.getTime() >= new Date(account.expiresAt).getTime()) {
+      throw new Error("The LinkedIn connection expires before then. Reconnect it in Settings, or pick an earlier time.");
+    }
 
-  const urn = await createPost(token, author, toCommentary(post.body as string), document);
-  const url = postUrl(urn);
+    const db = supabaseAdmin();
+    const { data: post, error } = await db
+      .from("posts")
+      .select("linkedin_urn,scheduled_pdf")
+      .eq("id", postId)
+      .single();
+    if (error) throw new Error(error.message);
+    if (post.linkedin_urn) throw new Error("This post is already on LinkedIn.");
 
-  // From here the post is live, so a failure must not invite a second publish.
-  const { error: saveError } = await db.from("posts").update({ linkedin_urn: urn }).eq("id", postId);
-  try {
+    const { error: saveError } = await db
+      .from("posts")
+      .update({ scheduled_at: when.toISOString(), scheduled_pdf: carouselPath ?? null, publish_error: null })
+      .eq("id", postId);
     if (saveError) throw new Error(saveError.message);
-    await markPosted(postId, url);
-  } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
-    throw new Error(
-      `Published to LinkedIn (${url}), but saving that here failed: ${reason}. Don't publish again; use Mark posted with that link.`,
-    );
-  }
-  return { url };
+    if (post.scheduled_pdf) await db.storage.from(OUTBOX).remove([post.scheduled_pdf as string]);
+    revalidatePosts();
+    return { at: when.toISOString() };
+  });
+  // A schedule that didn't save leaves nothing to publish the PDF with.
+  if (!result.ok && carouselPath) await supabaseAdmin().storage.from(OUTBOX).remove([carouselPath]);
+  return result;
+}
+
+export async function cancelSchedule(postId: string): Promise<ActionResult<null>> {
+  return attempt(async () => {
+    const db = supabaseAdmin();
+    const { data: post, error } = await db.from("posts").select("scheduled_pdf").eq("id", postId).single();
+    if (error) throw new Error(error.message);
+    const { error: saveError } = await db
+      .from("posts")
+      .update({ scheduled_at: null, scheduled_pdf: null, publish_error: null })
+      .eq("id", postId);
+    if (saveError) throw new Error(saveError.message);
+    if (post.scheduled_pdf) await db.storage.from(OUTBOX).remove([post.scheduled_pdf as string]);
+    revalidatePosts();
+    return null;
+  });
+}
+
+function revalidatePosts() {
+  revalidatePath("/library");
+  revalidatePath("/queue");
 }
 
 /** Forgets the token here and revokes it at LinkedIn. */

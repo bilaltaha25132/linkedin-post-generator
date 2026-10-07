@@ -1,0 +1,22 @@
+name: publish
+
+# Publishes posts whose scheduled time has come. Each one was approved on its
+# own card in Signal Desk; this only sends it. Same secrets as monitor.yml.
+on:
+  schedule:
+    # GitHub may start a scheduled run several minutes late, so posts go out
+    # within about 10-20 minutes of their time.
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {} # manual "Run workflow" button
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish due posts
+        run: |
+          code=$(curl -sS --max-time 150 -o /tmp/body -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/public/cron/publish")
+          echo "HTTP $code"; cat /tmp/body; echo
+          test "$code" = "200"

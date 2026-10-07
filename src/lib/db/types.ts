@@ -72,6 +72,8 @@ export interface Post {
   external_url: string | null;
   created_at: string;
   posted_at: string | null;
+  scheduled_at: string | null;
+  publish_error: string | null;
 }
 
 export type VoiceKind = "linkedin" | "blog" | "work" | "note";

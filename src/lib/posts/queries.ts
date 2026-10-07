@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import type { Post, PostStatus } from "@/lib/db/types";
 
 const COLUMNS =
-  "id,discovery_id,body,variants,status,carousel,carousel_title,blog,external_url,created_at,posted_at";
+  "id,discovery_id,body,variants,status,carousel,carousel_title,blog,external_url,created_at,posted_at,scheduled_at,publish_error";
 
 export async function listPosts(status?: PostStatus): Promise<Post[]> {
   // Posted work reads in publishing order; a draft written long ago can be posted today.

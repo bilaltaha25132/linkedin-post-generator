@@ -75,7 +75,13 @@ Browser (behind password gate, src/proxy.ts)
   │       │  sends it to LinkedIn's Documents API, then deletes it
   │       ├─ POST /rest/posts as the member, commentary escaped for LinkedIn's
   │       │  "little" format (toCommentary), blank lines kept (forLinkedIn)
-  │       └─ stores the share URN (posts.linkedin_urn) and marks it posted
+  │       ├─ stores the share URN (posts.linkedin_urn) and marks it posted
+  │       └─ or Schedule: the same confirm with a time; the PDF is staged
+  │          now (posts.scheduled_pdf) and .github/workflows/publish.yml
+  │          calls /api/public/cron/publish every 10 minutes (publishDue in
+  │          src/lib/publish/run.ts). Each due post is claimed by clearing its
+  │          schedule, so it can't go out twice; a failure isn't retried, it's
+  │          shown on the card (posts.publish_error) and emailed
   ├─ /posted      only what's been published, newest first
   ├─ /usage       DeepSeek balance (live, /user/balance) + token usage;
   │               Firecrawl credits left per key (live, /v2/team/credit-usage)
