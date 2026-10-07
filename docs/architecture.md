@@ -379,8 +379,13 @@ four steps:
    every edit with `check.ts` (no number, tool or degree outside the ledger, no
    dashes, length within 15%), applies the passing ones as span edits on the
    original source, and reports a diff, keyword coverage and gaps. He keeps or
-   declines each edit, accepts, then downloads the .tex or opens it in Overleaf
-   to compile. Versions are stored in `resume_versions`.
+   declines each edit, accepts, then downloads the PDF, the .tex, or opens it
+   in Overleaf. Versions are stored in `resume_versions`. The PDF is built by
+   `pdf.ts` (route `/api/apply/resume/[versionId]/pdf`): Tectonic (XeTeX),
+   fetched from GitHub into `/tmp` on a cold start, pulls only the packages
+   the resume uses; the resume itself never leaves the deployment. It comments
+   out Jake's Resume's two pdfTeX-only lines before compiling and halts on any
+   TeX error. A cold build takes up to a minute or more; warm ones are seconds.
 2. **Form.** `forms.ts` reads the form from the ATS's public endpoints
    (Greenhouse, Ashby, Lever, Workable, Recruitee; SmartRecruiters gives only its
    standard fields, since its screening questions need a partner key) or takes
@@ -440,8 +445,8 @@ catalogue and would repeat them each pass. Duplicates aren't logged either.
   call. Enterprise ATS (Workday, Oracle, SuccessFactors), Sabbar, the
   Bundesagentur API, Google Jobs and Adzuna aren't pulled.
 
-- The apply kit doesn't compile PDFs (Tectonic is untested on Vercel), so he
-  compiles in Overleaf. Workday and other enterprise forms take pasted
+- PDF builds run only on the deployed app (Linux x64); locally set
+  `TECTONIC_BIN` to a Tectonic binary. Workday and other enterprise forms take pasted
   questions, and the extension can't fill custom dropdowns (React Select),
   Ashby's yes/no buttons or file inputs.
 

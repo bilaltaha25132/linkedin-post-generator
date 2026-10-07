@@ -39,6 +39,41 @@ function ErrorLine({ error }: { error: string | null }) {
   ) : null;
 }
 
+/** Builds the PDF on the server; a cold build fetches the TeX engine first, so it can take a minute. */
+function PdfButton({ versionId }: { versionId: string }) {
+  const [state, setState] = useState<"idle" | "building">("idle");
+  const [error, setError] = useState<string | null>(null);
+  const build = async () => {
+    setState("building");
+    setError(null);
+    try {
+      const res = await fetch(`/api/apply/resume/${versionId}/pdf`);
+      if (!res.ok) throw new Error((await res.text()) || `The PDF build failed (${res.status}).`);
+      const name = res.headers.get("Content-Disposition")?.match(/filename="([^"]+)"/)?.[1] ?? "resume.pdf";
+      const url = URL.createObjectURL(await res.blob());
+      const a = Object.assign(document.createElement("a"), { href: url, download: name });
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The PDF build failed.");
+    } finally {
+      setState("idle");
+    }
+  };
+  return (
+    <>
+      <button className="btn btn-sm btn-primary" disabled={state === "building"} onClick={build}>
+        <FileText aria-hidden /> {state === "building" ? "Building PDF… up to a minute" : "Download PDF"}
+      </button>
+      {error && (
+        <pre className="notice notice-danger small" role="alert">
+          {error}
+        </pre>
+      )}
+    </>
+  );
+}
+
 function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -531,6 +566,7 @@ export function ResumeStep({ jobId, hasMaster, initial }: { jobId: string; hasMa
 
       {accepted && (
         <div className="plan-actions">
+          <PdfButton versionId={version.id} />
           <a className="btn btn-sm" href={`/api/apply/resume/${version.id}`}>
             <Download aria-hidden /> Download .tex
           </a>
@@ -542,7 +578,7 @@ export function ResumeStep({ jobId, hasMaster, initial }: { jobId: string; hasMa
               <ExternalLink aria-hidden /> Open in Overleaf
             </button>
           </form>
-          <span className="small muted">Compile the PDF there, then attach it to the form.</span>
+          <span className="small muted">Attach the PDF to the form. Open in Overleaf if you want to edit it first.</span>
         </div>
       )}
       <ErrorLine error={error} />

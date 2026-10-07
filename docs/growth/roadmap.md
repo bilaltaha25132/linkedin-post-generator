@@ -69,8 +69,8 @@ checks, per-bullet keep or decline, coverage and gaps, .tex download, Open in
 Overleaf; form reading for Greenhouse, Ashby, Lever and Workable or pasted
 questions; drafted answers with copy buttons; regional cover letters; I
 submitted it). Then (commit 9bb5194) the Recruitee reader, SmartRecruiters'
-standard fields, and the Chrome extension in `extension/`. **Not yet**: the PDF
-compile (Overleaf for now).
+standard fields, and the Chrome extension in `extension/`. Then the in-app PDF
+build with Tectonic (`src/lib/apply/pdf.ts`).
 
 ## Phase 2: Engage
 
