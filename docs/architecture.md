@@ -365,6 +365,38 @@ picked from his own record, and on the first Monday of a month, streak and lane
 progress. `.github/workflows/weekly.yml` calls `/api/public/cron/weekly` at
 04:00 UTC on Mondays, which emails it through Resend (`email.ts`).
 
+### Apply kit
+
+`/resume` holds the master resume's LaTeX (`resume_master`) and the ledger it is
+parsed into (`ledger_roles`, `ledger_bullets`, `ledger_skills`; parser in
+`src/lib/apply/latex.ts`, Jake's Resume and its forks), plus facts he adds by
+hand and his form facts (`candidate_profile`: contact, links, notice, salary per
+region, work authorisation and relocation per country). `/jobs/[id]/apply` runs
+four steps:
+
+1. **Resume.** `tailor.ts` asks the writer model for a plan by short id (reword,
+   reorder, drop, skills order, summary, gaps), never LaTeX. `render.ts` checks
+   every edit with `check.ts` (no number, tool or degree outside the ledger, no
+   dashes, length within 15%), applies the passing ones as span edits on the
+   original source, and reports a diff, keyword coverage and gaps. He keeps or
+   declines each edit, accepts, then downloads the .tex or opens it in Overleaf
+   to compile. Versions are stored in `resume_versions`.
+2. **Form.** `forms.ts` reads the form from the ATS's public endpoints
+   (Greenhouse, Ashby, Lever, Workable) or takes pasted questions.
+   `classify.ts` answers standard fields from form facts in code. Knockout
+   questions are flagged and salary is never guessed. EEO, consent,
+   certification and AI-policy fields are marked as his and never filled.
+   `answers.ts` drafts the rest in one writer call from the ledger (or his bio
+   until a resume is in) and past approved answers (`answer_bank`,
+   `match_answers`), and checks choices against the options.
+3. **Cover letter** in the form the region expects: a short email for the Gulf,
+   an Anschreiben for Germany, a motivation letter for the Netherlands.
+4. **Submit.** He submits on the employer's site himself, then marks it. That
+   moves the job to Applied and saves his written answers to `answer_bank`.
+
+Nothing in the kit submits, clicks or sends anything. Tables are in
+`0026_apply.sql`; the resume never enters the repo or Actions.
+
 ## Layers
 
 - `src/lib/<domain>/` — `queries.ts` (reads, `server-only`), `actions.ts` (`"use server"` mutations). Mirrors mizan.
@@ -379,7 +411,7 @@ See `supabase/migrations/0001_init.sql`. Tables: `sources`, `discoveries`,
 `usage_events`, and for jobs `job_sources`, `job_profile` and `jobs`
 (`0020_jobs.sql`). The growth tables (Engage, Leads, network, analytics, the
 email bridge) are in `0022_grow.sql`; `0024_strategist.sql` adds the pillar
-functions. RLS is on with no
+functions, and `0026_apply.sql` the apply kit's. RLS is on with no
 policies — only the server-side service-role key can read/write. Similarity
 lookups go through the `match_posts` / `match_voice` SQL functions.
 
@@ -398,6 +430,11 @@ catalogue and would repeat them each pass. Duplicates aren't logged either.
 - Jobs don't use embeddings yet; every candidate role costs one utility-model
   call. Enterprise ATS (Workday, Oracle, SuccessFactors), Sabbar, the
   Bundesagentur API, Google Jobs and Adzuna aren't pulled.
+
+- The apply kit doesn't compile PDFs (Tectonic is untested on Vercel), so he
+  compiles in Overleaf. It reads Greenhouse, Ashby, Lever and Workable forms
+  only; others (Recruitee, SmartRecruiters, Workday) take pasted questions. There
+  is no browser extension to fill forms.
 
 - Engage can't see a post's age unless the link carries an activity ID, and
   doesn't know whether a comment was actually posted until he taps "I posted

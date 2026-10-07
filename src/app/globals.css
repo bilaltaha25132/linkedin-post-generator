@@ -2331,3 +2331,71 @@ details.panel > summary {
   background: var(--inset);
   box-shadow: var(--inset-ring);
 }
+
+/* ── Apply kit ───────────────────────────────────────────────────────────── */
+.apply-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px 16px;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+.apply-grid > legend {
+  grid-column: 1 / -1;
+  padding: 0;
+}
+fieldset.stack-xs {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+.apply-diff,
+.apply-answer {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--inset);
+  box-shadow: var(--inset-ring);
+}
+.apply-diff p,
+.apply-answer p {
+  margin: 0;
+}
+.apply-before {
+  font-size: 13.5px;
+  color: var(--ink-muted);
+}
+.apply-after {
+  font-size: 14px;
+  padding-left: 10px;
+  border-left: 2px solid var(--brand-ring);
+}
+.apply-held {
+  font-size: 13.5px;
+  color: var(--ink-muted);
+  text-decoration: line-through;
+}
+.apply-flag {
+  color: var(--warning);
+}
+.apply-answer[data-yours] {
+  background: transparent;
+}
+.apply-ledger li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 0;
+}
+.plan-table .field {
+  min-width: 90px;
+}
+@media (max-width: 639px) {
+  .plan-table {
+    display: block;
+    overflow-x: auto;
+  }
+}

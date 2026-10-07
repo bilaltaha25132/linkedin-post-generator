@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Bookmark, BookmarkCheck, ExternalLink, EyeOff, Send } from "lucide-react";
+import Link from "next/link";
+import { Bookmark, BookmarkCheck, ExternalLink, EyeOff, Send, Wand2 } from "lucide-react";
 
 import { LocalTime } from "@/components/local-time";
 import { SignalScore } from "@/components/signal-score";
@@ -90,6 +91,9 @@ export function JobRow({ job, now }: { job: Job; now: number }) {
         <a href={job.url_apply} target="_blank" rel="noreferrer" className="btn btn-primary">
           <ExternalLink aria-hidden /> Apply
         </a>
+        <Link href={`/jobs/${job.id}/apply`} className="btn btn-ghost">
+          <Wand2 aria-hidden /> Apply kit
+        </Link>
         {job.status === "saved" ? (
           <button className="btn btn-ghost" onClick={() => move("new")} disabled={pending}>
             <BookmarkCheck aria-hidden /> Saved
