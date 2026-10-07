@@ -329,6 +329,14 @@ post. `preflight.ts` runs quiet checks (length, hook, hashtags, links, bait,
 save-worthiness, dashes, generated-sounding phrases) under every unposted draft,
 and cadence checks (24h, four a week, same format three times) on scheduled ones.
 
+### Today
+
+`/today` is the day on one screen (`src/lib/today/queries.ts`): the next
+scheduled post, or the top Plan suggestion with the next free slot; comments
+logged today against the 5-10 target, shared posts with a comment ready,
+rounds due and replies waiting; and new jobs at 80+ and leads at 75+ from the
+last three days, with lead follow-ups due. Each links to the tab that handles it.
+
 ## Layers
 
 - `src/lib/<domain>/` — `queries.ts` (reads, `server-only`), `actions.ts` (`"use server"` mutations). Mirrors mizan.

@@ -13,6 +13,7 @@ import {
   Settings,
   SquarePen,
   Star,
+  CalendarCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -40,6 +41,7 @@ export const NAV_GROUPS: { title: string; links: NavLink[] }[] = [
   {
     title: "Grow",
     links: [
+      { href: "/today", label: "Today", icon: CalendarCheck },
       { href: "/plan", label: "Plan", icon: Compass },
       { href: "/engage", label: "Engage", icon: MessagesSquare },
     ],
@@ -64,9 +66,9 @@ export const NAV_GROUPS: { title: string; links: NavLink[] }[] = [
 /** The destinations pinned to the phone tab bar; the rest sit behind More. */
 export const MOBILE_TABS: NavLink[] = [
   { href: "/", label: "Feed", icon: Radio },
+  { href: "/today", label: "Today", icon: CalendarCheck },
   { href: "/write", label: "Write", icon: SquarePen },
-  { href: "/library", label: "Library", icon: PenLine },
-  { href: "/queue", label: "To post", icon: Star },
+  { href: "/jobs", label: "Jobs", icon: Briefcase },
 ];
 
 export function isActive(href: string, pathname: string): boolean {

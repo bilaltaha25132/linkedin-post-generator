@@ -26,7 +26,7 @@ export function JobRow({ job, now }: { job: Job; now: number }) {
     });
 
   return (
-    <article className="wire-row" data-pending={pending}>
+    <article className="wire-row" data-pending={pending} id={`job-${job.id}`}>
       <SignalScore score={job.score} label="Fit" />
 
       <div style={{ minWidth: 0 }}>
