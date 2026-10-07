@@ -125,6 +125,7 @@ Rules:
 - Short text fields: a short plain answer.
 - His voice: first person, plain words, contractions, no buzzwords ("passionate", "leverage", "cutting-edge", "thrilled"), no em or en dashes, no emojis.
 - Never invent a number, employer, tool, date or credential.
+- Never state relocation, visa, notice period, start date or salary unless FORM FACTS give it.
 
 Return JSON: {"answers": [{"key": "...", "answer": "..." or null, "flag": "..." or null}]} with one entry per question.`,
       user: `JOB: ${job.title} at ${job.company}
@@ -201,6 +202,7 @@ ${style}
 - Say plainly where he's light against the ad if it matters, and what's adjacent.
 - First person, plain words, contractions where natural, no buzzwords, no em or en dashes, no emojis.
 - Never invent a number, employer, tool, date or credential.
+- Never state relocation, visa, notice period, start date or salary unless FORM FACTS give it.
 - Start with "Dear hiring team," (or the hiring manager's name if the ad gives one) and end with his name. No address block, no date. Reply with the letter only.`,
     user: `JOB: ${job.title} at ${job.company}\n\nAD:\n${(job.description ?? "(no description stored)").slice(0, 7000)}`,
   });
