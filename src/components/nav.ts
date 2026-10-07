@@ -15,6 +15,7 @@ import {
   SquarePen,
   Star,
   CalendarCheck,
+  CalendarRange,
   type LucideIcon,
 } from "lucide-react";
 
@@ -44,6 +45,7 @@ export const NAV_GROUPS: { title: string; links: NavLink[] }[] = [
     links: [
       { href: "/today", label: "Today", icon: CalendarCheck },
       { href: "/plan", label: "Plan", icon: Compass },
+      { href: "/week", label: "This week", icon: CalendarRange },
       { href: "/engage", label: "Engage", icon: MessagesSquare },
       { href: "/network", label: "Network", icon: Users },
     ],

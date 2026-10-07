@@ -95,6 +95,9 @@ function mentions(text: string, skill: string): boolean {
   return new RegExp(`(^|[^a-z0-9])${escaped}($|[^a-z0-9])`, "i").test(text);
 }
 
+// Funding and deal news scores well on the wire but rarely makes an engineer's post.
+const BUSINESS_NEWS = /\b(raises?|raised|funding round|series [a-e]\b|valuation|debt raise|ipo|acquires|acquisition|layoffs?|stock|shares (rose|fell))\b/i;
+
 function ageHours(story: StoryRow, now: number): number {
   return (now - Date.parse(story.published_at ?? story.discovered_at)) / 3_600_000;
 }
@@ -151,6 +154,7 @@ export async function postThisNext(input: {
     why.push(`${ago} old, scored ${s.relevance_score} on the wire`);
 
     let score = (s.relevance_score / 100) * freshness(hours) * Math.min(1.2, Math.max(0.6, fit / ON_PILLAR));
+    if (BUSINESS_NEWS.test(s.title)) score *= 0.6;
     if (!lastSix.some((r) => r.pillar_id === s.pillar_id) && recent.length) {
       score *= 1.3;
       why.push(`none of your last ${Math.min(6, recent.length)} posts were ${nameOf.get(s.pillar_id) ?? "this pillar"}`);

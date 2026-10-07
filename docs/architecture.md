@@ -354,6 +354,17 @@ matches ask for, and returns a report card, three headlines, an About rewrite,
 a skills order and the recruiter searches he wouldn't match. `0025_network.sql`
 adds the pacing columns.
 
+### Weekly report
+
+`/week` and the Monday email show the same report (`src/lib/weekly/report.ts`):
+last week's posts with reach against his median, impressions and followers when
+an analytics export is in, recruiter search appearances, the top three Plan
+suggestions, replies and rounds due, people who engaged twice, the strongest new
+jobs and leads, nudges for stale saved roles and lead follow-ups, one experiment
+picked from his own record, and on the first Monday of a month, streak and lane
+progress. `.github/workflows/weekly.yml` calls `/api/public/cron/weekly` at
+04:00 UTC on Mondays, which emails it through Resend (`email.ts`).
+
 ## Layers
 
 - `src/lib/<domain>/` — `queries.ts` (reads, `server-only`), `actions.ts` (`"use server"` mutations). Mirrors mizan.

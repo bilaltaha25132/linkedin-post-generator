@@ -118,6 +118,10 @@ test. It calls `/api/public/cron/monitor` with the bearer token.
 (24), `JOBS_MAX_SCORED_PER_RUN` (30), `JOBS_ALERT_MIN_SCORE` (80),
 `JOBS_DIGEST_MIN_SCORE` (60), `JOBS_BUDGET_MS` (200000).
 
+`.github/workflows/weekly.yml` uses the same two secrets and calls
+`/api/public/cron/weekly` on Mondays at 04:00 UTC. It sends the report only when
+Resend is configured; otherwise it answers `sent: false`.
+
 `.github/workflows/leads.yml` uses the same two secrets and calls
 `/api/public/cron/leads` three times a day. Hacker News and Freelancer.com need
 no keys. Each of these turns on another lane when set in Vercel, and `/leads`

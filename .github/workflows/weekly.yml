@@ -1,0 +1,20 @@
+name: weekly
+
+# The Monday report email: last week, this week's plan, people, jobs and leads,
+# one experiment. 04:00 UTC is 9 am in Pakistan. Same secrets as monitor.yml.
+on:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch: {} # manual "Run workflow" button
+
+jobs:
+  weekly:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send the weekly report
+        run: |
+          code=$(curl -sS --max-time 150 -o /tmp/body -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/public/cron/weekly")
+          echo "HTTP $code"; cat /tmp/body; echo
+          test "$code" = "200"
