@@ -90,6 +90,9 @@ export function toPlain(latex: string): string {
     s = s.slice(0, at) + parsed.args[1].content + s.slice(parsed.end);
   }
   return s
+    // Spacing and box arguments are measurements, not words.
+    .replace(/\\(raisebox|hspace|vspace)\*?\{[^}]*\}/g, "")
+    .replace(/\\ /g, " ")
     .replace(COMMAND_TEXT, "")
     .replace(/\$\|\$/g, "|")
     .replace(/\$([^$]*)\$/g, "$1")
@@ -137,8 +140,15 @@ function sectionKind(title: string): SectionKind {
 function roleFromHeading(section: ParsedRole["section"], a: string[]): Omit<ParsedRole, "bullets"> {
   const [p, q, r, s] = a.map(toPlain);
   if (section === "education" || (s !== undefined && DATE.test(s) && !DATE.test(q))) {
-    // {school}{location}{degree}{dates}
-    return { section, employer: p, title: r ?? "", location: q || null, ...splitDates(s ?? "") };
+    // {school}{location}{degree}{dates}, or {school}{dates}{degree}{location}
+    const datesFirst = DATE.test(q ?? "") && !DATE.test(s ?? "");
+    return {
+      section,
+      employer: p,
+      title: r ?? "",
+      location: (datesFirst ? s : q) || null,
+      ...splitDates((datesFirst ? q : s) ?? ""),
+    };
   }
   // {title}{dates}{employer}{location}, or {employer}{dates}{title}{location}
   const firstIsTitle = TITLE_WORDS.test(p) || !TITLE_WORDS.test(r ?? "");
