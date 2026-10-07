@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import type { z } from "zod";
+import { z } from "zod";
 
 import { env } from "@/lib/env";
 import { recordUsage } from "@/lib/usage/record";
@@ -79,9 +79,15 @@ export async function chatJSON<T>(
   try {
     return await attempt();
   } catch {
-    return attempt(
-      "Your previous reply was not valid JSON matching the required shape. Reply with ONLY the JSON object, no prose, no markdown fences.",
-    );
+    try {
+      return await attempt(
+        "Your previous reply was not valid JSON matching the required shape. Reply with ONLY the JSON object, no prose, no markdown fences.",
+      );
+    } catch (err) {
+      if (!(err instanceof z.ZodError)) throw err;
+      console.error(`[llm] ${opts.op ?? "chatJSON"} reply failed validation`, err.issues);
+      throw new Error("The model's reply came back in the wrong shape twice. Try again.");
+    }
   }
 }
 

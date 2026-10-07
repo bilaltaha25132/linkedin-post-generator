@@ -51,7 +51,17 @@ async function pastAnswers(questions: string[]): Promise<string> {
 }
 
 const draftSchema = z.object({
-  answers: z.array(z.object({ key: z.string(), answer: z.string().nullable(), flag: z.string().nullable().optional() })),
+  answers: z.array(
+    z.object({
+      key: z.string(),
+      // Models sometimes answer a yes/no or number question with a bare JSON value.
+      answer: z
+        .union([z.string(), z.boolean(), z.number()])
+        .nullish()
+        .transform((v) => (typeof v === "boolean" ? (v ? "Yes" : "No") : v == null ? null : String(v))),
+      flag: z.string().nullable().optional(),
+    }),
+  ),
 });
 
 /**
