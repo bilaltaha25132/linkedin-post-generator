@@ -71,12 +71,12 @@ What you may do:
 - reorder bullets within a role so the most relevant come first; drop at most one weak bullet per role, only from roles with four or more.
 - order skills within each SKILLS line, most relevant first (use the exact item names).
 - write a one-line summary (under 200 characters) when one is asked for.
-- only edit bullets that gain something; leave the rest alone.
+- edit every bullet where one of the ad's terms is true for him and can be worked in (client work is "client-facing", a shipped public product is "production"); a typical tailoring has 3 to 8 edits. Leave a bullet alone when nothing true fits.
 
 No em or en dashes. No buzzwords ("leveraged", "spearheaded", "synergy", "cutting-edge", "passionate"). Past tense for past roles.
 
 Return JSON:
-{"keywords": the 8-15 exact skills and terms the ad asks for most,
+{"keywords": the 8-15 terms the ad asks for most that a screener would search a resume for, short and literal: tools, languages, frameworks, methods, domain terms ("Python", "RAG", "LLM evaluation", "customer-facing"). Never soft traits ("ambiguity", "communication") or long phrases,
  "summary": one line or null,
  "edits": [{"id": "b3", "text": "new bullet", "uses": ["b7"]}],
  "reorder": [{"role": "r2", "order": ["b5", "b3", "b4"]}],

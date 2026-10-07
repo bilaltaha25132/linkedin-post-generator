@@ -106,8 +106,11 @@ export function renderTailored(ledger: Ledger, plan: TailorPlan, opts: RenderOpt
   return { latex, report: { diff, summary, coverage, gaps: plan.gaps } };
 }
 
-/** Whole-word, case-insensitive: "AST" isn't in "FastAPI". */
+/** Whole-word, case-insensitive: "AST" isn't in "FastAPI". "full-stack" matches "Full Stack". */
 function hasTerm(text: string, term: string): boolean {
-  const escaped = term.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escaped = term
+    .trim()
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/[-\s]+/g, "[-\\s]?");
   return new RegExp(`(^|[^a-z0-9])${escaped}($|[^a-z0-9])`, "i").test(text);
 }
