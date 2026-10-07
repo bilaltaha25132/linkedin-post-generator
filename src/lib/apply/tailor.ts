@@ -45,7 +45,7 @@ export function ledgerText(ledger: Ledger): { text: string; ids: Map<string, str
 const planSchema = z.object({
   keywords: z.array(z.string()).max(20),
   summary: z.string().nullable().optional(),
-  edits: z.array(z.object({ id: z.string(), text: z.string(), uses: z.array(z.string()).optional() })).max(30),
+  edits: z.array(z.object({ id: z.string(), text: z.string(), adds: z.string().nullish(), uses: z.array(z.string()).optional() })).max(30),
   reorder: z.array(z.object({ role: z.string(), order: z.array(z.string()) })).optional(),
   drop: z.array(z.string()).optional(),
   skills_order: z.array(z.object({ category: z.string(), items: z.array(z.string()) })).optional(),
@@ -71,19 +71,22 @@ What you may do:
 - reorder bullets within a role so the most relevant come first; drop at most one weak bullet per role, only from roles with four or more.
 - order skills within each SKILLS line, most relevant first (use the exact item names).
 - write a one-line summary (under 200 characters) when one is asked for.
-- edit every bullet where one of the ad's terms is true for him and can be worked in (client work is "client-facing", a shipped public product is "production"); a typical tailoring has 3 to 8 edits. Leave a bullet alone when nothing true fits.
+- edit every bullet where one of the ad's terms is true for him and can be worked in (work for a named client is "client-facing", a shipped public product is "in production"); a typical tailoring has 3 to 8 edits. Each edit names in "adds" the ad term it brings in that the original lacks. Never return a bullet unchanged or with only bold added; leave it out instead.
+- the result must read as natural, polished English a senior engineer would write, not a keyword list.
 
 No em or en dashes. No buzzwords ("leveraged", "spearheaded", "synergy", "cutting-edge", "passionate"). Past tense for past roles.
 
 Return JSON:
 {"keywords": the 8-15 terms the ad asks for most that a screener would search a resume for, short and literal: tools, languages, frameworks, methods, domain terms ("Python", "RAG", "LLM evaluation", "customer-facing"). Never soft traits ("ambiguity", "communication") or long phrases,
  "summary": one line or null,
- "edits": [{"id": "b3", "text": "new bullet", "uses": ["b7"]}],
+ "edits": [{"id": "b3", "text": "new bullet", "adds": "customer-facing", "uses": ["b7"]}],
  "reorder": [{"role": "r2", "order": ["b5", "b3", "b4"]}],
  "drop": ["b9"],
  "skills_order": [{"category": "Languages", "items": ["Python", "SQL"]}],
  "gaps": ["requirements he doesn't meet, short, e.g. 'Kubernetes in production'"]}`,
-    user: `JOB: ${job.title} at ${job.company}
+    user: `TODAY: ${new Date().toISOString().slice(0, 10)} (count "Present" up to today)
+
+JOB: ${job.title} at ${job.company}
 
 AD:
 ${(job.description ?? "(no description stored; use the title)").slice(0, 7000)}
