@@ -1,6 +1,7 @@
 import {
   Ban,
   Bookmark,
+  Briefcase,
   Coins,
   PenLine,
   Radar,
@@ -14,7 +15,7 @@ import {
 
 export type NavLink = { href: string; label: string; icon: LucideIcon };
 
-/** The sidebar, grouped by job: find a story, write about it, run the desk. */
+/** The sidebar, grouped by job: find a story, write about it, find work, run the desk. */
 export const NAV_GROUPS: { title: string; links: NavLink[] }[] = [
   {
     title: "Wire",
@@ -32,6 +33,10 @@ export const NAV_GROUPS: { title: string; links: NavLink[] }[] = [
       { href: "/queue", label: "To post", icon: Star },
       { href: "/posted", label: "Posted", icon: Send },
     ],
+  },
+  {
+    title: "Career",
+    links: [{ href: "/jobs", label: "Jobs", icon: Briefcase }],
   },
   {
     title: "Desk",

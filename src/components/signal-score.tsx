@@ -11,11 +11,11 @@ function bandLabel(score: number): string {
 }
 
 /** The feed's signal gutter: a ring filled to the relevance score, with its band underneath. */
-export function SignalScore({ score }: { score: number | null }) {
+export function SignalScore({ score, label = "Signal" }: { score: number | null; label?: string }) {
   const value = Math.max(0, Math.min(100, score ?? 0));
   const color = bandColor(value);
   return (
-    <div className="signal" title={`Signal ${score ?? "unscored"} of 100`}>
+    <div className="signal" title={`${label} ${score ?? "unscored"} of 100`}>
       <div className="signal-ring">
         <svg viewBox="0 0 48 48" aria-hidden>
           <circle className="track" cx="24" cy="24" r="21" fill="none" strokeWidth="4" />

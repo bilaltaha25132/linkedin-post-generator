@@ -1,0 +1,23 @@
+name: jobs
+
+# The Jobs tab's pass: pull the job boards that are due, store new AI roles,
+# score them, and email strong matches. Same secrets as monitor.yml.
+on:
+  schedule:
+    # Hourly; each board is read only when its interval is up (src/lib/jobs/sources.ts).
+    - cron: "7 * * * *"
+    # The 9am Karachi run also sends the daily digest.
+    - cron: "0 4 * * *"
+  workflow_dispatch: {} # manual "Run workflow" button
+
+jobs:
+  jobs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger jobs pass
+        run: |
+          code=$(curl -sS --max-time 330 -o /tmp/body -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/public/cron/jobs${{ github.event.schedule == '0 4 * * *' && '?digest=1' || '' }}")
+          echo "HTTP $code"; cat /tmp/body; echo
+          test "$code" = "200"

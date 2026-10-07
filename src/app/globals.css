@@ -1089,7 +1089,10 @@ a.brand-link:hover {
   border-radius: 12px;
   background: var(--control);
 }
-.seg button {
+.seg button,
+.seg a {
+  display: inline-flex;
+  align-items: center;
   height: 30px;
   padding: 0 12px;
   border: none;
@@ -1103,10 +1106,12 @@ a.brand-link:hover {
   cursor: pointer;
   transition: background 0.15s, color 0.15s, box-shadow 0.15s;
 }
-.seg button:hover {
+.seg button:hover,
+.seg a:hover {
   color: var(--ink);
 }
-.seg button[aria-pressed="true"] {
+.seg button[aria-pressed="true"],
+.seg a[aria-current="page"] {
   background: var(--surface-raised);
   color: var(--ink);
   box-shadow: var(--shadow-seg);
@@ -1558,6 +1563,20 @@ label.lbl,
   font-size: 12px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
+}
+
+.figures .skill-has {
+  background: var(--card-mint);
+  box-shadow: none;
+  color: var(--card-ink);
+}
+.figures .skill-gap {
+  background: transparent;
+  color: var(--ink-muted);
+}
+details.panel > summary {
+  cursor: pointer;
+  list-style-position: inside;
 }
 
 .row-actions {

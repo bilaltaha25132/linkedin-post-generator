@@ -94,3 +94,9 @@ Actions**, add:
 
 The workflow runs every 6 hours; trigger it manually from the **Actions** tab to
 test. It calls `/api/public/cron/monitor` with the bearer token.
+
+`.github/workflows/jobs.yml` uses the same two secrets. It calls
+`/api/public/cron/jobs` every hour, and once a day at 04:00 UTC with
+`?digest=1` for the email digest. Optional tuning in Vercel: `JOBS_MAX_SOURCES_PER_RUN`
+(24), `JOBS_MAX_SCORED_PER_RUN` (30), `JOBS_ALERT_MIN_SCORE` (80),
+`JOBS_DIGEST_MIN_SCORE` (60), `JOBS_BUDGET_MS` (200000).

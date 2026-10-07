@@ -226,6 +226,34 @@ fooled AI detectors (GPTZero 100% human, where English-first drafts score
 well, not detector scores. His published LinkedIn posts were partly
 AI-assisted, so they aren't used as a voice reference anywhere.
 
+### Jobs
+
+`/jobs` is a second pipeline beside the wire, in `src/lib/jobs/`. GitHub
+Actions (`.github/workflows/jobs.yml`) calls `/api/public/cron/jobs` hourly;
+`runJobs` in `run.ts` does one budgeted pass:
+
+1. **Pull** the sources that are due (`job_sources`, about 70 rows): company
+   ATS boards every 6 hours, job boards on their own intervals
+   (`INTERVAL_HOURS` in `sources.ts`). Every puller reads a public JSON, RSS or
+   XML feed; nothing scrapes a logged-in page.
+2. **Filter for free** (`classify.ts`): the title must look like AI or
+   full-stack engineering, nationals-only and US-only roles are dropped, and
+   region, remote scope, contract and a visa keyword flag are set from text.
+3. **Dedup** on company, title and remote scope. A company's own board
+   supersedes a job board's copy of the same role.
+4. **Close** a role after it is missing from two complete pulls of its board,
+   and job-board roles after 30 days.
+5. **Score** the backlog with the utility model (`score.ts`), regions in the
+   owner's order so Saudi roles are scored first. The model returns
+   sub-scores; the weights, region bonus and hard caps are applied in code.
+6. **Alert** by email on each new role at `JOBS_ALERT_MIN_SCORE` or above, and
+   send a daily digest of roles at `JOBS_DIGEST_MIN_SCORE` or above
+   (`notify.ts`).
+
+The profile it scores against is the single `job_profile` row, edited on
+`/settings`. New company boards are added from the Boards panel on `/jobs` by
+pasting a careers URL; the ATS is detected and test-pulled before saving.
+
 ## Layers
 
 - `src/lib/<domain>/` — `queries.ts` (reads, `server-only`), `actions.ts` (`"use server"` mutations). Mirrors mizan.
@@ -237,7 +265,8 @@ AI-assisted, so they aren't used as a voice reference anywhere.
 
 See `supabase/migrations/0001_init.sql`. Tables: `sources`, `discoveries`,
 `posts`, `voice_corpus` (all with a 1024-dim `embedding`), plus `rejections` and
-`usage_events`. RLS is on with no
+`usage_events`, and for jobs `job_sources`, `job_profile` and `jobs`
+(`0020_jobs.sql`). RLS is on with no
 policies — only the server-side service-role key can read/write. Similarity
 lookups go through the `match_posts` / `match_voice` SQL functions.
 
@@ -252,6 +281,10 @@ Feeds' old entries aren't logged, since every RSS feed carries its back
 catalogue and would repeat them each pass. Duplicates aren't logged either.
 
 ## Not yet built
+
+- Jobs don't use embeddings yet; every candidate role costs one utility-model
+  call. Enterprise ATS (Workday, Oracle, SuccessFactors), Sabbar, the
+  Bundesagentur API, Google Jobs and Adzuna aren't pulled.
 
 - Discussion is captured once, at ingest. A thread that grows afterwards isn't
   refreshed.

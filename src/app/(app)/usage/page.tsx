@@ -22,6 +22,7 @@ const OP_LABELS: Record<string, string> = {
   "fact-check": "Fact-checking your posts",
   carousel: "Carousels",
   blog: "Blog posts",
+  "job-score": "Scoring jobs",
   translate: "Translating (dropped Urdu test)",
 };
 

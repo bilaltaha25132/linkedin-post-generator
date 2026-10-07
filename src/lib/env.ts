@@ -95,4 +95,15 @@ export const env = {
     // Wall-clock budget for a scheduled pass (ms), under the 300s Fluid limit.
     budgetMs: num("MONITOR_BUDGET_MS", 240_000),
   }),
+
+  jobs: () => ({
+    // Boards read per pass, oldest pull first; each is one or a few GETs.
+    maxSourcesPerRun: num("JOBS_MAX_SOURCES_PER_RUN", 24),
+    // DeepSeek scorings per pass. The first passes after seeding work through
+    // a backlog a slice at a time.
+    maxScoredPerRun: num("JOBS_MAX_SCORED_PER_RUN", 30),
+    alertMinScore: num("JOBS_ALERT_MIN_SCORE", 80),
+    digestMinScore: num("JOBS_DIGEST_MIN_SCORE", 60),
+    budgetMs: num("JOBS_BUDGET_MS", 200_000),
+  }),
 };
