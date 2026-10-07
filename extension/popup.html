@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Signal Desk Fill</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <strong>Signal Desk Fill</strong>
+      <button id="settings-toggle" class="ghost" type="button">Settings</button>
+    </header>
+
+    <form id="settings" hidden>
+      <label for="base">Signal Desk address</label>
+      <input id="base" type="url" placeholder="https://your-app.vercel.app" required />
+      <label for="token">Extension token (EXTENSION_TOKEN)</label>
+      <input id="token" type="password" autocomplete="off" required />
+      <button type="submit">Save</button>
+    </form>
+
+    <p id="status" role="status"></p>
+    <div id="job"></div>
+    <div id="actions" hidden>
+      <button id="fill-all" type="button">Fill everything I can</button>
+    </div>
+    <ul id="answers"></ul>
+    <p class="foot">Review the form, attach your PDF, and press Submit yourself.</p>
+    <script src="popup.js"></script>
+  </body>
+</html>

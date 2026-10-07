@@ -1,0 +1,9 @@
+{
+  "manifest_version": 3,
+  "name": "Signal Desk Fill",
+  "version": "1.0.0",
+  "description": "Fills a job application's fields with the answers you reviewed in Signal Desk, one click per field. Never submits.",
+  "action": { "default_popup": "popup.html", "default_title": "Signal Desk Fill" },
+  "permissions": ["activeTab", "scripting", "storage"],
+  "optional_host_permissions": ["https://*/*", "http://localhost/*"]
+}

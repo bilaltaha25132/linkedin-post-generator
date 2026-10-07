@@ -4,7 +4,7 @@ import { decodeEntities, htmlToText } from "@/lib/feeds/text";
 // logging in. Each reader returns the same shape; the classifier and drafter
 // never see which ATS it came from.
 
-export type Ats = "greenhouse" | "ashby" | "lever" | "workable" | "manual";
+export type Ats = "greenhouse" | "ashby" | "lever" | "workable" | "recruitee" | "smartrecruiters" | "manual";
 
 export type FieldType = "text" | "textarea" | "select" | "multiselect" | "boolean" | "file" | "number" | "date";
 
@@ -68,11 +68,21 @@ export function detectAts(job: { url_apply: string; source: string; source_id: s
     const j = path.indexOf("j");
     if (j !== -1 && path[j + 1]) return { ats: "workable", board: path[0] === "j" ? "" : path[0], id: path[j + 1] };
   }
+  // Recruitee boards often sit on the company's own domain (jobs.acme.com/o/slug).
+  const o = path.indexOf("o");
+  if (/\.recruitee\.com$/.test(url.hostname) && o !== -1 && path[o + 1]) {
+    return { ats: "recruitee", board: url.hostname.split(".")[0], id: path[o + 1] };
+  }
+  if (job.source === "recruitee" && job.source_token && o !== -1 && path[o + 1]) return { ats: "recruitee", board: job.source_token, id: path[o + 1] };
+  if (url.hostname === "jobs.smartrecruiters.com" && path.length >= 2) {
+    const id = path[1].match(/^\d+/)?.[0];
+    if (id) return { ats: "smartrecruiters", board: path[0], id };
+  }
   return null;
 }
 
 export async function readForm(target: FormTarget): Promise<ApplicationForm> {
-  const read = { greenhouse, ashby, lever, workable }[target.ats];
+  const read = { greenhouse, ashby, lever, workable, recruitee, smartrecruiters }[target.ats];
   const { fields, notices } = await read(target);
   // Greenhouse's location autocomplete fills these hidden inputs; nobody types them.
   const shown = fields.filter((f) => !/^(longitude|latitude|location_?hidden)$/i.test(f.key) && !/^(longitude|latitude)$/i.test(f.label));
@@ -264,4 +274,78 @@ const workable: Reader = async ({ id }) => {
     })),
   );
   return { fields, notices: [] };
+};
+
+const recruitee: Reader = async ({ board, id }) => {
+  type Q = {
+    id: number;
+    body: string;
+    kind: string;
+    required: boolean;
+    options: { length?: number };
+    open_question_options: { body: string }[];
+  };
+  type Offer = { open_questions: Q[]; options_cv: string; options_cover_letter: string; options_phone: string; options_photo: string };
+  const { offer } = (await (await get(`https://${board}.recruitee.com/api/offers/${encodeURIComponent(id)}`)).json()) as { offer: Offer };
+  const TYPES: Record<string, FieldType> = {
+    text: "textarea",
+    string: "text",
+    boolean: "boolean",
+    single_choice: "select",
+    multi_choice: "multiselect",
+    file: "file",
+    date: "date",
+    number: "number",
+  };
+  const standard: FormField[] = [
+    { key: "name", label: "Full name", type: "text", required: true },
+    { key: "email", label: "Email", type: "text", required: true },
+    ...(offer.options_phone !== "off" ? [{ key: "phone", label: "Phone", type: "text" as const, required: offer.options_phone === "required" }] : []),
+    ...(offer.options_cv !== "off" ? [{ key: "cv", label: "Resume", type: "file" as const, required: offer.options_cv === "required" }] : []),
+    ...(offer.options_cover_letter !== "off"
+      ? [{ key: "cover_letter", label: "Cover letter", type: "file" as const, required: offer.options_cover_letter === "required" }]
+      : []),
+  ];
+  const notices: string[] = [];
+  const questions = offer.open_questions.flatMap((q): FormField[] => {
+    // Infoboxes are text for the candidate to read, often the employer's visa rules.
+    if (q.kind === "infobox") {
+      const text = htmlToText(decodeEntities(q.body)).trim();
+      if (text) notices.push(text);
+      return [];
+    }
+    return [
+      {
+        key: String(q.id),
+        label: htmlToText(q.body).trim(),
+        type: TYPES[q.kind] ?? "text",
+        required: q.required,
+        ...(q.options.length && q.options.length < 10_000 ? { maxLength: q.options.length } : {}),
+        ...(q.open_question_options.length ? { options: q.open_question_options.map((x) => x.body.trim()) } : {}),
+      },
+    ];
+  });
+  return { fields: [...standard, ...questions], notices };
+};
+
+// SmartRecruiters serves screening questions only to partners with an API key,
+// so this returns the fields every posting has and asks him to paste the rest.
+const smartrecruiters: Reader = async ({ board, id }) => {
+  await get(`https://api.smartrecruiters.com/v1/companies/${encodeURIComponent(board)}/postings/${encodeURIComponent(id)}`);
+  const fields: FormField[] = [
+    { key: "firstName", label: "First name", type: "text", required: true },
+    { key: "lastName", label: "Last name", type: "text", required: true },
+    { key: "email", label: "Email", type: "text", required: true },
+    { key: "phone", label: "Phone", type: "text", required: false },
+    { key: "location", label: "Location (city)", type: "text", required: false },
+    { key: "resume", label: "Resume", type: "file", required: true },
+    { key: "linkedin", label: "LinkedIn", type: "text", required: false },
+    { key: "message", label: "Message to the hiring team", type: "textarea", required: false },
+  ];
+  return {
+    fields,
+    notices: [
+      "SmartRecruiters doesn't share its screening questions publicly. These are the fields every posting has. If the form asks more, use Paste questions instead.",
+    ],
+  };
 };

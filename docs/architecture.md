@@ -382,7 +382,9 @@ four steps:
    declines each edit, accepts, then downloads the .tex or opens it in Overleaf
    to compile. Versions are stored in `resume_versions`.
 2. **Form.** `forms.ts` reads the form from the ATS's public endpoints
-   (Greenhouse, Ashby, Lever, Workable) or takes pasted questions.
+   (Greenhouse, Ashby, Lever, Workable, Recruitee; SmartRecruiters gives only its
+   standard fields, since its screening questions need a partner key) or takes
+   pasted questions.
    `classify.ts` answers standard fields from form facts in code. Knockout
    questions are flagged and salary is never guessed. EEO, consent,
    certification and AI-policy fields are marked as his and never filled.
@@ -393,6 +395,13 @@ four steps:
    an Anschreiben for Germany, a motivation letter for the Netherlands.
 4. **Submit.** He submits on the employer's site himself, then marks it. That
    moves the job to Applied and saves his written answers to `answer_bank`.
+
+The Chrome extension in `extension/` fetches those reviewed answers from
+`/api/public/ext/answers` (bearer `EXTENSION_TOKEN`, matched by the form's URL)
+and types one into the page when he presses Fill. It runs only on the tab he
+opens it on, refuses linkedin.com, skips file, consent, demographic and
+certification fields, and never clicks; `scripts/check-extension.mjs` checks
+those promises.
 
 Nothing in the kit submits, clicks or sends anything. Tables are in
 `0026_apply.sql`; the resume never enters the repo or Actions.
@@ -432,9 +441,9 @@ catalogue and would repeat them each pass. Duplicates aren't logged either.
   Bundesagentur API, Google Jobs and Adzuna aren't pulled.
 
 - The apply kit doesn't compile PDFs (Tectonic is untested on Vercel), so he
-  compiles in Overleaf. It reads Greenhouse, Ashby, Lever and Workable forms
-  only; others (Recruitee, SmartRecruiters, Workday) take pasted questions. There
-  is no browser extension to fill forms.
+  compiles in Overleaf. Workday and other enterprise forms take pasted
+  questions, and the extension can't fill custom dropdowns (React Select),
+  Ashby's yes/no buttons or file inputs.
 
 - Engage can't see a post's age unless the link carries an activity ID, and
   doesn't know whether a comment was actually posted until he taps "I posted

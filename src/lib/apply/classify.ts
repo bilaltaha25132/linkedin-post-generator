@@ -55,7 +55,7 @@ const RULES: [Kind, RegExp][] = [
   ["sponsorship", /sponsor/i],
   ["work_auth", /(authori[sz]ed|eligible|right|permit(ted)?|legally able) to work|work (permit|authori[sz]ation)|visa status/i],
   ["relocation", /relocat|willing to (move|work from|work on-?site)|on-?site|in[- ]office|based in|located in|commut/i],
-  ["notice", /notice period|availability/i],
+  ["notice", /notice period|availability|how soon can you (join|start)|when can you (join|start)/i],
   ["start_date", /start date|when can you start|earliest (start|date)|available to start/i],
   ["salary", /salary|compensation|pay expectation|expected (pay|rate)|desired (pay|rate)|rate expectation/i],
   ["location", /^(current )?(location|city)\b|where are you (based|located)|country of residence|city of residence/i],

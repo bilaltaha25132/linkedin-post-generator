@@ -4,9 +4,15 @@ import { env } from "@/lib/env";
 
 /** The cron endpoints authenticate with `Authorization: Bearer <CRON_SECRET>`. */
 export async function cronAuthorized(req: NextRequest): Promise<boolean> {
+  return bearerAuthorized(req, env.cronSecret());
+}
+
+/** An empty secret never matches, so an unset variable keeps the endpoint shut. */
+export async function bearerAuthorized(req: NextRequest, secret: string): Promise<boolean> {
   const header = req.headers.get("authorization") ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-  return constantTimeEqual(token, env.cronSecret());
+  if (!secret || !token) return false;
+  return constantTimeEqual(token, secret);
 }
 
 async function constantTimeEqual(a: string, b: string): Promise<boolean> {

@@ -53,6 +53,8 @@ export const env = {
   appPassword: () => req("APP_PASSWORD"),
   authSecret: () => req("AUTH_SECRET"),
   cronSecret: () => req("CRON_SECRET"),
+  // The personal Chrome extension's bearer token. Unset = the extension endpoint is shut.
+  extensionToken: () => process.env.EXTENSION_TOKEN ?? "",
 
   // LinkedIn developer app (Share on LinkedIn + OpenID Connect). The encryption
   // key, 32 random bytes in base64, seals the member's token at rest.

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { detectAts, type FormTarget } from "@/lib/apply/forms";
 import type { Application, CandidateProfile, Ledger, ResumeVersion } from "@/lib/apply/types";
 import type { Job } from "@/lib/jobs/types";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -68,4 +69,27 @@ export async function getApplication(jobId: string): Promise<Application | null>
   const { data, error } = await supabaseAdmin().from("applications").select("*").eq("job_id", jobId).maybeSingle();
   if (error) throw new Error(error.message);
   return data ? { ...data, answers: Array.isArray(data.answers) ? data.answers : [] } : null;
+}
+
+/** The job whose application form is at this target, for the extension. */
+export async function findJobForForm(target: FormTarget): Promise<{ id: string; title: string; company: string } | null> {
+  const { data, error } = await supabaseAdmin()
+    .from("jobs")
+    .select("id, title, company, url_apply, source, source_id, job_sources(token)")
+    .ilike("url_apply", `%${target.id.replace(/[%_]/g, "")}%`)
+    .limit(20);
+  if (error) throw new Error(error.message);
+  for (const row of (data ?? []) as unknown as {
+    id: string;
+    title: string;
+    company: string;
+    url_apply: string;
+    source: string;
+    source_id: string;
+    job_sources: { token: string } | null;
+  }[]) {
+    const t = detectAts({ ...row, source_token: row.job_sources?.token ?? null });
+    if (t && t.ats === target.ats && t.id === target.id) return { id: row.id, title: row.title, company: row.company };
+  }
+  return null;
 }
