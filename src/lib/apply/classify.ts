@@ -35,12 +35,12 @@ const RULES: [Kind, RegExp][] = [
   // His alone: demographics, consent, certification, AI-use policy, pronouns.
   [
     "yours",
-    /\b(gender|sex\b|race|ethnic|hispanic|latin[oa]|veteran|disabilit|sexual orientation|transgender|pronoun|age range|date of birth|religio|consent|privacy|gdpr|data protection|terms (and|&) conditions|terms of (use|service)|i certify|(i |can you |please )?confirm (that )?(the|all|everything)|is true|true and (complete|accurate)|accurate and complete|acknowledge|ai[- ](use|policy|assist|tools)|artificial intelligence|longitude|latitude|marketing)\b/i,
+    /\b(gender|sex\b|race|ethnic|hispanic|latin[oa]|veteran|disabilit|sexual orientation|transgender|pronoun|age range|date of birth|religio|consent|privacy|gdpr|data protection|terms (and|&) conditions|terms of (use|service)|certify|hereby|undersigned|best of my knowledge|true and correct|(i |can you |please )?confirm (that )?(the|all|everything)|is true|true and (complete|accurate)|accurate and complete|acknowledge|ai[- ](use|policy|assist|tools)|artificial intelligence|longitude|latitude|marketing)\b/i,
   ],
   ["source", /how did you (hear|find|learn)|where did you (hear|find|see)|referr(al|ed) source|^source$/i],
   ["first_name", /^(first|given|preferred first) ?name\b/i],
   ["last_name", /^(last|family|sur) ?name\b|^surname/i],
-  ["full_name", /^(full )?name$|^full name|^your name/i],
+  ["full_name", /^(full |legal )?name$|^(full|legal) name|^your name/i],
   ["email", /e-?mail/i],
   ["phone", /phone|mobile|telephone/i],
   ["linkedin", /linkedin/i],
