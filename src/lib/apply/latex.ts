@@ -94,12 +94,14 @@ export function toPlain(latex: string): string {
     .replace(/\\(raisebox|hspace|vspace)\*?\{[^}]*\}/g, "")
     .replace(/\\ /g, " ")
     .replace(COMMAND_TEXT, "")
+    // A bare ~ is a non-breaking space; a written tilde arrives as \sim or \textasciitilde.
+    .replace(/~/g, " ")
     .replace(/\$\|\$/g, "|")
     .replace(/\$([^$]*)\$/g, "$1")
+    .replace(/\\sim(?![a-zA-Z])\s*/g, "~")
     .replace(/\\\\/g, " ")
     .replace(/\\([&%$#_{}])/g, "$1")
-    .replace(/\\textasciitilde\{?\}?/g, "~")
-    .replace(/~/g, " ")
+    .replace(/\\textasciitilde(?![a-zA-Z])(\{\})?/g, "~")
     .replace(/---?/g, "-")
     .replace(/\\[a-zA-Z]+\*?(\[[^\]]*\])?/g, "")
     .replace(/[{}]/g, "")
@@ -230,8 +232,9 @@ export function parseResume(latex: string): ParsedResume {
         const [name, stack] = toPlain(parsed.args[0].content).split(/\s*\|\s*/);
         current = {
           section: kind === "experience" ? "project" : kind,
-          employer: name ?? "",
-          title: stack ?? "",
+          // The project's name reads as its title; its stack stands where an employer would.
+          employer: stack ?? "",
+          title: name ?? "",
           location: null,
           ...splitDates(toPlain(parsed.args[1].content)),
           bullets: [],
