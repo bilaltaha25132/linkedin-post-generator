@@ -337,6 +337,23 @@ logged today against the 5-10 target, shared posts with a comment ready,
 rounds due and replies waiting; and new jobs at 80+ and leads at 75+ from the
 last three days, with lead follow-ups due. Each links to the tab that handles it.
 
+### Network
+
+`/network` is a connection queue he works through himself. `src/lib/network/suggest.ts`
+builds it on each visit from what the app already knows: people who commented
+on or reacted to his posts (email bridge), people whose posts he commented on,
+founders and hiring managers behind strong leads, the teams behind jobs he saved
+or applied to, and invitations from the email bridge; tier-A watchlist people
+are suggested as follows. Without a profile link, each opens LinkedIn's people
+search. Pacing (`format.ts`): ten a day, sixty a week, five personalised notes
+a month, drafted only for people who don't know him yet (`write.ts`, under 200
+characters), and the queue pauses if fewer than 30% of settled invites were
+accepted. The profile review reads text he pastes or loads from the data
+archive (`profile-parse.ts`), checks it against the skills his strong job
+matches ask for, and returns a report card, three headlines, an About rewrite,
+a skills order and the recruiter searches he wouldn't match. `0025_network.sql`
+adds the pacing columns.
+
 ## Layers
 
 - `src/lib/<domain>/` — `queries.ts` (reads, `server-only`), `actions.ts` (`"use server"` mutations). Mirrors mizan.
@@ -376,6 +393,8 @@ catalogue and would repeat them each pass. Duplicates aren't logged either.
   it".
 - Discussion is captured once, at ingest. A thread that grows afterwards isn't
   refreshed.
+- Network doesn't suggest paper and repo authors (the wire doesn't store
+  authors), and nothing confirms an invite was sent until he says so.
 - Plan has no topic clusters of his posts, release-day carousel skeletons,
   series tracking or newsletter meter yet, and pre-flight doesn't compare a
   draft with his profile. Format and weekday tables need three posts per bucket.

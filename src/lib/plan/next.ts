@@ -68,7 +68,7 @@ export function pillarMix(pillars: Pillar[], recent: RecentPost[]): Mix {
 }
 
 /** Skills from his strong job matches this month, most asked-for first. */
-async function skillDemand(now: number): Promise<{ skill: string; n: number }[]> {
+export async function skillDemand(now: number): Promise<{ skill: string; n: number }[]> {
   const { data } = await supabaseAdmin()
     .from("jobs")
     .select("score_detail")

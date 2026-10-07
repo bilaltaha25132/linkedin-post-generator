@@ -86,3 +86,9 @@ export function postedAtFromId(activityId: string): Date | null {
     return null;
   }
 }
+
+/** LinkedIn's people search, for someone the app knows by name but has no profile link for. */
+export function peopleSearchUrl(query: string): string {
+  const params = new URLSearchParams({ keywords: query, origin: "GLOBAL_SEARCH_HEADER" });
+  return `https://www.linkedin.com/search/results/people/?${params}`;
+}

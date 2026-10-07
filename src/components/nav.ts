@@ -3,6 +3,7 @@ import {
   Bookmark,
   Briefcase,
   Handshake,
+  Users,
   Coins,
   Compass,
   MessagesSquare,
@@ -44,6 +45,7 @@ export const NAV_GROUPS: { title: string; links: NavLink[] }[] = [
       { href: "/today", label: "Today", icon: CalendarCheck },
       { href: "/plan", label: "Plan", icon: Compass },
       { href: "/engage", label: "Engage", icon: MessagesSquare },
+      { href: "/network", label: "Network", icon: Users },
     ],
   },
   {

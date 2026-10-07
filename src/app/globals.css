@@ -2299,3 +2299,35 @@ details.panel > summary {
   gap: 12px;
   align-items: center;
 }
+
+/* ── Network ─────────────────────────────────────────────────────────────── */
+.net-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding-left: 20px;
+}
+@media (max-width: 719px) {
+  .net-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .net-row .row-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+.net-check {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.net-check .chip {
+  justify-self: start;
+}
+.net-copy {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--inset);
+  box-shadow: var(--inset-ring);
+}
