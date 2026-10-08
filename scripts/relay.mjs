@@ -1,17 +1,19 @@
-// Runs in the jobs workflow. Some job boards hang every request from Vercel's
-// addresses, so this runner fetches their pages and posts the bodies back to the
-// app, which parses them with the same pullers (src/lib/jobs/sources.ts).
+// Runs in the jobs and leads workflows. Some job boards and marketplaces refuse
+// Vercel's addresses, so this runner fetches their pages and posts the bodies back
+// to the app, which parses them with the same pullers (src/lib/jobs/sources.ts,
+// src/lib/leads/marketplaces.ts).
 //
-//   APP_URL=… CRON_SECRET=… node scripts/relay-jobs.mjs
+//   APP_URL=… CRON_SECRET=… node scripts/relay.mjs jobs|leads
 
+const pass = process.argv[2];
 const app = process.env.APP_URL;
 const auth = { Authorization: `Bearer ${process.env.CRON_SECRET}` };
-if (!app || !process.env.CRON_SECRET) {
-  console.error("Missing APP_URL or CRON_SECRET.");
+if (!app || !process.env.CRON_SECRET || !["jobs", "leads"].includes(pass)) {
+  console.error("Usage: APP_URL=… CRON_SECRET=… node scripts/relay.mjs jobs|leads");
   process.exit(1);
 }
 
-const plan = await fetch(`${app}/api/public/cron/jobs/relay`, { headers: auth }).then((r) => r.json());
+const plan = await fetch(`${app}/api/public/cron/${pass}/relay`, { headers: auth }).then((r) => r.json());
 if (!plan.ok) {
   console.error("Plan failed:", plan.error);
   process.exit(1);
@@ -31,7 +33,7 @@ for (const source of plan.sources) {
     // One request at a time, with a pause, as a person browsing would.
     await new Promise((r) => setTimeout(r, 500));
   }
-  const res = await fetch(`${app}/api/public/cron/jobs/relay`, {
+  const res = await fetch(`${app}/api/public/cron/${pass}/relay`, {
     method: "POST",
     headers: { ...auth, "Content-Type": "application/json" },
     body: JSON.stringify({ id: source.id, responses }),
@@ -40,4 +42,4 @@ for (const source of plan.sources) {
   console.log(`${source.name}: ${out.ok ? `pulled ${out.pulled}, added ${out.added}` : `failed: ${out.error}`}`);
   if (!out.ok) failed++;
 }
-console.log(`${plan.sources.length} relayed sources, ${failed} failed.`);
+console.log(`${plan.sources.length} relayed ${pass} sources, ${failed} failed.`);

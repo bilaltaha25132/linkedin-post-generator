@@ -21,7 +21,7 @@ jobs:
         env:
           APP_URL: ${{ secrets.APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        run: node scripts/relay-jobs.mjs
+        run: node scripts/relay.mjs jobs
       - name: Trigger jobs pass
         run: |
           code=$(curl -sS --max-time 330 -o /tmp/body -w "%{http_code}" \

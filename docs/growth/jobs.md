@@ -67,7 +67,7 @@ Verified live on 2026-10-07 ([research/gulf-jobs.md](research/gulf-jobs.md)):
 **Relayed sources.** Naukrigulf and Saudi Aramco's careers site hang every
 request from Vercel but answer GitHub's runners, so their `job_sources` rows
 have `relay = true` and the hourly jobs workflow fetches them first
-(`scripts/relay-jobs.mjs`, one request at a time with a pause). It asks
+(`scripts/relay.mjs jobs`, one request at a time with a pause). It asks
 `GET /api/public/cron/jobs/relay` what's due; the app runs the puller once to
 list the URLs it would request, the runner fetches them, and one `POST` per
 source hands the bodies back to be parsed by the same puller and ingested. The

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { env } from "@/lib/env";
+import { pullRelayed, RELAY_USER_AGENT, relayUrls } from "@/lib/leads/marketplaces";
 import { judgeLead } from "@/lib/leads/score";
 import { AI_WORK, GIG_WORK, leadLanes, tooOld } from "@/lib/leads/sources";
 import type { RawLead } from "@/lib/leads/types";
@@ -25,7 +26,7 @@ export async function runLeads(opts: { budgetMs?: number } = {}): Promise<LeadsR
   const result: LeadsRunResult = { lanes: 0, pulled: 0, added: 0, scored: 0, skipped: [], errors: [] };
 
   const lanes = leadLanes();
-  const ready = lanes.filter((l) => l.needs.length === 0);
+  const ready = lanes.filter((l) => l.needs.length === 0 && !l.relay);
   for (const lane of lanes) if (lane.needs.length) result.skipped.push(`${lane.label}: needs ${lane.needs.join(", ")}`);
 
   const pulls = await Promise.allSettled(ready.map((l) => l.pull()));
@@ -43,6 +44,27 @@ export async function runLeads(opts: { budgetMs?: number } = {}): Promise<LeadsR
   result.scored = scoring.scored;
   result.errors.push(...scoring.errors);
   return result;
+}
+
+/** The pages the runner should fetch for each relayed lane. */
+export async function leadsRelayPlan(): Promise<{ id: string; name: string; requests: { url: string; headers: Record<string, string> }[] }[]> {
+  return Promise.all(
+    leadLanes()
+      .filter((l) => l.relay)
+      .map(async (l) => ({
+        id: l.key,
+        name: l.label,
+        requests: (await relayUrls(l.pull)).map((url) => ({ url, headers: { "User-Agent": RELAY_USER_AGENT } })),
+      })),
+  );
+}
+
+/** Parses the pages the runner fetched for one relayed lane and stores what's new; the main pass scores them. */
+export async function ingestRelayedLeads(key: string, bodies: Map<string, string>): Promise<{ pulled: number; added: number }> {
+  const lane = leadLanes().find((l) => l.key === key && l.relay);
+  if (!lane) throw new Error(`No relayed lane "${key}"`);
+  const raw = await pullRelayed(lane.pull, bodies);
+  return { pulled: raw.length, added: await storeNew(raw) };
 }
 
 /** Inserts the leads not seen before. Old and off-topic items never reach the classifier. */

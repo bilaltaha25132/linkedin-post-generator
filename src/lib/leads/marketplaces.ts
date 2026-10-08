@@ -1,5 +1,7 @@
 import "server-only";
 
+import { AsyncLocalStorage } from "node:async_hooks";
+
 import { decodeEntities, htmlToText } from "@/lib/feeds/text";
 import type { RawLead } from "@/lib/leads/types";
 
@@ -8,7 +10,33 @@ import type { RawLead } from "@/lib/leads/types";
 
 const UA = "SignalDesk/1.0 (personal lead finder)";
 
+// Workana and Guru answer 403 to Vercel's addresses, so the leads workflow's
+// runner fetches their pages (scripts/relay.mjs) and the same pullers parse the
+// bodies it posts back. Record mode answers every request empty to learn the URLs.
+const relay = new AsyncLocalStorage<(url: string) => string>();
+
+export async function relayUrls(pull: () => Promise<RawLead[]>): Promise<string[]> {
+  const urls: string[] = [];
+  await relay.run((url) => {
+    urls.push(url);
+    return "";
+  }, pull);
+  return urls;
+}
+
+export function pullRelayed(pull: () => Promise<RawLead[]>, bodies: Map<string, string>): Promise<RawLead[]> {
+  return relay.run((url) => {
+    const body = bodies.get(url);
+    if (body === undefined) throw new Error(`The runner sent nothing for ${new URL(url).host}`);
+    return body;
+  }, pull);
+}
+
+export const RELAY_USER_AGENT = UA;
+
 async function fetchText(url: string, init: RequestInit = {}): Promise<string> {
+  const relayed = relay.getStore();
+  if (relayed) return relayed(url);
   const res = await fetch(url, {
     ...init,
     headers: { "user-agent": UA, ...init.headers },

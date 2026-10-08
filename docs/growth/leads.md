@@ -91,6 +91,9 @@ stored links are the saved searches.
   full-stack pages), Guru (skill pages), Braintrust (newest 100 freelance
   jobs; robots.txt disallows paging), freelancermap (100% remote only), Ureed
   (public GraphQL) and Khamsat (buyer requests, Arabic, dates day first).
+  Workana and Guru answer 403 to Vercel, so the leads workflow's runner
+  fetches their pages first (`scripts/relay.mjs leads`, approved by him on
+  2026-10-08) and the app parses the bodies with the same pullers.
   Gigs pass `GIG_WORK`, which is `AI_WORK` plus automation, scraping,
   full-stack web work and Arabic terms, since those are jobs he takes too.
 - Left out: Mercor, Turing and micro1 (terms forbid scripted access);

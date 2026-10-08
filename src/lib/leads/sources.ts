@@ -39,6 +39,8 @@ export interface LeadLane {
   /** Missing env var names; empty when the lane can run. */
   needs: string[];
   pull: () => Promise<RawLead[]>;
+  /** Fetched by the GitHub runner instead of Vercel (src/lib/leads/marketplaces.ts). */
+  relay?: boolean;
 }
 
 export function leadLanes(): LeadLane[] {
@@ -47,10 +49,10 @@ export function leadLanes(): LeadLane[] {
     { key: "hn", label: "HN freelancer thread", needs: [], pull: pullHackerNews },
     { key: "freelancer", label: "Freelancer.com", needs: [], pull: pullFreelancer },
     { key: "peopleperhour", label: "PeoplePerHour", needs: [], pull: pullPeoplePerHour },
-    { key: "workana", label: "Workana", needs: [], pull: pullWorkana },
+    { key: "workana", label: "Workana", needs: [], pull: pullWorkana, relay: true },
     { key: "mostaql", label: "Mostaql", needs: [], pull: pullMostaql },
     { key: "arc", label: "Arc.dev contracts", needs: [], pull: pullArc },
-    { key: "guru", label: "Guru", needs: [], pull: pullGuru },
+    { key: "guru", label: "Guru", needs: [], pull: pullGuru, relay: true },
     { key: "braintrust", label: "Braintrust", needs: [], pull: pullBraintrust },
     { key: "freelancermap", label: "freelancermap", needs: [], pull: pullFreelancermap },
     { key: "ureed", label: "Ureed", needs: [], pull: pullUreed },
