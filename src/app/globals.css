@@ -2606,6 +2606,8 @@ fieldset.stack-xs {
 }
 .tex-section {
   margin: 7pt 0 4pt;
+  color: #000;
+  letter-spacing: 0;
   border-bottom: 0.5pt solid #000;
   font-size: 12pt;
   font-variant: small-caps;
