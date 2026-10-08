@@ -37,6 +37,29 @@ export function profileFacts(p: CandidateProfile): string {
   return lines.filter(Boolean).join("\n") || "(no form facts saved yet)";
 }
 
+const PLACES: [string, RegExp][] = [
+  ["SA", /saudi|riyadh|jeddah|makkah|mecca|dammam|khobar|ksa\b/],
+  ["AE", /\buae\b|emirates|dubai|abu dhabi|sharjah/],
+  ["QA", /qatar|doha/],
+  ["PK", /pakistan|karachi|lahore|islamabad/],
+];
+
+/**
+ * Where this job is and what that means for him, worked out here so the model
+ * never has to guess the country (it once put a Riyadh job's visa line in the UAE).
+ */
+export function jobPlace(job: { countries?: string[]; location_raw?: string | null }, p: CandidateProfile): string {
+  const where = [job.location_raw, ...(job.countries ?? [])].filter(Boolean).join(", ");
+  if (!where) return "THIS JOB'S LOCATION: not stated. Don't mention visa, sponsorship or relocation.";
+  const code = PLACES.find(([, re]) => re.test(where.toLowerCase()))?.[0];
+  const auth = code ? p.work_auth[code] : undefined;
+  const lines = [`THIS JOB'S LOCATION: ${where}`];
+  if (auth) lines.push(auth === "yes" ? "He is authorised to work there." : "He would need visa sponsorship there.");
+  if (code && code !== "PK") lines.push(p.relocate[code] ? "He would relocate there." : "Relocation there isn't settled; don't mention it.");
+  lines.push("When you mention visa, sponsorship or relocation, use only these lines and name only this country. Never mention his authorisation for other countries.");
+  return lines.join("\n");
+}
+
 async function pastAnswers(questions: string[]): Promise<string> {
   const seen = new Map<string, string>();
   for (const q of questions.slice(0, 6)) {
@@ -127,6 +150,8 @@ ${facts.text}
 FORM FACTS:
 ${profileFacts(ctx.profile)}
 
+${jobPlace(ctx.job, ctx.profile)}
+
 Rules:
 - Read the whole job ad first. If the ad or a question sets a test ("start your answer with the phrase ..."), follow it exactly.
 - Choice questions: answer only from the facts. If the facts don't settle it, answer null and say in flag what he must decide.
@@ -212,11 +237,15 @@ ${facts.text}
 FORM FACTS:
 ${profileFacts(profile)}
 
+${jobPlace(job, profile)}
+
 ${style}
 - Open with the specific thing about this role or company that fits his work, not with "I am writing to apply".
 - Two concrete examples from the facts, with their real numbers, each tied to something the ad asks for.
 - Mention a gap only when the ad makes it a hard requirement he lacks: one sentence, paired with the nearest real experience. Never a paragraph of weaknesses.
-- Write like a person: no "What caught my eye", "I'm excited", "not X, it's Y" or "X, not Y" contrasts, no closing one-liner or moral. Vary sentence length.
+- Write like a person: no "What caught my eye", "I'm excited", "lines up with", "I keep coming back to", "I'll be straight", "the hard part wasn't X, it was Y", "not X, it's Y" or "X, not Y" contrasts, no closing one-liner or moral. Vary sentence length.
+- Tie an example to the ad inside the sentence that tells it. Never tack on "which matches your X" or "That is X, which fits your Y".
+- Notice period: "My notice period is N weeks." Don't turn it into a start date.
 - First person, plain words, contractions where natural, no buzzwords, no em or en dashes, no emojis.
 - Never invent a number, employer, tool, date or credential.
 - Never state relocation, visa, notice period, start date or salary unless FORM FACTS give it.

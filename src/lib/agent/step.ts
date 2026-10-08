@@ -2,7 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 
-import { profileFacts } from "@/lib/apply/answers";
+import { jobPlace, profileFacts } from "@/lib/apply/answers";
 import { getApplication, getCandidateProfile, getJob, getLedger, latestVersion } from "@/lib/apply/queries";
 import { ledgerText } from "@/lib/apply/tailor";
 import { chatJSON } from "@/lib/llm/client";
@@ -149,7 +149,7 @@ async function factsBlock(jobId: string | null): Promise<string> {
   if (ledger.skills.length) parts.push(`Skills: ${ledger.skills.map((s) => s.name).join(", ")}`);
 
   if (job) {
-    parts.push(`THE JOB\n${job.title} at ${job.company}${job.location_raw ? `, ${job.location_raw}` : ""}`);
+    parts.push(`THE JOB\n${job.title} at ${job.company}\n${jobPlace(job, profile)}`);
     const reviewed = (app?.answers ?? []).filter((a) => a.value && a.source !== "you" && a.type !== "file");
     if (reviewed.length) {
       parts.push(`HIS REVIEWED ANSWERS FOR THIS FORM (use these exactly)\n${reviewed.map((a) => `- ${a.label}: ${a.value}`).join("\n")}`);
