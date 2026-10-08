@@ -224,8 +224,8 @@ export async function draftCoverLetter(input: {
   const facts = factsFor(ledger);
   const style = LETTER_STYLE[letterStyle(job)];
   const name = [profile.contact.first_name, profile.contact.last_name].filter(Boolean).join(" ") || "Bilal Taha";
-  const text = await chat({
-    role: "writer",
+  const opts = {
+    role: "writer" as const,
     temperature: 0.6,
     maxTokens: 1200,
     op: "cover-letter",
@@ -251,8 +251,42 @@ ${style}
 - Never state relocation, visa, notice period, start date or salary unless FORM FACTS give it.
 - Start with "Dear hiring team," (or the hiring manager's name if the ad gives one) and end with his name. No address block, no date. Reply with the letter only.`,
     user: `JOB: ${job.title} at ${job.company}\n\nAD:\n${(job.description ?? "(no description stored)").slice(0, 7000)}`,
+  };
+  let text = stripDashes((await chat(opts)).trim());
+  // The prompt alone doesn't hold these; one targeted rewrite does.
+  const tics = letterTics(text);
+  if (tics.length) {
+    const fixed = await chat({
+      ...opts,
+      user: `${opts.user}\n\nYOUR DRAFT:\n${text}\n\nRewrite the draft. Keep every fact and its order, change only the sentences holding these phrasings: ${tics.map((t) => `"${t}"`).join("; ")}. Reply with the letter only.`,
+    });
+    text = stripDashes(fixed.trim());
+  }
+  return text;
+}
+
+const TICS = [
+  /\blines? up (closely )?with\b/i,
+  /\bkeep coming back\b/i,
+  /\b(caught my eye|pulled me in|excited)\b/i,
+  /\b(I'll|I will|I should|let me|to) be (straight|upfront|honest|candid)\b[^.]*/i,
+  /\b(wasn't|isn't|was not|is not) [^.,;]{1,40}, (it was|it's|it is)\b/i,
+  /, not (a |an |just )?[\w-]+( \w+)?\./i,
+  /\brather than (the )?\d[^.,]*/i,
+  /\bnot \d+\+?\b/i,
+  /\bwhich (matches|fits|maps onto|lines up)\b[^.]*/i,
+  /\bmaps? directly onto\b/i,
+  /\bexactly (where|what|the kind)\b/i,
+  /\bstart (four|\w+|\d+) weeks? (from|after)\b[^.]*/i,
+  /(^|\.\s+)(That|This)('s| is) [^.]*\byour\b[^.]*\./,
+];
+
+/** Template phrasings in a drafted letter, as found, for a targeted rewrite. */
+export function letterTics(text: string): string[] {
+  return TICS.flatMap((re) => {
+    const m = text.match(re);
+    return m ? [m[0].replace(/^\.\s+/, "").trim()] : [];
   });
-  return stripDashes(text.trim());
 }
 
 /** Keeps the free-text answers he approved, so later drafts stay consistent. */
