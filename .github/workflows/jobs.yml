@@ -14,6 +14,14 @@ jobs:
   jobs:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      # Boards that hang requests from Vercel; a failure here never stops the pass.
+      - name: Relay blocked boards
+        continue-on-error: true
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: node scripts/relay-jobs.mjs
       - name: Trigger jobs pass
         run: |
           code=$(curl -sS --max-time 330 -o /tmp/body -w "%{http_code}" \

@@ -13,6 +13,8 @@ export interface JobSource {
   name: string;
   region: string | null;
   enabled: boolean;
+  /** Fetched by the GitHub runner and posted back (sources.ts, relayRequests). */
+  relay: boolean;
   last_pulled_at: string | null;
   last_ok: boolean | null;
   last_error: string | null;

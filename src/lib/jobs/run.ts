@@ -14,7 +14,16 @@ import {
 } from "@/lib/jobs/classify";
 import { getJobProfile } from "@/lib/jobs/queries";
 import { scoreJob } from "@/lib/jobs/score";
-import { ATS_INTERVAL_HOURS, ATS_KINDS, INTERVAL_HOURS, PULLERS, fetchDescription } from "@/lib/jobs/sources";
+import {
+  ATS_INTERVAL_HOURS,
+  ATS_KINDS,
+  INTERVAL_HOURS,
+  PULLERS,
+  fetchDescription,
+  pullRelayed,
+  relayRequests,
+  type RelayRequest,
+} from "@/lib/jobs/sources";
 import { payText } from "@/lib/jobs/format";
 import type { JobRegion, JobSource, RawJob, RemoteScope, VisaFlag } from "@/lib/jobs/types";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -80,7 +89,35 @@ export async function runJobs(opts: { budgetMs?: number; force?: boolean } = {})
   return result;
 }
 
-async function dueSources(limit: number, force: boolean): Promise<JobSource[]> {
+/** The relayed sources that are due, each with the requests the runner should send. */
+export async function relayPlan(force = false): Promise<{ id: string; name: string; requests: RelayRequest[] }[]> {
+  const due = await dueSources(Infinity, force, true);
+  return Promise.all(due.map(async (s) => ({ id: s.id, name: s.name, requests: await relayRequests(s) })));
+}
+
+/** Ingests one relayed source from the bodies the runner fetched. */
+export async function ingestRelayed(
+  sourceId: string,
+  bodies: Map<string, string>,
+): Promise<{ pulled: number; added: number; closed: number }> {
+  const db = supabaseAdmin();
+  const { data, error } = await db.from("job_sources").select("*").eq("id", sourceId).eq("relay", true).single();
+  if (error) throw new Error(error.message);
+  const source = data as JobSource;
+  try {
+    const { jobs, complete } = await pullRelayed(source, bodies);
+    return await ingestJobs(source, jobs, complete);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    await db
+      .from("job_sources")
+      .update({ last_pulled_at: new Date().toISOString(), last_ok: false, last_error: message.slice(0, 300) })
+      .eq("id", source.id);
+    throw err;
+  }
+}
+
+async function dueSources(limit: number, force: boolean, relay = false): Promise<JobSource[]> {
   const { data, error } = await supabaseAdmin()
     .from("job_sources")
     .select("*")
@@ -91,7 +128,7 @@ async function dueSources(limit: number, force: boolean): Promise<JobSource[]> {
   const now = Date.now();
   return (data as JobSource[])
     .filter((s) => {
-      if (!PULLERS[s.kind]) return false;
+      if (!PULLERS[s.kind] || s.relay !== relay) return false;
       if (force || !s.last_pulled_at) return true;
       const hours = ATS_KINDS.has(s.kind) ? ATS_INTERVAL_HOURS : (INTERVAL_HOURS[s.kind] ?? 6);
       // A little slack so an hourly cron that starts early still picks it up.

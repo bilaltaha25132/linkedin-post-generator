@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+
 import { decodeEntities, htmlToText } from "@/lib/feeds/text";
 import { isCandidateTitle } from "@/lib/jobs/classify";
 import type { JobSource, RawJob } from "@/lib/jobs/types";
@@ -149,12 +151,49 @@ export async function fetchDescription(kind: string, sourceId: string): Promise<
   return null;
 }
 
+/** A request a relayed puller makes, for the GitHub runner to send on its behalf. */
+export interface RelayRequest {
+  url: string;
+  headers: Record<string, string>;
+}
+
+// Some sites hang every request from Vercel's addresses but answer GitHub's
+// runners, so for sources marked `relay` the jobs workflow fetches the pages and
+// posts them back. The puller runs twice: once to list the URLs it asks for
+// (each answered with an empty body), then over the bodies the runner fetched.
+const relay = new AsyncLocalStorage<(url: string, headers: Record<string, string>) => Response>();
+
+export async function relayRequests(source: JobSource): Promise<RelayRequest[]> {
+  const requests: RelayRequest[] = [];
+  await relay.run(
+    (url, headers) => {
+      requests.push({ url, headers });
+      return new Response(headers.Accept === "application/json" ? "{}" : "");
+    },
+    () => PULLERS[source.kind](source),
+  );
+  return requests;
+}
+
+export async function pullRelayed(source: JobSource, bodies: Map<string, string>): Promise<Pull> {
+  return relay.run(
+    (url) => {
+      const body = bodies.get(url);
+      if (body === undefined) throw new Error(`The runner sent nothing for ${new URL(url).host}`);
+      return new Response(body);
+    },
+    () => PULLERS[source.kind](source),
+  );
+}
+
 async function get(
   url: string,
   accept = "application/json",
   retry = true,
   headers: Record<string, string> = {},
 ): Promise<Response> {
+  const relayed = relay.getStore();
+  if (relayed) return relayed(url, { "User-Agent": USER_AGENT, Accept: accept, ...headers });
   let response: Response;
   try {
     response = await fetch(url, {

@@ -56,13 +56,22 @@ Verified live on 2026-10-07 ([research/gulf-jobs.md](research/gulf-jobs.md)):
 |---|---|---|
 | **Gulf employers on standard ATSs** | Same pullers as above | Greenhouse: Careem (also lists Karachi and Lahore), Tamara, Hala, AI71. Ashby: Lean, Sarj.ai, Ziina, Thndr. Workable: Salla, Foodics, Lucidya, Mozn (`mozn-ai`). Recruitee: Unifonic. Pinpoint: Tabby. SmartRecruiters: HungerStation, talabat, Jisr. Lever: MBZUAI's foundation-models institute (`ifm-us`) |
 | **Large AI employers on enterprise ATSs** | Built (`eightfold`, `phenom`, `oracle`, `successfactors`) | NEOM (Eightfold, `careers.neom.com/api/apply/v2/jobs?domain=neom.com`, ten a page), G42 group and TII (Phenom; job JSON embedded in the search page, full ad from the job page's JSON-LD at scoring time), Aramco Digital and Presight (Oracle Recruiting Cloud REST), Saudi Aramco, Core42 and stc (SuccessFactors RSS `/services/rss/job/`, read once per keyword since an empty search returns a sliver). The first three read the whole board, so they're company boards; the RSS feeds are searches and close by age |
-| **Naukrigulf** | Built (`naukrigulf`), one source per country, every 12h | The JSON API its own search pages call, `/spapi/jobapi/search`, with the site's public web-client headers (`appId: 205`, `systemId: 2323`). robots.txt allows search. About 50 to 170 kept roles per country. No Firecrawl credits |
+| **Naukrigulf** | Built (`naukrigulf`), one source per country, every 12h | The JSON API its own search pages call, `/spapi/jobapi/search`, with the site's public web-client headers (`appId: 205`, `systemId: 2323`). robots.txt allows search. About 50 to 170 kept roles per country. No Firecrawl credits. Relayed (below) |
 | **Workable job search** | Built (`workable_search`), one source per country, every 12h | `jobs.workable.com/api/v1/jobs?query=…&location=Saudi Arabia`, 20 a page with `nextPageToken`; full descriptions included. Covers every company on Workable, not just the boards listed above |
 | **Sabbar** (sabbar.com) | Built (`sabbar`), daily | Sitemap entries from the last 14 days whose role slug passes the title filter (up to 60), then `JobPosting` JSON-LD on each page. robots.txt allows all |
 | **Bayt** | Firecrawl the country search page once a day (`/en/saudi-arabia/jobs/<kw>-jobs/`, 30 jobs in JSON-LD); job pages are behind Cloudflare, so cards link out | Plus Bayt's own email alerts into the email bridge |
 | **Qureos**, **Michael Page Gulf** | Job pages carry `JobPosting` data or plain HTML | Small, but real AI roles |
 | **Google for Jobs** via SerpApi | `gl=sa`, `ae`, `qa`, `kw`, `bh`, `om` | The legal window onto Indeed, GulfTalent, Naukrigulf and LinkedIn listings. Free plan 250 searches a month, shared |
 | Humain, SDAIA, Elm | No public ATS found | Their roles reach him through LinkedIn job alerts (email bridge) and Sabbar |
+
+**Relayed sources.** Naukrigulf and Saudi Aramco's careers site hang every
+request from Vercel but answer GitHub's runners, so their `job_sources` rows
+have `relay = true` and the hourly jobs workflow fetches them first
+(`scripts/relay-jobs.mjs`, one request at a time with a pause). It asks
+`GET /api/public/cron/jobs/relay` what's due; the app runs the puller once to
+list the URLs it would request, the runner fetches them, and one `POST` per
+source hands the bodies back to be parsed by the same puller and ingested. The
+owner chose this route on 2026-10-08.
 
 The board searches run ten queries each (AI engineer, machine learning, LLM,
 generative AI, artificial intelligence, data scientist, full stack, Python,
