@@ -1,7 +1,5 @@
 import "server-only";
 
-import { AsyncLocalStorage } from "node:async_hooks";
-
 import { decodeEntities, htmlToText } from "@/lib/feeds/text";
 import type { RawLead } from "@/lib/leads/types";
 
@@ -10,33 +8,7 @@ import type { RawLead } from "@/lib/leads/types";
 
 const UA = "SignalDesk/1.0 (personal lead finder)";
 
-// Workana and Guru answer 403 to Vercel's addresses, so the leads workflow's
-// runner fetches their pages (scripts/relay.mjs) and the same pullers parse the
-// bodies it posts back. Record mode answers every request empty to learn the URLs.
-const relay = new AsyncLocalStorage<(url: string) => string>();
-
-export async function relayUrls(pull: () => Promise<RawLead[]>): Promise<string[]> {
-  const urls: string[] = [];
-  await relay.run((url) => {
-    urls.push(url);
-    return "";
-  }, pull);
-  return urls;
-}
-
-export function pullRelayed(pull: () => Promise<RawLead[]>, bodies: Map<string, string>): Promise<RawLead[]> {
-  return relay.run((url) => {
-    const body = bodies.get(url);
-    if (body === undefined) throw new Error(`The runner sent nothing for ${new URL(url).host}`);
-    return body;
-  }, pull);
-}
-
-export const RELAY_USER_AGENT = UA;
-
 async function fetchText(url: string, init: RequestInit = {}): Promise<string> {
-  const relayed = relay.getStore();
-  if (relayed) return relayed(url);
   const res = await fetch(url, {
     ...init,
     headers: { "user-agent": UA, ...init.headers },
@@ -69,19 +41,6 @@ function embeddedJson<T>(html: string, marker: string): T | null {
   }
   return null;
 }
-
-/** "13 hours ago", "Posted 5 hrs ago", "2 weeks ago" → an ISO date. */
-function ago(text: string, now = Date.now()): string | null {
-  const m = text.match(/(\d+|an?)\s*(min|hour|hr|day|week|month)/i);
-  if (!m) return null;
-  const n = /^\d/.test(m[1]) ? Number(m[1]) : 1;
-  const unit = { min: 60_000, hour: 3_600_000, hr: 3_600_000, day: 86_400_000, week: 604_800_000, month: 2_592_000_000 }[
-    m[2].toLowerCase() as "min"
-  ];
-  return new Date(now - n * unit).toISOString();
-}
-
-const strip = (html: string) => decodeEntities(html.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
 
 function gig(fields: Omit<RawLead, "kindHint" | "who" | "stack"> & Partial<Pick<RawLead, "who" | "stack">>): RawLead {
   return { who: null, stack: [], ...fields, kindHint: "gig" };
@@ -135,45 +94,6 @@ export async function pullPeoplePerHour(): Promise<RawLead[]> {
     }
   }
   return out;
-}
-
-// --- Workana: keyword searches ------------------------------------------------
-
-export async function pullWorkana(): Promise<RawLead[]> {
-  type Result = {
-    slug: string;
-    title: string;
-    description?: string;
-    budget?: string;
-    postedDate?: string;
-    country?: string;
-    authorName?: string;
-    skills?: { anchorText?: string }[];
-  };
-  const seen = new Map<string, RawLead>();
-  for (const query of ["ai agent", "chatbot", "llm", "n8n", "automation"]) {
-    const html = await fetchText(`https://www.workana.com/jobs?language=en&query=${encodeURIComponent(query)}`);
-    const raw = html.match(/:results-initials='([^']*)'/)?.[1];
-    if (!raw) continue;
-    const { results } = JSON.parse(decodeEntities(raw)) as { results: Result[] };
-    for (const r of results) {
-      const country = r.country ? strip(r.country) : "";
-      seen.set(
-        r.slug,
-        gig({
-          source: "workana",
-          url: `https://www.workana.com/job/${r.slug}`,
-          postedAt: ago(r.postedDate ?? ""),
-          title: strip(r.title),
-          text: `${strip(r.title)}\n${country ? `Client in ${country}.\n` : ""}${htmlToText(r.description ?? "")}`,
-          who: r.authorName ?? null,
-          budget: r.budget ? strip(r.budget) : null,
-          stack: (r.skills ?? []).map((s) => s.anchorText ?? "").filter(Boolean).slice(0, 8),
-        }),
-      );
-    }
-  }
-  return [...seen.values()];
 }
 
 // --- Mostaql (Arabic, Gulf clients): its own RSS ------------------------------
@@ -237,37 +157,6 @@ export async function pullArc(): Promise<RawLead[]> {
           who: j.company?.name ?? null,
           budget: rate,
           stack: (j.categories ?? []).map((c) => c.name).slice(0, 8),
-        }),
-      );
-    }
-  }
-  return [...seen.values()];
-}
-
-// --- Guru: skill pages --------------------------------------------------------
-
-export async function pullGuru(): Promise<RawLead[]> {
-  const seen = new Map<string, RawLead>();
-  for (const skill of ["artificial-intelligence", "chatbots", "python"]) {
-    const html = await fetchText(`https://www.guru.com/d/jobs/skill/${skill}/`);
-    for (const block of html.split('<div class="record jobRecord"').slice(1)) {
-      const id = block.match(/data-gid="(\d+)"/)?.[1];
-      const href = block.match(/jobRecord__title[\s\S]*?href="([^"&]+)/)?.[1];
-      if (!id || !href) continue;
-      const pick = (re: RegExp) => strip(block.match(re)?.[1] ?? "");
-      const meta = pick(/jobRecord__meta">([\s\S]*?)<\/div>/);
-      const title = pick(/jobRecord__title[^>]*>([\s\S]*?)<\/h2>/);
-      const posted = meta.match(/Posted on (\w+ \d+, \d{4})/)?.[1];
-      seen.set(
-        id,
-        gig({
-          source: "guru",
-          url: `https://www.guru.com${href}`,
-          postedAt: posted ? new Date(`${posted} UTC`).toISOString() : ago(meta),
-          title,
-          text: `${title}\n${pick(/jobRecord__desc[^>]*>([\s\S]*?)<\/p>/)}`,
-          budget: pick(/jobRecord__budget">([\s\S]*?)<\/div>/) || null,
-          stack: [...block.matchAll(/skillsList__skill[^>]*>([^<]+)</g)].map((m) => m[1].trim()).filter(Boolean).slice(0, 8),
         }),
       );
     }

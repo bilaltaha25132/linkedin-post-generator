@@ -1,15 +1,14 @@
-// Runs in the jobs and leads workflows. Some job boards and marketplaces refuse
-// Vercel's addresses, so this runner fetches their pages and posts the bodies back
-// to the app, which parses them with the same pullers (src/lib/jobs/sources.ts,
-// src/lib/leads/marketplaces.ts).
+// Runs in the jobs workflow. Some job boards hang every request from Vercel's
+// addresses, so this runner fetches their pages and posts the bodies back to the
+// app, which parses them with the same pullers (src/lib/jobs/sources.ts).
 //
-//   APP_URL=… CRON_SECRET=… node scripts/relay.mjs jobs|leads
+//   APP_URL=… CRON_SECRET=… node scripts/relay.mjs jobs
 
 const pass = process.argv[2];
 const app = process.env.APP_URL;
 const auth = { Authorization: `Bearer ${process.env.CRON_SECRET}` };
-if (!app || !process.env.CRON_SECRET || !["jobs", "leads"].includes(pass)) {
-  console.error("Usage: APP_URL=… CRON_SECRET=… node scripts/relay.mjs jobs|leads");
+if (!app || !process.env.CRON_SECRET || pass !== "jobs") {
+  console.error("Usage: APP_URL=… CRON_SECRET=… node scripts/relay.mjs jobs");
   process.exit(1);
 }
 

@@ -12,14 +12,6 @@ jobs:
   leads:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      # Workana and Guru refuse Vercel; a failure here never stops the pass.
-      - name: Relay blocked marketplaces
-        continue-on-error: true
-        env:
-          APP_URL: ${{ secrets.APP_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        run: node scripts/relay.mjs leads
       - name: Trigger leads pass
         run: |
           code=$(curl -sS --max-time 330 -o /tmp/body -w "%{http_code}" \

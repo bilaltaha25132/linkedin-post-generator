@@ -85,21 +85,18 @@ stored links are the saved searches.
 - **Contract roles** from the Jobs pipeline.
 - **Freelance marketplaces** (`src/lib/leads/marketplaces.ts`), each the public
   listing a visitor sees, one page per query, paths robots.txt allows:
-  PeoplePerHour (AI and programming categories, embedded page state),
-  Workana (searches ai agent, chatbot, llm, n8n, automation), Mostaql (RSS,
-  Arabic), Arc.dev (contract roles on the llm, ai-engineer, python and
-  full-stack pages), Guru (skill pages), Braintrust (newest 100 freelance
-  jobs; robots.txt disallows paging), freelancermap (100% remote only), Ureed
-  (public GraphQL) and Khamsat (buyer requests, Arabic, dates day first).
-  Workana and Guru answer 403 to Vercel, so the leads workflow's runner
-  fetches their pages first (`scripts/relay.mjs leads`, approved by him on
-  2026-10-08) and the app parses the bodies with the same pullers.
+  PeoplePerHour (AI and programming categories, embedded page state), Mostaql
+  (RSS, Arabic), Arc.dev (contract roles on the llm, ai-engineer, python and
+  full-stack pages), Braintrust (newest 100 freelance jobs; robots.txt
+  disallows paging), freelancermap (100% remote only), Ureed (public GraphQL)
+  and Khamsat (buyer requests, Arabic, dates day first).
   Gigs pass `GIG_WORK`, which is `AI_WORK` plus automation, scraping,
   full-stack web work and Arabic terms, since those are jobs he takes too.
 - Left out: Mercor, Turing and micro1 (terms forbid scripted access);
-  Upwork, Contra, Toptal, Fiverr, Malt (no public feed or blocked); GitHub
-  bounty labels (stale since May 2026, mostly spam repos). Upwork is best
-  covered by its own email alerts.
+  Upwork, Contra, Toptal, Fiverr, Malt (no public feed or blocked); Workana
+  and Guru (403 to Vercel and GitHub runners alike); GitHub bounty labels
+  (stale since May 2026, mostly spam repos). Upwork, Workana and Guru are
+  best covered by their own email alerts.
 
 ## Classify and score
 
