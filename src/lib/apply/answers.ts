@@ -305,6 +305,7 @@ const TICS = [
   /\bmaps? (closely |directly )?(to|onto)\b[^.]*/i,
   /(^|\.\s+)(That|This) (maps|matches|fits|lines up|covers)\b[^.]*\./,
   /\bis the work I (already )?do\b/i,
+  /\bnot just\b[^,.]*/i,
   /\bexactly (where|what|the kind)\b/i,
   /\bstart (four|\w+|\d+) weeks? (from|after)\b[^.]*/i,
   /(^|\.\s+)(That|This)('s| is) [^.]*\byour\b[^.]*\./,
