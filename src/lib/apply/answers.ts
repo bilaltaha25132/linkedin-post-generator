@@ -18,7 +18,7 @@ function factsFor(ledger: Ledger): { text: string; fromBio: boolean } {
   return { text: AUTHOR_BIO, fromBio: true };
 }
 
-function profileFacts(p: CandidateProfile): string {
+export function profileFacts(p: CandidateProfile): string {
   const lines = [
     p.contact.city && `Lives in ${[p.contact.city, p.contact.country].filter(Boolean).join(", ")}`,
     p.years_experience !== null && `${p.years_experience} years of professional experience`,

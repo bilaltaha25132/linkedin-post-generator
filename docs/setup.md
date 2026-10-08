@@ -85,10 +85,12 @@ with the same `APP_URL` and `CRON_SECRET` secrets as the other workflows.
 GitHub can start scheduled runs late, so a post goes out within about 10 to 20
 minutes of its time.
 
-### Optional: the form-filling extension
+### Optional: the browser agent
 
-`extension/` is a personal Chrome extension that types the answers you reviewed
-on a job's Apply kit page into the employer's form, one field per click. Set
+`extension/` is a personal Chrome extension: a side-panel agent that fills job
+applications (and does other tasks) in your browser while you watch, and asks
+before it submits anything. Each step is one utility-model call, so an
+application costs roughly 30 to 60 calls. Set
 `EXTENSION_TOKEN` (32 random bytes, e.g.
 `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`)
 in `.env.local` and Vercel, then follow [extension/README.md](../extension/README.md).

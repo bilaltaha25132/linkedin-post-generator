@@ -99,6 +99,42 @@ export async function getApplication(jobId: string): Promise<Application | null>
   return data ? { ...data, answers: Array.isArray(data.answers) ? data.answers : [] } : null;
 }
 
+export interface AgentJob {
+  id: string;
+  title: string;
+  company: string;
+}
+
+/** The job a page belongs to: by its ATS form id, else by the apply link itself. */
+export async function findJobForPage(url: string): Promise<AgentJob | null> {
+  const target = detectAts({ url_apply: url, source: "", source_id: "", source_token: null });
+  if (target) {
+    const job = await findJobForForm(target);
+    if (job) return job;
+  }
+  const u = new URL(url);
+  const path = `${u.hostname}${u.pathname}`.replace(/\/+$/, "").replace(/[%_]/g, "");
+  if (path.length < 12) return null;
+  const { data, error } = await supabaseAdmin().from("jobs").select("id, title, company").ilike("url_apply", `%${path}%`).limit(1);
+  if (error) throw new Error(error.message);
+  return data?.[0] ?? null;
+}
+
+/** Jobs he has started an application for, newest first, for the agent's job picker. */
+export async function listApplyingJobs(limit = 20): Promise<AgentJob[]> {
+  const { data, error } = await supabaseAdmin()
+    .from("applications")
+    .select("updated_at, status, jobs(id, title, company)")
+    .eq("status", "draft")
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return (data ?? []).flatMap((r) => {
+    const j = r.jobs as unknown as AgentJob | null;
+    return j ? [{ id: j.id, title: j.title, company: j.company }] : [];
+  });
+}
+
 /** The job whose application form is at this target, for the extension. */
 export async function findJobForForm(target: FormTarget): Promise<{ id: string; title: string; company: string } | null> {
   const { data, error } = await supabaseAdmin()

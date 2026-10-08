@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Signal Desk agent</title>
+    <link rel="stylesheet" href="panel.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <span class="state" id="state" data-state="idle" aria-live="polite">Ready</span>
+      <button id="settings-toggle" class="icon-btn" type="button" aria-label="Settings" aria-expanded="false"></button>
+    </header>
+
+    <form id="settings" class="settings" hidden>
+      <h2>Settings</h2>
+      <label for="base">Signal Desk address</label>
+      <input id="base" type="url" placeholder="https://your-app.vercel.app" required />
+      <label for="token">Extension token</label>
+      <input id="token" type="password" autocomplete="off" placeholder="EXTENSION_TOKEN" />
+      <p class="hint">Leave the token blank to keep the saved one.</p>
+      <div class="row">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="button" class="btn" id="settings-cancel">Cancel</button>
+      </div>
+    </form>
+
+    <section class="context" id="context" aria-label="This page">
+      <div class="page-chip" id="page-chip">No page yet</div>
+      <label class="job-pick">
+        <span>Job</span>
+        <select id="job"></select>
+      </label>
+    </section>
+
+    <main class="log" id="log" aria-live="polite" aria-label="What the agent is doing">
+      <div class="empty" id="empty">
+        <p class="empty-lead">Tell me what to do on this page. I'll work through it step by step while you watch.</p>
+        <p class="empty-note">I fill forms from your Signal Desk facts and reviewed answers, attach your resume, and stop for your approval before anything is submitted. Sign-ins and human checks stay with you.</p>
+        <div class="chips" id="chips"></div>
+      </div>
+    </main>
+
+    <footer class="dock">
+      <div class="controls" id="controls" hidden>
+        <span class="count" id="count"></span>
+        <button type="button" class="btn btn-sm" id="pause">Pause</button>
+        <button type="button" class="btn btn-sm btn-danger" id="stop">Stop</button>
+      </div>
+      <form class="composer" id="composer">
+        <label class="sr-only" for="task">Task for the agent</label>
+        <textarea id="task" rows="2" placeholder="What should I do here?"></textarea>
+        <button type="submit" class="send" id="send" aria-label="Start"></button>
+      </form>
+    </footer>
+
+    <script src="panel.js"></script>
+  </body>
+</html>

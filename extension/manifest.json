@@ -1,9 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "Signal Desk Fill",
-  "version": "1.0.0",
-  "description": "Fills a job application's fields with the answers you reviewed in Signal Desk, one click per field. Never submits.",
-  "action": { "default_popup": "popup.html", "default_title": "Signal Desk Fill" },
-  "permissions": ["activeTab", "scripting", "storage"],
-  "optional_host_permissions": ["https://*/*", "http://localhost/*"]
+  "name": "Signal Desk Agent",
+  "version": "2.0.0",
+  "description": "Works through job applications and other web tasks in your own browser while you watch. Asks before it submits anything.",
+  "minimum_chrome_version": "121",
+  "action": { "default_title": "Open the Signal Desk agent" },
+  "side_panel": { "default_path": "panel.html" },
+  "background": { "service_worker": "background.js" },
+  "permissions": ["sidePanel", "activeTab", "scripting", "storage", "debugger"],
+  "optional_host_permissions": ["https://*/*", "http://*/*"]
 }

@@ -409,14 +409,25 @@ four steps:
 4. **Submit.** He submits on the employer's site himself, then marks it. That
    moves the job to Applied and saves his written answers to `answer_bank`.
 
-The Chrome extension in `extension/` fetches those reviewed answers from
-`/api/public/ext/answers` (bearer `EXTENSION_TOKEN`, matched by the form's URL)
-and types one into the page when he presses Fill. It runs only on the tab he
-opens it on, refuses linkedin.com, skips file, consent, demographic and
-certification fields, and never clicks; `scripts/check-extension.mjs` checks
-those promises.
+The browser agent in `extension/` does the form work in his own Chrome while
+he watches, and handles other tasks on any page too. It is a side panel
+(`panel.js`) that loops: `page.js` reads the page, including forms inside
+frames, into a numbered element list; `/api/public/ext/step`
+(`src/lib/agent/step.ts`) sends that, the task and the run so far to the
+utility model with his facts, reviewed answers, ledger and cover letter, and
+gets one action back; the panel performs it with trusted mouse and keyboard
+input through `chrome.debugger`. `/api/public/ext/context` matches the open
+page to a job, `/api/public/ext/file` builds the resume PDF it attaches (the
+accepted tailored version, else the master), and `/api/public/ext/applied`
+marks the job submitted. All four take bearer `EXTENSION_TOKEN`. The rules sit
+in the panel's code, not the prompt: the final submit (or any click that looks
+like one, or Enter in a form) waits for his Approve on a card listing what the
+form holds; fields that are his (EEO, consent, attestations, passwords, cards,
+IDs) are never touched; sign-ins and CAPTCHAs pause for him; payments and
+linkedin.com are refused; it reaches only sites he allows.
+`scripts/check-extension.mjs` checks those promises.
 
-Nothing in the kit submits, clicks or sends anything. Tables are in
+Nothing in the kit itself submits, clicks or sends anything. Tables are in
 `0026_apply.sql`; the resume never enters the repo or Actions.
 
 ## Layers
@@ -455,8 +466,9 @@ catalogue and would repeat them each pass. Duplicates aren't logged either.
 
 - PDF builds run only on the deployed app (Linux x64); locally set
   `TECTONIC_BIN` to a Tectonic binary. Workday and other enterprise forms take pasted
-  questions, and the extension can't fill custom dropdowns (React Select),
-  Ashby's yes/no buttons or file inputs.
+  questions in the kit. The agent reads text, not screenshots, so canvas-drawn
+  controls and image-only pages are beyond it, and a run stops when the side
+  panel closes.
 
 - Engage can't see a post's age unless the link carries an activity ID, and
   doesn't know whether a comment was actually posted until he taps "I posted
