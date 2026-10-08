@@ -8,10 +8,16 @@ const TITLE_RE =
   /\b(ai|ml|llms?|machine learning|genai|gen ai|generative|applied (ai|scientist|ml)|rag|agents?|agentic|nlp|forward[- ]deployed|full[- ]?stack|deep learning|computer vision|mlops|data scientist|ذكاء اصطناعي)\b/i;
 // Roles that match the words but aren't engineering.
 const NOT_ENGINEERING_RE =
-  /\b(sales|account (executive|manager)|recruit\w*|marketing|counsel|legal|attorney|designer|copywriter|accountant|finance|customer (success|support|care)|(care|support|call center) agent|executive assistant|office manager|trainer|annotat\w*|labell?er|linguist|tutor|intern(ship)?|(product|program|project|controls|validation) manager|strategist|adoption|vice president|vp|head of|director)\b/i;
+  /\b(sales|account (executive|manager)|recruit\w*|marketing|counsel|legal|attorney|designer|copywriter|accountant|finance|customer (success|support|care)|(care|support|call center) agent|data entry|executive assistant|office manager|trainer|annotat\w*|labell?er|linguist|tutor|intern(ship)?|(product|program|project|controls|validation) manager|strategist|adoption|vice president|vp|head of|director)\b/i;
 
-export function isCandidateTitle(title: string): boolean {
-  return TITLE_RE.test(title) && !NOT_ENGINEERING_RE.test(title);
+// Saudi and the Gulf are where he most wants to land, so there a solid software
+// role counts even without "AI" in the title; the score ranks it against the rest.
+const GULF_TITLE_RE =
+  /\b(software|back[- ]?end|python|node(\.?js)?|platform|data|cloud|solutions?|integration|api) (engineer|developer|architect)\b/i;
+
+export function isCandidateTitle(title: string, region?: JobRegion): boolean {
+  if (NOT_ENGINEERING_RE.test(title)) return false;
+  return TITLE_RE.test(title) || ((region === "saudi" || region === "gulf") && GULF_TITLE_RE.test(title));
 }
 
 // Saudization and Emiratization roles, which are closed to him whatever the fit.

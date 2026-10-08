@@ -136,7 +136,7 @@ export async function ingestJobs(
     if (!raw.title || !raw.urlApply) continue;
     // HN posts put the role anywhere in the first lines, so the whole head is checked.
     const head = source.kind === "hn" ? raw.description.slice(0, 400) : raw.title;
-    if (!isCandidateTitle(head) || isNationalsOnly(raw) || isUsOnly(raw)) continue;
+    if (isNationalsOnly(raw) || isUsOnly(raw)) continue;
     if (raw.postedAt && Date.parse(raw.postedAt) < oldest) continue;
     const scope = remoteScope(raw);
     let region = jobRegion(raw, scope);
@@ -144,6 +144,7 @@ export async function ingestJobs(
     if (region === "other" && (source.region === "europe" || source.region === "gulf") && !isElsewhere(raw)) {
       region = source.region;
     }
+    if (!isCandidateTitle(head, region)) continue;
     // Somewhere named, and none of it in his regions: it could only score at the cap.
     if (region === "other" && (raw.location.trim() || raw.countries.length)) continue;
     candidates.push({
@@ -324,10 +325,12 @@ export async function scoreBacklog(limit: number, deadline: number): Promise<{ s
     while (cursor < queue.length && Date.now() < deadline - 15_000) {
       const job = queue[cursor++];
       try {
-        if (!job.description) {
-          job.description = await fetchDescription(job.source, job.source_id).catch(() => null);
-          if (job.description) {
-            await db.from("jobs").update({ description: job.description.slice(0, 12_000) }).eq("id", job.id);
+        // Some lists carry only a teaser; the posting itself has the whole ad.
+        if ((job.description?.length ?? 0) < 600) {
+          const full = await fetchDescription(job.source, job.source_id).catch(() => null);
+          if (full && full.length > (job.description?.length ?? 0)) {
+            job.description = full;
+            await db.from("jobs").update({ description: full.slice(0, 12_000) }).eq("id", job.id);
           }
         }
         const { score, detail, visa } = await scoreJob(
