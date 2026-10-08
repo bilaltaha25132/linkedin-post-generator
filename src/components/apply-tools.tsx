@@ -567,6 +567,9 @@ export function ResumeStep({ jobId, hasMaster, initial }: { jobId: string; hasMa
       {accepted && (
         <div className="plan-actions">
           <PdfButton versionId={version.id} />
+          <a className="btn btn-sm" href={`/resume/editor?v=${version.id}`}>
+            <Wand2 aria-hidden /> Edit and preview
+          </a>
           <a className="btn btn-sm" href={`/api/apply/resume/${version.id}`}>
             <Download aria-hidden /> Download .tex
           </a>
@@ -578,7 +581,7 @@ export function ResumeStep({ jobId, hasMaster, initial }: { jobId: string; hasMa
               <ExternalLink aria-hidden /> Open in Overleaf
             </button>
           </form>
-          <span className="small muted">Attach the PDF to the form. Open in Overleaf if you want to edit it first.</span>
+          <span className="small muted">Attach the PDF to the form. Edit and preview it here, or open it in Overleaf.</span>
         </div>
       )}
       <ErrorLine error={error} />

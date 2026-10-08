@@ -2399,3 +2399,265 @@ fieldset.stack-xs {
     overflow-x: auto;
   }
 }
+
+/* --- Resume editor ----------------------------------------------------------------
+   The page is paper in both themes: it previews a PDF, so it keeps the PDF's black
+   on white. Sizes follow LaTeX's 11pt article (\small 10pt, \large 12pt, \Huge 25pt). */
+@font-face {
+  font-family: "CMU Serif";
+  src: url("/fonts/cmu/cmu-serif-500-roman.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "CMU Serif";
+  src: url("/fonts/cmu/cmu-serif-500-italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "CMU Serif";
+  src: url("/fonts/cmu/cmu-serif-700-roman.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "CMU Serif";
+  src: url("/fonts/cmu/cmu-serif-700-italic.woff2") format("woff2");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+.tex-editor {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.tex-files {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+.tex-files a {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.3;
+  text-decoration: none;
+}
+.tex-files a:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+.tex-files a[aria-current="page"] {
+  background: var(--brand-50);
+  color: var(--brand-ink);
+  font-weight: 500;
+}
+.tex-files svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+}
+.tex-files small {
+  display: block;
+  color: var(--ink-muted);
+  font-weight: 400;
+}
+.tex-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.tex-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  background: var(--surface);
+}
+.tex-toolbar .seg svg {
+  width: 14px;
+  height: 14px;
+  margin-right: 5px;
+}
+.tex-zoom {
+  display: inline-flex;
+  gap: 2px;
+}
+.tex-zoom .btn:not(.btn-icon) {
+  min-width: 58px;
+  justify-content: center;
+}
+.tex-status {
+  margin-left: auto;
+}
+.tex-message {
+  margin: 0;
+  white-space: pre-wrap;
+}
+.tex-panes {
+  display: grid;
+  gap: 12px;
+}
+.tex-split {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.tex-code {
+  width: 100%;
+  height: calc(100vh - 150px);
+  min-height: 420px;
+  padding: 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--surface-muted);
+  color: var(--ink);
+  font: 12.5px/1.6 var(--font-mono);
+  tab-size: 2;
+  resize: none;
+}
+.tex-code:focus-visible {
+  outline: 2px solid var(--brand-ring);
+  outline-offset: 1px;
+}
+.tex-stage {
+  overflow: auto;
+  max-height: calc(100vh - 150px);
+  min-height: 420px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--control);
+}
+.tex-page {
+  width: 8.5in;
+  min-height: 11in;
+  margin: 0 auto;
+  padding: 0.38in 0.42in 0.5in 0.4in;
+  background-color: #fff;
+  /* A rule where each new page would start. */
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(11in - 1px), #bbb calc(11in - 1px), #bbb 11in);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  color: #000;
+  font-family: "CMU Serif", "Latin Modern Roman", "Computer Modern Serif", Georgia, serif;
+  font-size: 11pt;
+  line-height: 1.22;
+  text-align: left;
+  text-rendering: optimizeLegibility;
+}
+.tex-page a {
+  color: inherit;
+  text-decoration: none;
+}
+.tex-page svg {
+  display: inline-block;
+  vertical-align: -0.1em;
+}
+.tex-edit {
+  border-radius: 2px;
+  outline: none;
+  cursor: text;
+}
+.tex-edit:hover {
+  background: rgba(76, 152, 253, 0.08);
+}
+.tex-edit:focus {
+  background: rgba(76, 152, 253, 0.12);
+  box-shadow: 0 0 0 2px rgba(76, 152, 253, 0.45);
+}
+.tex-atom {
+  white-space: pre;
+}
+.tex-tiny { font-size: 6pt; }
+.tex-scriptsize { font-size: 8pt; }
+.tex-footnotesize { font-size: 9pt; }
+.tex-small { font-size: 10pt; }
+.tex-normalsize { font-size: 11pt; }
+.tex-large { font-size: 12pt; }
+.tex-Large { font-size: 14.4pt; }
+.tex-LARGE { font-size: 17.28pt; }
+.tex-huge { font-size: 20.74pt; }
+.tex-Huge { font-size: 24.88pt; line-height: 1.2; }
+.tex-sc { font-variant: small-caps; }
+.tex-bf { font-weight: 700; }
+.tex-it { font-style: italic; }
+.tex-tt { font-family: var(--font-mono); }
+.tex-heading {
+  display: block;
+  margin-bottom: 4pt;
+  text-align: center;
+}
+.tex-section {
+  margin: 7pt 0 4pt;
+  border-bottom: 0.5pt solid #000;
+  font-size: 12pt;
+  font-variant: small-caps;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.tex-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12pt;
+}
+.tex-sub {
+  margin-top: 3pt;
+}
+.tex-subsub,
+.tex-project {
+  margin-top: 3pt;
+}
+.tex-items {
+  margin: 2pt 0 4pt;
+  padding-left: 0.3in;
+  font-size: 10pt;
+  list-style: disc;
+}
+.tex-items li {
+  margin: 0 0 1pt;
+  padding-left: 2pt;
+}
+.tex-items li::marker {
+  font-size: 7pt;
+}
+.tex-text {
+  display: block;
+  padding-left: 0.15in;
+}
+@media (max-width: 1023px) {
+  .tex-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tex-files {
+    position: static;
+    flex-direction: row;
+    max-height: none;
+    overflow-x: auto;
+  }
+  .tex-files a {
+    flex: none;
+  }
+  .tex-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tex-code {
+    height: 50vh;
+  }
+}

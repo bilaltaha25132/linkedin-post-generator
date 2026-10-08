@@ -65,6 +65,34 @@ export async function latestVersion(jobId: string): Promise<ResumeVersion | null
   return data;
 }
 
+export interface VersionFile {
+  id: string;
+  created_at: string;
+  accepted_at: string | null;
+  company: string;
+  title: string;
+}
+
+/** Recent tailored versions for the resume editor's file list, newest first. */
+export async function listVersionFiles(limit = 30): Promise<VersionFile[]> {
+  const { data, error } = await supabaseAdmin()
+    .from("resume_versions")
+    .select("id, created_at, accepted_at, jobs(company, title)")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((v) => {
+    const job = v.jobs as unknown as { company: string; title: string } | null;
+    return { id: v.id, created_at: v.created_at, accepted_at: v.accepted_at, company: job?.company ?? "Job", title: job?.title ?? "" };
+  });
+}
+
+export async function getVersionLatex(id: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin().from("resume_versions").select("latex").eq("id", id).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.latex ?? null;
+}
+
 export async function getApplication(jobId: string): Promise<Application | null> {
   const { data, error } = await supabaseAdmin().from("applications").select("*").eq("job_id", jobId).maybeSingle();
   if (error) throw new Error(error.message);

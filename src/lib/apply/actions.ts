@@ -228,6 +228,17 @@ export async function acceptVersion(
   });
 }
 
+/** Keeps his hand edits to a tailored version from the resume editor. */
+export async function saveVersionLatex(versionId: string, latex: string): Promise<ActionResult<null>> {
+  return attempt(async () => {
+    if (latex.length > MAX_LATEX || !/\\begin\{document\}/.test(latex)) throw new Error("That isn't a whole .tex file.");
+    const { data, error } = await supabaseAdmin().from("resume_versions").update({ latex }).eq("id", versionId).select("job_id").single();
+    if (error) throw new Error(error.message);
+    revalidatePath(`/jobs/${data.job_id}/apply`);
+    return null;
+  });
+}
+
 /** Reads the form (or takes pasted questions) and drafts every answer. */
 export async function prepareAnswers(jobId: string, pasted?: string): Promise<ActionResult<{ form: ApplicationForm; answers: Answer[] }>> {
   return attempt(async () => {

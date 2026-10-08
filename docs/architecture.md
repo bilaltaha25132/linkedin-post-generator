@@ -386,6 +386,14 @@ four steps:
    the resume uses; the resume itself never leaves the deployment. It comments
    out Jake's Resume's two pdfTeX-only lines before compiling and halts on any
    TeX error. A cold build takes up to a minute or more; warm ones are seconds.
+   `/resume/editor` (`?v=<version id>` for a tailored one) is an Overleaf-like
+   editor: `preview.ts` renders the source as HTML set like the PDF (CMU Serif
+   from `public/fonts/cmu`), each editable unit mapped to its exact source
+   span, with markup it doesn't know kept as untouchable atoms. Text edits
+   splice back through `toLatex`, which escapes what he types; a code view
+   edits the raw source. Nothing compiles until Download PDF, which posts the
+   current source to `/api/apply/resume/compile`. Save writes the master
+   (rebuilding the ledger) or the version (`saveVersionLatex`).
 2. **Form.** `forms.ts` reads the form from the ATS's public endpoints
    (Greenhouse, Ashby, Lever, Workable, Recruitee; SmartRecruiters gives only its
    standard fields, since its screening questions need a partner key) or takes

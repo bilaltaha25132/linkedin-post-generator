@@ -1,4 +1,4 @@
-import { FileText, IdCard, ListChecks, TriangleAlert } from "lucide-react";
+import { FileText, IdCard, ListChecks, PenLine, TriangleAlert } from "lucide-react";
 
 import { AddFactForm, FormFactsForm, MasterResumeForm, RemoveFactButton } from "@/components/apply-tools";
 import { PageHeader } from "@/components/page-header";
@@ -45,6 +45,14 @@ export default async function ResumePage() {
                   : "Paste the .tex source of your resume. Jake's Resume and its forks are read best."}
               </p>
             </div>
+            {data.ledger.master && (
+              <div className="plan-actions">
+                <a className="btn btn-sm btn-primary" href="/resume/editor">
+                  <PenLine aria-hidden /> Open the editor
+                </a>
+                <span className="small muted">See it as the page looks, change any line, and download the PDF.</span>
+              </div>
+            )}
             <MasterResumeForm hasMaster={Boolean(data.ledger.master)} />
           </section>
 
