@@ -190,6 +190,14 @@ function selectedJob() {
   return [context.job, ...(context.jobs || [])].find((j) => j && j.id === id) || null;
 }
 
+// Jobs with a draft application and a link to open, for the queue.
+function readyJobs() {
+  return (context.jobs || []).filter((j) => /^https?:/.test(j.url_apply || "") && !/linkedin\.com/i.test(j.url_apply));
+}
+
+const applyTask = (job) =>
+  `Apply to ${job.title} at ${job.company} on this page. Fill every field you can from my facts, attach my resume, and get it ready for me to approve the submit.`;
+
 function renderChips() {
   const job = selectedJob();
   const chips = [];
@@ -197,7 +205,15 @@ function renderChips() {
     chips.push({
       title: "Apply to this job",
       note: `${job.title} at ${job.company}`,
-      task: `Apply to ${job.title} at ${job.company} on this page. Fill every field you can from my facts, attach my resume, and get it ready for me to approve the submit.`,
+      task: applyTask(job),
+    });
+  }
+  const ready = readyJobs();
+  if (ready.length > 1) {
+    chips.push({
+      title: `Apply to all ${ready.length} ready jobs`,
+      note: "One at a time, each in its own tab. You approve every submit.",
+      queue: ready,
     });
   }
   chips.push(
@@ -206,7 +222,12 @@ function renderChips() {
   );
   els.chips.replaceChildren(
     ...chips.map((c) =>
-      el("button", { class: "chip", type: "button", onclick: () => start(c.task) }, el("strong", { text: c.title }), el("span", { text: c.note })),
+      el(
+        "button",
+        { class: "chip", type: "button", onclick: () => (c.queue ? runQueue(c.queue) : start(c.task)) },
+        el("strong", { text: c.title }),
+        el("span", { text: c.note }),
+      ),
     ),
   );
 }
@@ -659,13 +680,14 @@ function renderCount() {
   els.count.textContent = `Step ${run.steps} of ${run.cap}`;
 }
 
-async function start(task) {
+// Resolves with how the run ended: "submitted", "done", "stopped" or "error".
+async function start(task, target = {}) {
   task = task.trim();
-  if (!task || run) return;
-  const tab = await activeTab();
-  if (!tab) return;
-  const jobId = els.job.value || null;
-  run = { tabId: tab.id, task, jobId, history: [], steps: 0, cap: MAX_STEPS, approved: false, paused: false, stopped: false, attached: null, acks: new Set() };
+  if (!task || run) return null;
+  const tab = target.tabId ? { id: target.tabId } : await activeTab();
+  if (!tab) return null;
+  const jobId = target.jobId !== undefined ? target.jobId : els.job.value || null;
+  run = { tabId: tab.id, task, jobId, history: [], steps: 0, cap: MAX_STEPS, approved: false, paused: false, stopped: false, attached: null, acks: new Set(), outcome: "stopped" };
   run.pdf = pdfLoader(jobId);
   if (jobId || /\b(apply|application|resume|cv)\b/i.test(task)) run.pdf().catch(() => {});
 
@@ -677,9 +699,12 @@ async function start(task) {
   setState("running", "Working");
   renderCount();
 
+  let outcome = "stopped";
   try {
     await loop();
+    outcome = run.outcome;
   } catch (err) {
+    outcome = "error";
     if (!run?.stopped) {
       setState("error", "Stopped");
       note("error", "I had to stop", err.message);
@@ -688,10 +713,64 @@ async function start(task) {
     await overlay(false);
     await detach();
     run = null;
+    if (!queue) {
+      els.controls.hidden = true;
+      els.composer.hidden = false;
+      if (els.state.dataset.state === "running") setState("idle", "Ready");
+      els.task.focus();
+      refreshContext();
+    }
+  }
+  return outcome;
+}
+
+// ---------- The queue ----------
+
+let queue = null;
+
+function tabLoaded(tabId, timeoutMs = 30_000) {
+  return new Promise((resolve) => {
+    const done = () => {
+      chrome.tabs.onUpdated.removeListener(listen);
+      clearTimeout(timer);
+      resolve();
+    };
+    const listen = (id, change) => {
+      if (id === tabId && change.status === "complete") done();
+    };
+    const timer = setTimeout(done, timeoutMs);
+    chrome.tabs.onUpdated.addListener(listen);
+  });
+}
+
+// Works through the jobs one by one, each in a new tab. Every submit still
+// waits for his Approve; Stop on a card moves on to the next job, the Stop
+// under the log ends the whole queue.
+async function runQueue(jobs) {
+  if (run || queue) return;
+  queue = { stopped: false, results: [] };
+  els.stop.textContent = "Stop all";
+  addYou(`Apply to all ${jobs.length} ready jobs`);
+  try {
+    for (const [i, job] of jobs.entries()) {
+      if (queue.stopped) break;
+      els.log.append(el("div", { class: "queue-mark" }, el("strong", { text: `Job ${i + 1} of ${jobs.length}` }), el("span", { text: `${job.title} at ${job.company}` })));
+      const tab = await chrome.tabs.create({ url: job.url_apply, active: true });
+      await tabLoaded(tab.id);
+      await sleep(1200);
+      const outcome = await start(applyTask(job), { tabId: tab.id, jobId: job.id });
+      queue.results.push({ job, outcome: outcome || "error" });
+    }
+  } finally {
+    const label = { submitted: "submitted", done: "finished, not submitted", stopped: "skipped", error: "hit a problem" };
+    const lines = queue.results.map((r) => `${r.job.company}: ${label[r.outcome] || r.outcome}`);
+    const sent = queue.results.filter((r) => r.outcome === "submitted").length;
+    queue = null;
+    els.stop.textContent = "Stop";
     els.controls.hidden = true;
     els.composer.hidden = false;
-    if (els.state.dataset.state === "running") setState("idle", "Ready");
-    els.task.focus();
+    setState("done", `${sent} submitted`);
+    note("done", `Queue finished: ${sent} of ${lines.length} submitted`, lines.join("\n"));
     refreshContext();
   }
 }
@@ -816,6 +895,7 @@ async function finish(action) {
       summary += `\n\nI couldn't mark it submitted in Signal Desk (${err.message}). Do it from the job page.`;
     }
   }
+  run.outcome = action.submitted && run.approved ? "submitted" : "done";
   setState("done", action.submitted && run.approved ? "Submitted" : "Done");
   note("done", action.submitted && run.approved ? "Submitted" : "Done", summary);
 }
@@ -835,7 +915,10 @@ els.pause.addEventListener("click", () => {
   els.pause.textContent = run.paused ? "Resume" : "Pause";
   setState(run.paused ? "waiting" : "running", run.paused ? "Paused" : "Working");
 });
-els.stop.addEventListener("click", () => stopRun());
+els.stop.addEventListener("click", () => {
+  if (queue) queue.stopped = true;
+  stopRun();
+});
 
 els.send.append(icon("send"));
 els.composer.addEventListener("submit", (e) => {

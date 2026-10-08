@@ -138,6 +138,8 @@ Rules:
 - Free text: answer the question in the first sentence; one concrete story with a real number from the facts, tied to one specific thing in the ad; 80 to 150 words unless a limit is given (stay under it). If he lacks what's asked, answer honestly with the nearest real experience and flag "adjacent experience".
 - Short text fields: a short plain answer.
 - His voice: first person, plain words, contractions, no buzzwords ("passionate", "leverage", "cutting-edge", "thrilled"), no em or en dashes, no emojis.
+- Write like a person, not a template: no "not X, but Y" or "X, not Y" contrasts, no "exactly the work I do", no opening that restates the question, no closing one-liner or moral.
+- Across one form, don't tell the same project in every answer. Use the fact that fits each question best.
 - Never invent a number, employer, tool, date or credential.
 - Never state relocation, visa, notice period, start date or salary unless FORM FACTS give it.
 
@@ -213,7 +215,8 @@ ${profileFacts(profile)}
 ${style}
 - Open with the specific thing about this role or company that fits his work, not with "I am writing to apply".
 - Two concrete examples from the facts, with their real numbers, each tied to something the ad asks for.
-- Say plainly where he's light against the ad if it matters, and what's adjacent.
+- Mention a gap only when the ad makes it a hard requirement he lacks: one sentence, paired with the nearest real experience. Never a paragraph of weaknesses.
+- Write like a person: no "What caught my eye", "I'm excited", "not X, it's Y" or "X, not Y" contrasts, no closing one-liner or moral. Vary sentence length.
 - First person, plain words, contractions where natural, no buzzwords, no em or en dashes, no emojis.
 - Never invent a number, employer, tool, date or credential.
 - Never state relocation, visa, notice period, start date or salary unless FORM FACTS give it.

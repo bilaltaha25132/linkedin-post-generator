@@ -20,6 +20,13 @@ export async function POST(req: NextRequest) {
 
   try {
     const reply = await nextAction(parsed.data);
+    // One line per step in the Vercel logs, so a run can be followed from outside the panel.
+    // The action's own text (his answers) stays out of it.
+    const last = parsed.data.history.at(-1);
+    console.log(
+      `[agent] ${hostOf(parsed.data.url)} #${parsed.data.history.length + 1} ${reply.action.type}${"ref" in reply.action ? ` ${reply.action.ref}` : ""}` +
+        ` | ${redact(reply.thought.slice(0, 160))}${last ? ` | prev: ${redact(last.result.slice(0, 120))}` : ""}`,
+    );
     if (reply.action.type === "navigate" && (onLinkedIn(reply.action.url) || !/^https?:/.test(reply.action.url))) {
       return NextResponse.json({
         thought: reply.thought,
@@ -29,6 +36,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(reply, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "The model call failed." }, { status: 502 });
+  }
+}
+
+function redact(text: string): string {
+  return text.replace(/\S+@\S+/g, "<email>").replace(/\+?\d[\d\s-]{7,}\d/g, "<number>");
+}
+
+function hostOf(url: string): string {
+  try {
+    const u = new URL(url);
+    return `${u.hostname}${u.pathname.slice(0, 60)}`;
+  } catch {
+    return "?";
   }
 }
 

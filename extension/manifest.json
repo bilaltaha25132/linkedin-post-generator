@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Signal Desk Agent",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Works through job applications and other web tasks in your own browser while you watch. Asks before it submits anything.",
   "minimum_chrome_version": "121",
   "action": { "default_title": "Open the Signal Desk agent" },

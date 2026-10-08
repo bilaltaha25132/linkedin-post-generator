@@ -103,6 +103,7 @@ export interface AgentJob {
   id: string;
   title: string;
   company: string;
+  url_apply?: string;
 }
 
 /** The job a page belongs to: by its ATS form id, else by the apply link itself. */
@@ -124,14 +125,14 @@ export async function findJobForPage(url: string): Promise<AgentJob | null> {
 export async function listApplyingJobs(limit = 20): Promise<AgentJob[]> {
   const { data, error } = await supabaseAdmin()
     .from("applications")
-    .select("updated_at, status, jobs(id, title, company)")
+    .select("updated_at, status, jobs(id, title, company, url_apply)")
     .eq("status", "draft")
     .order("updated_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error(error.message);
   return (data ?? []).flatMap((r) => {
     const j = r.jobs as unknown as AgentJob | null;
-    return j ? [{ id: j.id, title: j.title, company: j.company }] : [];
+    return j ? [{ id: j.id, title: j.title, company: j.company, url_apply: j.url_apply }] : [];
   });
 }
 

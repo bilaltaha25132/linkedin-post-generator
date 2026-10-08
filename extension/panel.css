@@ -387,6 +387,20 @@ textarea {
   }
 }
 
+/* Where one job ends and the next begins, in a queue */
+.queue-mark {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 16px 0 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline);
+  font-size: 12px;
+}
+.queue-mark span {
+  color: var(--ink-soft);
+}
+
 /* Moments that need him */
 .card {
   margin: 10px 0;
