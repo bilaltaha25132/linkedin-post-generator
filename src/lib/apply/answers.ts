@@ -273,16 +273,18 @@ ${style}
 /** Claims in a draft that go past his facts: an outcome, a responsibility, a tool used in production. */
 async function unsupportedClaims(text: string, facts: string): Promise<string[]> {
   try {
-    const { unsupported } = await chatJSON({
+    // A verdict per sentence; asked for a list of problems, the model skims and finds none.
+    const { sentences } = await chatJSON({
       role: "utility",
       temperature: 0,
-      maxTokens: 600,
+      maxTokens: 2000,
       op: "cover-letter-check",
-      schema: z.object({ unsupported: z.array(z.string()).transform((a) => a.slice(0, 8)) }),
-      system: `You check a cover letter against the only facts it may use. List each claim the FACTS don't support: an outcome or result, a number, a responsibility or activity, a tool said to be used in production when the facts give it only for a project. Quote the letter's exact words. Ignore statements about the company or the ad, and ignore style. Reply with ONLY {"unsupported":["..."]}, an empty list when every claim is supported.`,
+      schema: z.object({ sentences: z.array(z.object({ text: z.string(), claim: z.string().nullish(), supported: z.boolean() })) }),
+      system: `You check a cover letter against the only facts it may use. Go through EVERY sentence about him. For each, name the claim it makes about him and decide whether the FACTS state it. A claim is unsupported when it adds anything the facts don't say: an outcome or result, a number, how he worked (with customers, stakeholders, scoping, leading), what he "already does" or has "always" done, or a tool used in production when the facts give it only for a project. Paraphrase of a fact is supported. Skip sentences only about the company or the ad, the greeting and the sign-off.
+Reply with ONLY {"sentences":[{"text":"exact sentence","claim":"the unsupported part, or null","supported":true|false}]}.`,
       user: `FACTS:\n${facts}\n\nLETTER:\n${text}`,
     });
-    return unsupported;
+    return sentences.filter((s) => !s.supported).map((s) => s.claim || s.text).slice(0, 8);
   } catch (err) {
     // The check is a second opinion; a failed one shouldn't cost him the letter.
     console.error("[cover-letter-check] skipped:", err instanceof Error ? err.message : err);
@@ -300,7 +302,9 @@ const TICS = [
   /\brather than (the )?\d[^.,]*/i,
   /\bnot \d+\+?\b/i,
   /\bwhich (matches|fits|maps onto|lines up)\b[^.]*/i,
-  /\bmaps? directly onto\b/i,
+  /\bmaps? (closely |directly )?(to|onto)\b[^.]*/i,
+  /(^|\.\s+)(That|This) (maps|matches|fits|lines up|covers)\b[^.]*\./,
+  /\bis the work I (already )?do\b/i,
   /\bexactly (where|what|the kind)\b/i,
   /\bstart (four|\w+|\d+) weeks? (from|after)\b[^.]*/i,
   /(^|\.\s+)(That|This)('s| is) [^.]*\byour\b[^.]*\./,
