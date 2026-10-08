@@ -126,6 +126,6 @@ For the item below, return JSON:
 - stack: the tools and skills named, at most 8.
 - remote: yes, no or unclear. region: where they are or where the work is, or "unknown".
 - budget: as stated (e.g. "USD 3-5k", "USD 40/h"), or "unknown".
-- score 0-100: how worth his time it is. Favour a real person (founder or hiring manager) over a recruiter over an agency; work that matches what he has shipped (RAG, agents, LLM products, full-stack AI apps); remote, UAE or UK; a stated budget over USD 1k or USD 40/h. Noise scores 0. Bots, unpaid trials, equity-only, data annotation and AI-training gigs stay under 30. US-only or onsite outside his regions stay under 40.
+- score 0-100: how worth his time it is. Favour a real person (founder or hiring manager) over a recruiter over an agency; work that matches what he has shipped (RAG, agents, LLM products, full-stack AI apps, automation such as n8n, scraping, full-stack web apps); remote, the Gulf or UK; Arabic posts from Gulf clients count the same; a stated budget over USD 1k or USD 40/h. Noise scores 0. Bots, unpaid trials, equity-only, data annotation and AI-training gigs stay under 30. US-only or onsite outside his regions stay under 40.
 - why: one plain sentence a busy person reads in two seconds.
 - opener: a reply or DM he could send. ${OPENER_RULES}`;

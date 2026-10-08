@@ -7,7 +7,7 @@ posts. Different from Jobs: the goal is a conversation, not an application.
 Research: [research/engage-and-discovery.md](research/engage-and-discovery.md)
 (search APIs, freshness tests) and
 [research/jobs-and-leads-sources.md](research/jobs-and-leads-sources.md)
-(Reddit, HN, Freelancer.com).
+(Reddit, HN, Freelancer.com and the marketplaces below).
 
 ## Lead kinds
 
@@ -83,8 +83,20 @@ stored links are the saved searches.
 - **Bluesky** `searchPosts` (no auth for page 1): optional, mostly job bots, so
   the classifier has to reject bots.
 - **Contract roles** from the Jobs pipeline.
-- Upwork, Contra, Toptal, Arc, Braintrust: no public feed. Their own email
-  alerts; later, a forwarded Gmail label parser.
+- **Freelance marketplaces** (`src/lib/leads/marketplaces.ts`), each the public
+  listing a visitor sees, one page per query, paths robots.txt allows:
+  PeoplePerHour (AI and programming categories, embedded page state),
+  Workana (searches ai agent, chatbot, llm, n8n, automation), Mostaql (RSS,
+  Arabic), Arc.dev (contract roles on the llm, ai-engineer, python and
+  full-stack pages), Guru (skill pages), Braintrust (newest 100 freelance
+  jobs; robots.txt disallows paging), freelancermap (100% remote only), Ureed
+  (public GraphQL) and Khamsat (buyer requests, Arabic, dates day first).
+  Gigs pass `GIG_WORK`, which is `AI_WORK` plus automation, scraping,
+  full-stack web work and Arabic terms, since those are jobs he takes too.
+- Left out: Mercor, Turing and micro1 (terms forbid scripted access);
+  Upwork, Contra, Toptal, Fiverr, Malt (no public feed or blocked); GitHub
+  bounty labels (stale since May 2026, mostly spam repos). Upwork is best
+  covered by its own email alerts.
 
 ## Classify and score
 

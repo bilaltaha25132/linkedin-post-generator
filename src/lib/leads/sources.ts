@@ -2,6 +2,17 @@ import "server-only";
 
 import { env } from "@/lib/env";
 import { htmlToText } from "@/lib/feeds/text";
+import {
+  pullArc,
+  pullBraintrust,
+  pullFreelancermap,
+  pullGuru,
+  pullKhamsat,
+  pullMostaql,
+  pullPeoplePerHour,
+  pullUreed,
+  pullWorkana,
+} from "@/lib/leads/marketplaces";
 import type { RawLead } from "@/lib/leads/types";
 import { activityIdOf, postedAtFromId } from "@/lib/links/deep";
 
@@ -16,6 +27,12 @@ const MAX_AGE_DAYS = 14;
 export const AI_WORK =
   /\b(llm|llms|gpt|openai|anthropic|claude|gemini|rag|retrieval|langchain|langgraph|llamaindex|agents?|agentic|chatbots?|genai|generative ai|machine learning|ml engineer|ai engineer|ai developer|nlp|vector|embeddings?|fine[- ]tun\w*|prompt)\b/i;
 
+/** Marketplace gigs he'd take beyond AI work: automation, scraping, full-stack builds. Arabic for Mostaql and Khamsat. */
+export const GIG_WORK = new RegExp(
+  `${AI_WORK.source}|\\b(automat\\w*|n8n|zapier|make\\.com|scrap\\w*|crawler|next\\.?js|react|node\\.?js|fastapi|django|flask|python|full[- ]?stack|saas|web app|api integration|whatsapp)\\b|ذكاء اصطناعي|بوت|أتمتة|اتمتة|بايثون|سكربت`,
+  "i",
+);
+
 export interface LeadLane {
   key: string;
   label: string;
@@ -29,6 +46,15 @@ export function leadLanes(): LeadLane[] {
   return [
     { key: "hn", label: "HN freelancer thread", needs: [], pull: pullHackerNews },
     { key: "freelancer", label: "Freelancer.com", needs: [], pull: pullFreelancer },
+    { key: "peopleperhour", label: "PeoplePerHour", needs: [], pull: pullPeoplePerHour },
+    { key: "workana", label: "Workana", needs: [], pull: pullWorkana },
+    { key: "mostaql", label: "Mostaql", needs: [], pull: pullMostaql },
+    { key: "arc", label: "Arc.dev contracts", needs: [], pull: pullArc },
+    { key: "guru", label: "Guru", needs: [], pull: pullGuru },
+    { key: "braintrust", label: "Braintrust", needs: [], pull: pullBraintrust },
+    { key: "freelancermap", label: "freelancermap", needs: [], pull: pullFreelancermap },
+    { key: "ureed", label: "Ureed", needs: [], pull: pullUreed },
+    { key: "khamsat", label: "Khamsat", needs: [], pull: pullKhamsat },
     {
       key: "reddit",
       label: "Reddit r/forhire and r/hiring",

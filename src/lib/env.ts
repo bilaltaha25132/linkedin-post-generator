@@ -122,6 +122,6 @@ export const env = {
 
   leads: () => ({
     alertMinScore: num("LEADS_ALERT_MIN_SCORE", 75),
-    maxScoredPerRun: num("LEADS_MAX_SCORED_PER_RUN", 20),
+    maxScoredPerRun: num("LEADS_MAX_SCORED_PER_RUN", 40),
   }),
 };

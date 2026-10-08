@@ -2,7 +2,7 @@ import "server-only";
 
 import { env } from "@/lib/env";
 import { judgeLead } from "@/lib/leads/score";
-import { AI_WORK, leadLanes, tooOld } from "@/lib/leads/sources";
+import { AI_WORK, GIG_WORK, leadLanes, tooOld } from "@/lib/leads/sources";
 import type { RawLead } from "@/lib/leads/types";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
@@ -47,7 +47,9 @@ export async function runLeads(opts: { budgetMs?: number } = {}): Promise<LeadsR
 
 /** Inserts the leads not seen before. Old and off-topic items never reach the classifier. */
 export async function storeNew(raw: RawLead[]): Promise<number> {
-  const fresh = raw.filter((l) => !tooOld(l.postedAt) && AI_WORK.test(`${l.title ?? ""} ${l.text}`));
+  const fresh = raw.filter(
+    (l) => !tooOld(l.postedAt) && (l.kindHint === "gig" ? GIG_WORK : AI_WORK).test(`${l.title ?? ""} ${l.text}`),
+  );
   const byUrl = new Map(fresh.map((l) => [l.url, l]));
   if (byUrl.size === 0) return 0;
 
