@@ -43,13 +43,13 @@ export function ledgerText(ledger: Ledger): { text: string; ids: Map<string, str
 }
 
 const planSchema = z.object({
-  keywords: z.array(z.string()).max(20),
+  keywords: z.array(z.string()).transform((a) => a.slice(0, 20)),
   summary: z.string().nullable().optional(),
-  edits: z.array(z.object({ id: z.string(), text: z.string(), adds: z.string().nullish(), uses: z.array(z.string()).optional() })).max(30),
+  edits: z.array(z.object({ id: z.string(), text: z.string(), adds: z.string().nullish(), uses: z.array(z.string()).optional() })).transform((a) => a.slice(0, 30)),
   reorder: z.array(z.object({ role: z.string(), order: z.array(z.string()) })).optional(),
   drop: z.array(z.string()).optional(),
   skills_order: z.array(z.object({ category: z.string(), items: z.array(z.string()) })).optional(),
-  gaps: z.array(z.string()).max(12),
+  gaps: z.array(z.string()).transform((a) => a.slice(0, 12)),
 });
 
 export async function planTailoring(ledger: Ledger, job: JobAd, summary: string | null): Promise<TailorPlan> {
