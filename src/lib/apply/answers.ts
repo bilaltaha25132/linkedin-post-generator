@@ -255,14 +255,39 @@ ${style}
   let text = stripDashes((await chat(opts)).trim());
   // The prompt alone doesn't hold these; one targeted rewrite does.
   const tics = letterTics(text);
-  if (tics.length) {
+  const unsupported = await unsupportedClaims(text, `${facts.text}\n\n${profileFacts(profile)}\n\n${jobPlace(job, profile)}`);
+  if (tics.length || unsupported.length) {
+    const asks = [
+      unsupported.length && `Remove or reword these claims, which his facts don't support: ${unsupported.map((t) => `"${t}"`).join("; ")}.`,
+      tics.length && `Change only the sentences holding these phrasings: ${tics.map((t) => `"${t}"`).join("; ")}.`,
+    ].filter(Boolean);
     const fixed = await chat({
       ...opts,
-      user: `${opts.user}\n\nYOUR DRAFT:\n${text}\n\nRewrite the draft. Keep every fact and its order, change only the sentences holding these phrasings: ${tics.map((t) => `"${t}"`).join("; ")}. Reply with the letter only.`,
+      user: `${opts.user}\n\nYOUR DRAFT:\n${text}\n\nRewrite the draft, keeping everything else as it is. ${asks.join(" ")} Reply with the letter only.`,
     });
     text = stripDashes(fixed.trim());
   }
   return text;
+}
+
+/** Claims in a draft that go past his facts: an outcome, a responsibility, a tool used in production. */
+async function unsupportedClaims(text: string, facts: string): Promise<string[]> {
+  try {
+    const { unsupported } = await chatJSON({
+      role: "utility",
+      temperature: 0,
+      maxTokens: 600,
+      op: "cover-letter-check",
+      schema: z.object({ unsupported: z.array(z.string()).transform((a) => a.slice(0, 8)) }),
+      system: `You check a cover letter against the only facts it may use. List each claim the FACTS don't support: an outcome or result, a number, a responsibility or activity, a tool said to be used in production when the facts give it only for a project. Quote the letter's exact words. Ignore statements about the company or the ad, and ignore style. Reply with ONLY {"unsupported":["..."]}, an empty list when every claim is supported.`,
+      user: `FACTS:\n${facts}\n\nLETTER:\n${text}`,
+    });
+    return unsupported;
+  } catch (err) {
+    // The check is a second opinion; a failed one shouldn't cost him the letter.
+    console.error("[cover-letter-check] skipped:", err instanceof Error ? err.message : err);
+    return [];
+  }
 }
 
 const TICS = [
