@@ -444,11 +444,12 @@ two modes he picks in the dialog:
 Queued runs are unattended. On a sign-in wall the agent clicks the site's
 "Continue with Google" button (LinkedIn's only when there's no Google one) and
 picks his account. A password form with no such button, a CAPTCHA, an email
-code or the model's `handoff` action puts the run at `waiting` with the
+code or the model's `handoff` action (refused unless its reason is a password,
+a code or a CAPTCHA, so a dead Apply button never stops the queue) puts the run at `waiting` with the
 reason: the panel polls `GET /api/public/ext/runs/[id]` for his answer
 (`answerAgentRun`: "go" or "skip"), given from the Agentic Apply dialog,
 Applications or the panel, and moves on after 20 minutes. A step cap, the same
-action six times running or repeated API errors end that job as `needs_you`,
+action six times running, the same button four times in a dozen clicks, or repeated API errors end that job as `needs_you`,
 and questions it can't answer are recorded instead of asked. Each step sets
 the run's `activity`; the dialog polls `/api/agent/progress` (one poller per
 page, `src/lib/agent/progress.ts`) and the button shows how far the batch has

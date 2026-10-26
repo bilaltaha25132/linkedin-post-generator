@@ -22,6 +22,8 @@ const REPEATS = 6;
 const CLICK_LOOP = 4;
 const LINKEDIN = /(^|\.)linkedin\.com$/i;
 const WINDOW_MODE = new URLSearchParams(location.search).has("window");
+const INSTANCE = crypto.randomUUID();
+const HIS_ONLY = /password|passcode|\bcode\b|otp|one.time|captcha|human|robot|verif|sign.?in|log.?in|two.factor|2fa/i;
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -739,6 +741,10 @@ async function perform(action, step) {
       return ok(value === "reply" && text ? `He answered: ${text}` : "He skipped it. Leave that field blank and carry on.");
     }
     case "handoff": {
+      // Agentic Apply means he isn't touching the browser: only what truly needs him may stop the queue.
+      if (run.unattended && !HIS_ONLY.test(action.reason || "")) {
+        return refused("He chose Agentic Apply so he doesn't have to step in. Only a password, a code or a visible CAPTCHA can wait for him. Solve this yourself (navigate to the link's address, try the company's careers page), or reply done with submitted false and say why.");
+      }
       const go = await waitForHim("Your turn", action.reason);
       if (!go) return refused("Handed to him.");
       return ok("He says he's done his part. Read the page again and carry on from where it is now.");
@@ -947,6 +953,15 @@ async function start(task, target = {}) {
   if (!task || run) return null;
   const tab = target.tabId ? await chrome.tabs.get(target.tabId).catch(() => null) : await activeTab();
   if (!tab) return null;
+  // The side panel and the agent window are separate pages: two agents on one tab undo each other's work.
+  const { busyTabs = {} } = await chrome.storage.session.get("busyTabs");
+  // An entry outlives a panel closed mid-run, so an old one doesn't count.
+  const other = busyTabs[tab.id];
+  if (other && other.by !== INSTANCE && Date.now() - other.at < 45 * 60_000) {
+    note("warn", "Already on it", "The agent is already working in that tab. Let it finish, or stop it first.");
+    return null;
+  }
+  await chrome.storage.session.set({ busyTabs: { ...busyTabs, [tab.id]: { by: INSTANCE, at: Date.now() } } });
   const jobId = target.jobId !== undefined ? target.jobId : els.job.value || null;
   const mode = target.mode === "auto" || target.mode === "review" ? target.mode : "watch";
   const auto = mode === "auto";
@@ -978,6 +993,10 @@ async function start(task, target = {}) {
     await closeRecord(outcome);
     await overlay(false);
     await detach();
+    const { busyTabs = {} } = await chrome.storage.session.get("busyTabs");
+    delete busyTabs[run.tabId];
+    if (run.tabStack) for (const id of run.tabStack) delete busyTabs[id];
+    await chrome.storage.session.set({ busyTabs });
     run = null;
     if (!queue) {
       els.controls.hidden = true;

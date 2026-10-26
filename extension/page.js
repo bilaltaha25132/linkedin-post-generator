@@ -177,7 +177,7 @@
       const opts = [...el.options].slice(0, 40).map((o) => `${o.selected ? "*" : ""}${clean(o.textContent, 60)}`);
       bits.push(`options=[${opts.join(" | ")}${el.options.length > 40 ? ` | …${el.options.length - 40} more` : ""}]`);
     } else if (/^(INPUT|TEXTAREA)$/.test(tag) && el.type !== "password") {
-      bits.push(`value=${q(clean(el.value, 120))}`);
+      bits.push(`value=${q(clean(el.value || (role === "combobox" ? shownChoice(el) : ""), 120))}`);
       const ph = el.getAttribute("placeholder");
       if (ph && clean(ph) !== name) bits.push(`placeholder=${q(clean(ph, 60))}`);
     } else if (el.isContentEditable) {
@@ -203,6 +203,20 @@
     const kind = role !== "link" && role !== "button" ? hisKind(el, name) : "";
     if (kind) bits.push(HIS_MARK[kind]);
     return bits.join(" ");
+  }
+
+  // React Select (Greenhouse, Ashby) empties its search input once an option is picked and shows the
+  // choice in a sibling div, so the input alone reads as blank and the agent picks the option forever.
+  function shownChoice(el) {
+    let box = el.parentElement;
+    for (let i = 0; box && i < 4; i++, box = box.parentElement) {
+      if (box.querySelectorAll("input:not([type=hidden]),select,textarea").length > 1) break;
+      const shown = [...box.querySelectorAll("[class*='single-value'],[class*='singleValue'],[class*='multi-value__label'],[class*='multiValue'] > div")]
+        .map((n) => clean(n.innerText))
+        .filter(Boolean);
+      if (shown.length) return shown.join(", ");
+    }
+    return "";
   }
 
   function clickableDiv(el) {

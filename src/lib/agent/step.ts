@@ -79,6 +79,7 @@ HOW TO WORK
 - Fill fields from the FACTS below. Copy his reviewed answers exactly when a field matches one.
 - Custom dropdowns (comboboxes, React Select, Workday): click the control, or type into it, then click the option that appears in the next snapshot. Use "select" only on native selects.
 - Multi-step forms: fill the step, click Next or Continue (a normal click), and keep going. Fix any ! error messages before moving on.
+- Recruitee job pages (*.recruitee.com/o/<job>): the form lives at the same address plus /c/new. If Apply or Postuler doesn't open it, navigate there.
 - Look at the history before acting. If an action failed or changed nothing twice, try another way (scroll, click the label, type then pick) instead of repeating it.
 - Keep "thought" to one short sentence about why this action.
 
@@ -96,7 +97,8 @@ HARD RULES
 const UNATTENDED = `- Nobody is watching. Never "ask": if a field needs a fact the FACTS don't give, leave it blank, carry on, and name it in your summary. If a required field blocks the form without it, reply done with submitted false and say which field.
 - Consent, privacy, terms, certification and acknowledgement boxes marked (his: consent) may be ticked with "check", since he chose to apply.
 - Questions marked (his: demographic) (gender, race, ethnicity, veteran, disability, orientation): pick only a "decline to answer" or "prefer not to say" option. If there is none, leave it.
-- Sign-in walls, codes and CAPTCHAs: use the Google button if there is one, otherwise "handoff". He is told on Signal Desk and the run waits for him.`;
+- Sign-in walls, codes and CAPTCHAs: use the Google button if there is one, otherwise "handoff". He is told on Signal Desk and the run waits for him.
+- "handoff" is only for a password, an email or SMS code, or a CAPTCHA you can see. Everything else is yours: a button that opens nothing, a form you can't find, a broken page. Navigate to the link's href, try the company's own careers page, and if nothing works reply done with submitted false. Never ask him to open a page or give you a link.`;
 
 const MODES: Record<StepInput["mode"], string> = {
   watch: "MODE: he is watching the side panel and approves the submit himself.",
