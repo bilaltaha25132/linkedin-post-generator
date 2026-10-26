@@ -54,6 +54,7 @@ const gates = panel.slice(panel.indexOf("page.flags.captcha"), panel.indexOf("/a
 check(/waitForHim/.test(gates.slice(0, gates.indexOf("page.flags.password"))), "a CAPTCHA no longer waits for him");
 check(/flags\.sso/.test(gates) && /Never type a password/.test(gates) && /waitForHim/.test(gates.slice(gates.indexOf("page.flags.password"))), "a password form no longer waits for him");
 check(/waitForHim/.test(caseBody("handoff")), "the handoff action no longer waits for him");
+check(/captchaFrames\?\.has\(target\.frameId\)/.test(panel) && /CAPTCHA_HOST\.test/.test(panel), "the agent can click inside a CAPTCHA frame");
 // Tabs he opens himself are his: only a tab opened right after the agent's own action is followed.
 check(/run\.lastAct/.test(panel.slice(panel.indexOf("tabs.onCreated"), panel.indexOf("tabs.onRemoved"))), "the agent follows any new tab, including his");
 

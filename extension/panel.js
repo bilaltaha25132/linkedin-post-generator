@@ -23,6 +23,7 @@ const CLICK_LOOP = 4;
 const LINKEDIN = /(^|\.)linkedin\.com$/i;
 const WINDOW_MODE = new URLSearchParams(location.search).has("window");
 const INSTANCE = crypto.randomUUID();
+const CAPTCHA_HOST = /hcaptcha|recaptcha|google\.com\/recaptcha|challenges\.cloudflare|turnstile|arkoselabs|funcaptcha/i;
 const HIS_ONLY = /password|passcode|\bcode\b|otp|one.time|captcha|human|robot|verif|sign.?in|log.?in|two.factor|2fa/i;
 
 const $ = (id) => document.getElementById(id);
@@ -503,8 +504,18 @@ async function readPage() {
   if (!main) throw new Error("I couldn't read this page.");
   const flags = { ...main.flags };
   let text = main.text;
+  run.captchaFrames = new Set();
   for (const r of results) {
     if (r.frameId === 0 || !r.result?.text) continue;
+    // The model never sees inside a CAPTCHA, so it can't click "Verify" or "refresh" on one.
+    if (CAPTCHA_HOST.test(r.result.url || "")) {
+      run.captchaFrames.add(r.frameId);
+      flags.captcha ||= r.result.flags.captcha;
+      text += `
+
+# A CAPTCHA frame (${hostOf(r.result.url)}): his alone, never click inside it`;
+      continue;
+    }
     flags.captcha ||= r.result.flags.captcha;
     flags.password ||= r.result.flags.password;
     flags.sso ||= r.result.flags.sso;
@@ -634,6 +645,7 @@ async function perform(action, step) {
   const info = needsRef ? await exec(target.frameId, "info", target.local).catch(() => ({ found: false })) : null;
   step.update(action.type, describe(action, info));
   if (needsRef && !info.found) return failed(`[${action.ref}] isn't on the page any more. Read the new snapshot.`);
+  if (needsRef && run.captchaFrames?.has(target.frameId)) return refused("That's inside a CAPTCHA. Never touch one: hand it to him.");
   if (action.type === "click" && clickLoop(info)) {
     const why = `I clicked "${trim(info.name, 60)}" ${CLICK_LOOP} times on this page without getting anywhere, so I stopped on this job.`;
     if (run.unattended) return handOff(why);
