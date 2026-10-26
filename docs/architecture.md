@@ -424,8 +424,10 @@ on the spot by `createTailoredVersion` in `src/lib/apply/versions.ts`), and `/ap
 
 **Agentic Apply** starts the agent from Signal Desk itself. The button
 (`src/components/agent-apply.tsx`) sits on each job row, on the apply kit, and
-as "Agentic Apply to recent" on Jobs (open jobs found this week that it can
-reach, best fit first, up to 25). It talks to the extension through
+as "Agentic Apply to recent" on Jobs (open jobs from the last three weeks
+that it can reach and hasn't run on before, one per company and title, best
+fit first, up to 25; `agentCanApply` leaves out LinkedIn, Sabbar, Naukrigulf
+and Hacker News, and Himalayas jobs not open to Pakistan). It talks to the extension through
 `bridge.js`, the one content script, which runs only on Signal Desk's own
 origins and relays `window.postMessage` calls (`src/lib/agent/bridge.ts`):
 `hello`, `connect` (hands over the address and `EXTENSION_TOKEN` via the

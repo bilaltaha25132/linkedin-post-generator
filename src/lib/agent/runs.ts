@@ -109,6 +109,13 @@ export async function answerRun(id: string, reply: RunReply): Promise<void> {
   if (!data) throw new Error("The agent isn't waiting on that job any more.");
 }
 
+/** Jobs the agent has already been through, so "Agentic Apply to recent" doesn't queue the same dead ends again. */
+export async function triedJobIds(): Promise<Set<string>> {
+  const { data, error } = await supabaseAdmin().from("agent_runs").select("job_id").not("job_id", "is", null);
+  if (error) throw new Error(error.message);
+  return new Set((data ?? []).map((r) => r.job_id as string));
+}
+
 /** The latest run for each of these jobs since a moment, for the live view on the Agentic Apply button. */
 export async function runsSince(jobIds: string[], since: string): Promise<AgentRun[]> {
   if (!jobIds.length) return [];

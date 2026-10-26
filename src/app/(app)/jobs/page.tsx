@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/page-header";
 import { SetupNotice } from "@/components/setup-notice";
 import { getJobProfile, listJobSources, listOpenJobs, listTrackedJobs } from "@/lib/jobs/queries";
 import { agentCanApply, type AgentJob } from "@/lib/agent/bridge";
+import { triedJobIds } from "@/lib/agent/runs";
 import { boardUrl } from "@/lib/jobs/sources";
 import type { Job, JobProfile, JobRegion, JobSource } from "@/lib/jobs/types";
 import { jobSearchUrl, type JobGeo } from "@/lib/links/deep";
@@ -25,9 +26,9 @@ export default async function JobsPage({ searchParams }: PageProps<"/jobs">) {
   const { view } = await searchParams;
   const tracker = view === "tracker";
   const configured = supabaseConfigured();
-  const { jobs, sources, links, loadError, now } = configured
+  const { jobs, sources, links, tried, loadError, now } = configured
     ? await load(tracker)
-    : { jobs: [], sources: [], links: [], loadError: null, now: 0 };
+    : { jobs: [], sources: [], links: [], tried: new Set<string>(), loadError: null, now: 0 };
   const boardUrls = Object.fromEntries(
     sources.flatMap((s) => {
       const url = boardUrl(s);
@@ -43,7 +44,7 @@ export default async function JobsPage({ searchParams }: PageProps<"/jobs">) {
           configured && !loadError ? (
             <>
               <JobsScanButton />
-              {!tracker && <AgentApply jobs={recentForAgent(jobs, now)} label="Agentic Apply to recent" className="btn btn-primary" />}
+              {!tracker && <AgentApply jobs={recentForAgent(jobs, now, tried)} label="Agentic Apply to recent" className="btn btn-primary" />}
             </>
           ) : undefined
         }
@@ -89,16 +90,22 @@ export default async function JobsPage({ searchParams }: PageProps<"/jobs">) {
   );
 }
 
-const RECENT_DAYS = 7;
+// Three weeks, not one: the best fits often surface a week or two after posting.
+const RECENT_DAYS = 21;
 const RECENT_MAX = 25;
 
-// The batch for "Agentic Apply to recent": open jobs found this week with a
-// form the agent can reach, best fit first.
-function recentForAgent(jobs: Job[], now: number): AgentJob[] {
+// Himalayas checks the applicant's country against the job's list before it shows a form.
+const himalayasShut = (j: Job) => /(^|\.)himalayas\.app$/i.test(new URL(j.url_apply).hostname) && !/worldwide|anywhere|pakistan/i.test(j.location_raw ?? "");
+
+// The batch for "Agentic Apply to recent": open jobs from the last three weeks with a
+// form the agent can reach and that it hasn't been through already, best fit first.
+function recentForAgent(jobs: Job[], now: number, tried: Set<string>): AgentJob[] {
   return jobs
-    .filter((j) => (j.status === "new" || j.status === "saved") && agentCanApply(j.url_apply))
+    .filter((j) => (j.status === "new" || j.status === "saved") && agentCanApply(j.url_apply) && !tried.has(j.id) && !himalayasShut(j))
     .filter((j) => now - Date.parse(j.posted_at ?? j.first_seen_at) < RECENT_DAYS * 86_400_000)
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    // The same post on two boards (arbeitnow.co.uk and .ch) is one application.
+    .filter((j, i, all) => all.findIndex((o) => o.company.toLowerCase() === j.company.toLowerCase() && o.title.toLowerCase() === j.title.toLowerCase()) === i)
     .slice(0, RECENT_MAX)
     .map((j) => ({ id: j.id, title: j.title, company: j.company, url_apply: j.url_apply }));
 }
@@ -136,21 +143,23 @@ async function load(tracker: boolean): Promise<{
   jobs: Job[];
   sources: JobSource[];
   links: DeepLink[];
+  tried: Set<string>;
   loadError: string | null;
   /** Taken once on the server, so "New" badges and date filters agree with hydration. */
   now: number;
 }> {
   const now = Date.now();
   try {
-    const [jobs, sources, profile] = await Promise.all([
+    const [jobs, sources, profile, tried] = await Promise.all([
       tracker ? listTrackedJobs() : listOpenJobs(),
       listJobSources(),
       getJobProfile(),
+      tracker ? new Set<string>() : triedJobIds(),
     ]);
     // The links are a convenience: a failure there doesn't hide the jobs.
     const links = tracker ? [] : await searchLinks(profile).catch(() => []);
-    return { jobs, sources, links, loadError: null, now };
+    return { jobs, sources, links, tried, loadError: null, now };
   } catch (err) {
-    return { jobs: [], sources: [], links: [], loadError: err instanceof Error ? err.message : String(err), now };
+    return { jobs: [], sources: [], links: [], tried: new Set<string>(), loadError: err instanceof Error ? err.message : String(err), now };
   }
 }

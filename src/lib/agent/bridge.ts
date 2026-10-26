@@ -36,7 +36,17 @@ export function askAgent(type: "hello" | "connect" | "apply" | "show", payload?:
   });
 }
 
-/** Agent links are refused on LinkedIn, so those jobs are never offered. */
+/**
+ * Boards the agent can't get through for him: LinkedIn is refused outright, Sabbar only registers Saudi
+ * mobile numbers, Naukrigulf links land on a search page, and a Hacker News thread has no form.
+ */
+const UNREACHABLE = /(^|\.)(linkedin\.com|sabbar\.com|naukrigulf\.com|news\.ycombinator\.com)$/i;
+
 export function agentCanApply(url: string | null | undefined): boolean {
-  return /^https?:/.test(url ?? "") && !/linkedin\.com/i.test(url ?? "");
+  if (!/^https?:/.test(url ?? "")) return false;
+  try {
+    return !UNREACHABLE.test(new URL(url!).hostname);
+  } catch {
+    return false;
+  }
 }
