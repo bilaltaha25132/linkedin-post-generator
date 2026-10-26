@@ -2,12 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ClipboardList, FileText, Mail, Send, TriangleAlert } from "lucide-react";
 
+import { AgentApply } from "@/components/agent-apply";
 import { FormStep, LetterStep, ResumeStep, SubmitStep } from "@/components/apply-tools";
 import { PageHeader } from "@/components/page-header";
 import { SetupNotice } from "@/components/setup-notice";
 import { letterStyle } from "@/lib/apply/answers";
 import { detectAts } from "@/lib/apply/forms";
 import { getApplication, getJob, getLedger, latestVersion } from "@/lib/apply/queries";
+import { agentCanApply } from "@/lib/agent/bridge";
 import { payText, whereText } from "@/lib/jobs/format";
 import { supabaseConfigured } from "@/lib/supabase/server";
 
@@ -31,7 +33,15 @@ export default async function ApplyPage({ params }: PageProps<"/jobs/[id]/apply"
 
   return (
     <>
-      <PageHeader title={data && !("error" in data) ? data.job.title : "Apply kit"} eyebrow="Apply kit">
+      <PageHeader
+        title={data && !("error" in data) ? data.job.title : "Apply kit"}
+        eyebrow="Apply kit"
+        action={
+          data && !("error" in data) && agentCanApply(data.job.url_apply) ? (
+            <AgentApply jobs={[{ id: data.job.id, title: data.job.title, company: data.job.company, url_apply: data.job.url_apply }]} />
+          ) : undefined
+        }
+      >
         {data && !("error" in data) ? (
           <>
             {data.job.company}, {whereText(data.job)}

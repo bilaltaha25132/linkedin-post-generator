@@ -1,6 +1,7 @@
 import {
   Ban,
   Bookmark,
+  Bot,
   Briefcase,
   Handshake,
   Users,
@@ -55,6 +56,7 @@ export const NAV_GROUPS: { title: string; links: NavLink[] }[] = [
     title: "Career",
     links: [
       { href: "/jobs", label: "Jobs", icon: Briefcase },
+      { href: "/applications", label: "Applications", icon: Bot },
       { href: "/resume", label: "Resume", icon: FileUser },
       { href: "/leads", label: "Leads", icon: Handshake },
     ],

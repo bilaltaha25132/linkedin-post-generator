@@ -1,50 +1,59 @@
 # Signal Desk Agent
 
-A personal Chrome extension. Open it from the toolbar and a side panel appears
-next to the page. Tell it what to do ("Apply to this job", "Fill the form on
-this page", or anything else) and it works through the page step by step while
-you watch: it reads the page, clicks, types, picks options, attaches your
-resume and moves through multi-step forms, using your Signal Desk facts,
-reviewed answers and cover letter.
+A personal Chrome extension: the agent behind Signal Desk's **Agentic Apply**.
+It reads the page, clicks, types, picks options, attaches your resume and moves
+through multi-step forms, using your Signal Desk facts, reviewed answers and
+cover letter. Start it two ways:
 
-What stays with you:
+- **From Signal Desk.** Press **Agentic Apply** on a job, or **Agentic Apply to
+  recent** on Jobs, pick a mode and press Start. The first time, it connects
+  itself. An agent window docks on the right and works through the jobs one
+  tab at a time. Each run shows up under **Applications**.
+- **From the toolbar.** The side panel opens next to the page; tell it what to
+  do ("Apply to this job", "Fill the form on this page", or anything else) and
+  it works while you watch.
 
-- **Submitting.** Before the final submit it stops and shows what the form
-  holds, with anything still blank. Nothing is sent until you press
-  **Approve and submit**. A click that looks like a submit, or Enter in a form,
-  gets the same stop.
-- **Your own fields.** It never touches demographic (EEO), consent,
-  attestation, signature, password, card or ID fields.
-- **Sign-ins and human checks.** It pauses on password fields and CAPTCHAs; you
-  handle them and press Continue. It doesn't create accounts.
+## The two modes
+
+- **Fill for review** (the default). It fills every page of the form and
+  attaches your resume, then stops at the final submit without clicking it.
+  The tab stays open, and the run reads "Ready for you to submit". Check it,
+  send it, then press **I submitted it** on Applications.
+- **Auto-submit.** It clicks the final submit itself and checks for a
+  confirmation; the job moves to Applied.
+
+From the toolbar panel the final submit always waits for your **Approve and
+submit** on a card listing what the form holds.
+
+## What stays with you
+
+- **Secrets.** It never types passwords, card numbers, bank details or ID
+  numbers, and doesn't create accounts.
+- **Demographic questions** only ever get a "prefer not to say" option.
+- **Consent boxes** are ticked only in runs you queued from Agentic Apply;
+  from the toolbar panel they are left to you.
+- **Sign-ins and human checks.** In a queued run, a sign-in wall or CAPTCHA
+  ends that job as "Needs you" with the tab left open, and it moves on. From
+  the toolbar panel it pauses for you to handle them and press Continue.
 - **Money and LinkedIn.** It refuses payment buttons and won't run on
   linkedin.com.
-- **Which sites.** It reaches only sites you allow when it asks (or all sites,
-  if you choose). No content scripts, nothing up front.
+
+Queued runs open job sites with nobody there to click "allow", so the
+extension has access to http(s) sites up front. The only script it puts in a
+page on its own is `bridge.js`, on Signal Desk's own address, which passes
+messages between Signal Desk and the extension and reads nothing.
 
 While it works, Chrome shows a "started debugging this browser" bar: that is
 how it sends real clicks and keystrokes. Closing that bar, pressing **Stop**,
-or closing the panel ends the run. `node scripts/check-extension.mjs` checks
-these promises against the code.
+or closing the agent window ends the run. `node scripts/check-extension.mjs`
+checks these promises against the code.
 
 ## Install
 
 1. Set `EXTENSION_TOKEN` in `.env.local` and in Vercel (see
    [docs/setup.md](../docs/setup.md)), and redeploy.
 2. In Chrome, open `chrome://extensions`, turn on **Developer mode**, choose
-   **Load unpacked** and pick this `extension/` folder. If you had the older
-   Signal Desk Fill loaded, press its reload button instead.
-3. Click the toolbar button to open the panel, then the gear: enter your
-   Signal Desk address and the token, and allow that address when Chrome asks.
-
-## Use
-
-1. Open the job post or application form, then the panel. If Signal Desk
-   knows the job, the panel picks it; otherwise choose it from the list (jobs
-   with a draft application are there).
-2. Press **Apply to this job**, or type a task. Allow the site when asked.
-3. Answer its questions in the panel when it needs something it doesn't know.
-   **Pause** and **Stop** are under the log.
-4. Read the approval card and press **Approve and submit**, or **Not yet** with
-   what to change. After a confirmed submit it marks the job submitted in
-   Signal Desk.
+   **Load unpacked** and pick this `extension/` folder. If it's already loaded,
+   press its reload button after every update.
+3. Open Signal Desk and press **Agentic Apply**: it connects the extension
+   with your address and token. (Or set them by hand under the panel's gear.)

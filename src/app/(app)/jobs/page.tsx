@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { TriangleAlert } from "lucide-react";
 
+import { AgentApply } from "@/components/agent-apply";
 import { DeepLinks, type DeepLink } from "@/components/deep-links";
 import { JobSources } from "@/components/job-sources";
 import { JobTracker } from "@/components/job-tracker";
@@ -9,6 +10,7 @@ import { JobsScanButton } from "@/components/jobs-scan-button";
 import { PageHeader } from "@/components/page-header";
 import { SetupNotice } from "@/components/setup-notice";
 import { getJobProfile, listJobSources, listOpenJobs, listTrackedJobs } from "@/lib/jobs/queries";
+import { agentCanApply, type AgentJob } from "@/lib/agent/bridge";
 import { boardUrl } from "@/lib/jobs/sources";
 import type { Job, JobProfile, JobRegion, JobSource } from "@/lib/jobs/types";
 import { jobSearchUrl, type JobGeo } from "@/lib/links/deep";
@@ -34,9 +36,21 @@ export default async function JobsPage({ searchParams }: PageProps<"/jobs">) {
   );
   return (
     <>
-      <PageHeader title="Jobs" eyebrow="Career" action={configured && !loadError ? <JobsScanButton /> : undefined}>
+      <PageHeader
+        title="Jobs"
+        eyebrow="Career"
+        action={
+          configured && !loadError ? (
+            <>
+              <JobsScanButton />
+              {!tracker && <AgentApply jobs={recentForAgent(jobs, now)} label="Agentic Apply to recent" className="btn btn-primary" />}
+            </>
+          ) : undefined
+        }
+      >
         AI engineering roles from company boards and job sites, scored against your job profile. Saudi Arabia and
-        the Gulf first, then Europe and remote. You apply; nothing is sent for you.
+        the Gulf first, then Europe and remote. Agentic Apply fills the forms in your browser; it submits only when
+        you pick Auto-submit.
       </PageHeader>
 
       {!configured ? (
@@ -73,6 +87,20 @@ export default async function JobsPage({ searchParams }: PageProps<"/jobs">) {
       )}
     </>
   );
+}
+
+const RECENT_DAYS = 7;
+const RECENT_MAX = 25;
+
+// The batch for "Agentic Apply to recent": open jobs found this week with a
+// form the agent can reach, best fit first.
+function recentForAgent(jobs: Job[], now: number): AgentJob[] {
+  return jobs
+    .filter((j) => (j.status === "new" || j.status === "saved") && agentCanApply(j.url_apply))
+    .filter((j) => now - Date.parse(j.posted_at ?? j.first_seen_at) < RECENT_DAYS * 86_400_000)
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    .slice(0, RECENT_MAX)
+    .map((j) => ({ id: j.id, title: j.title, company: j.company, url_apply: j.url_apply }));
 }
 
 // LinkedIn job-search places for each region, in his order.

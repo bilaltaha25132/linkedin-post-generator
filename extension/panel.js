@@ -1,14 +1,19 @@
-// The agent's run loop. It lives in the side panel, so closing the panel ends
-// the run. Each turn: read the page (page.js), ask Signal Desk for the next
-// action, check it against the rules below, then act with real mouse and
-// keyboard input through the debugger. The rules are enforced here, in code,
-// whatever the model says: the final submit waits for his Approve, fields that
-// are his are never typed into, sign-ins and human checks are handed to him,
-// nothing is paid for, and LinkedIn is off limits.
+// The agent's run loop. It lives in the side panel, or in the agent window that
+// the desk's Agentic Apply button opens, so closing either ends the run. Each
+// turn: read the page (page.js), ask Signal Desk for the next action, check it
+// against the rules below, then act with real mouse and keyboard input through
+// the debugger. The rules are enforced here, in code, whatever the model says:
+// secrets are never typed, sign-ins and human checks are handed to him, nothing
+// is paid for, and LinkedIn is off limits. The final submit waits for his
+// Approve, unless he started the run with auto-submit on: then the agent
+// submits, may tick consent boxes, and may only decline demographic questions.
+// Anything it can't do alone marks the job "needs you" and the queue moves on.
 
 const MAX_STEPS = 60;
+const AUTO_MAX_STEPS = 80;
 const HISTORY = 40;
 const LINKEDIN = /(^|\.)linkedin\.com$/i;
+const WINDOW_MODE = new URLSearchParams(location.search).has("window");
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -141,8 +146,16 @@ async function apiJSON(path, init) {
 
 // ---------- The page in view ----------
 
+// The agent window has no tabs of its own: it works in the browser window it was opened from.
+async function targetWindow() {
+  if (!WINDOW_MODE) return null;
+  const { targetWindowId } = await chrome.storage.session.get("targetWindowId");
+  return targetWindowId ?? null;
+}
+
 async function activeTab() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const windowId = await targetWindow();
+  const [tab] = await chrome.tabs.query(windowId ? { active: true, windowId } : { active: true, currentWindow: true });
   return tab;
 }
 
@@ -195,8 +208,13 @@ function readyJobs() {
   return (context.jobs || []).filter((j) => /^https?:/.test(j.url_apply || "") && !/linkedin\.com/i.test(j.url_apply));
 }
 
-const applyTask = (job) =>
-  `Apply to ${job.title} at ${job.company} on this page. Fill every field you can from my facts, attach my resume, and get it ready for me to approve the submit.`;
+// "auto" submits; "review" fills and stops at the submit; anything else waits for his Approve.
+const applyTask = (job, mode) =>
+  mode === "auto"
+    ? `Apply to ${job.title} at ${job.company} on this page. Open the application form if this is the job post, fill every field you can from my facts, attach my resume, and submit it. Then confirm the page says it was received.`
+    : mode === "review"
+      ? `Apply to ${job.title} at ${job.company} on this page. Open the application form if this is the job post, fill every field you can from my facts, attach my resume, go through every page of the form, and then use the submit action on the final submit button. The extension stops there and leaves it for me to check and send.`
+      : `Apply to ${job.title} at ${job.company} on this page. Fill every field you can from my facts, attach my resume, and get it ready for me to approve the submit.`;
 
 function renderChips() {
   const job = selectedJob();
@@ -511,8 +529,43 @@ const refused = (msg) => ({ status: "refused", result: msg });
 const ok = (msg) => ({ status: "ok", result: msg });
 const failed = (msg) => ({ status: "failed", result: msg });
 
+// Whether a field marked as his may be touched by this action, in this run.
+// Returns the refusal, or null when it's allowed.
+function hisRefusal(info, action) {
+  if (!info.his) return null;
+  const leave = action.type === "type" ? "That field is his to fill. Leave it, or ask him." : "That choice is his to make. Ask him, or leave it.";
+  if (info.his === "secret" || !run.unattended) return refused(leave);
+  if (info.his === "consent") return action.type === "type" ? refused(leave) : null;
+  // Demographic: only a decline-to-answer option, never a real answer.
+  if (action.type === "select") return null;
+  if ((action.type === "click" || action.type === "check") && info.declines) return null;
+  return refused("On demographic questions I may only pick a decline-to-answer option. Leave it if there isn't one.");
+}
+
 async function approveSubmit(target, summary, info) {
   const form = await exec(target.frameId, "filled", target.local).catch(() => ({ fields: [], missing: [] }));
+  run.fields = form.fields;
+  // A form with required fields still blank never goes out unattended, and isn't "ready" either.
+  if (run.unattended && form.missing.length) {
+    return handOff(`Filled what I could. Still blank and required: ${form.missing.join(", ")}. I didn't submit.`);
+  }
+  if (run.mode === "review") {
+    run.outcome = "ready";
+    run.blocker = form.missing.length ? `Filled and waiting for you to submit. Still blank and required: ${form.missing.join(", ")}.` : "Filled and waiting for you to check and submit.";
+    run.stopped = true;
+    setState("done", "Ready for you");
+    note("done", "Ready for you to submit", `${run.blocker}
+
+I didn't click "${trim(info.name || "submit", 40)}". The tab stays open.`);
+    return refused("Left for him to submit.");
+  }
+  if (run.auto) {
+    await clickAt(target, info);
+    run.approved = true;
+    return ok(
+      `Auto-submit is on, so I clicked it.${form.missing.length ? ` Still blank and required: ${form.missing.join(", ")}.` : ""} Check the next page for a confirmation, or fix any errors it shows, before saying it's submitted.`,
+    );
+  }
   const { value, text } = await waitFor({
     kind: "approve",
     iconName: "submit",
@@ -551,12 +604,16 @@ async function perform(action, step) {
     case "click": {
       if (info.pay) return refused("That looks like a payment. Paying is his to do.");
       if (info.submitLike) return approveSubmit(target, "This button looks like the final submit, so I'm asking first.", info);
-      if (info.his && /checkbox|radio|switch/.test(info.role)) return refused("That choice is his to make. Ask him, or leave it.");
+      if (/checkbox|radio|switch|option/.test(info.role)) {
+        const no = hisRefusal(info, action);
+        if (no) return no;
+      }
       await clickAt(target, info);
       return ok("Clicked.");
     }
     case "type": {
-      if (info.his) return refused("That field is his to fill. Leave it, or ask him.");
+      const no = hisRefusal(info, action);
+      if (no) return no;
       if (!info.editable) return failed("That isn't a text field. Click it first, or pick another ref.");
       await exec(target.frameId, "mark", target.local).catch(() => {});
       if (target.frameId === 0) {
@@ -573,12 +630,14 @@ async function perform(action, step) {
       return ok("Typed.");
     }
     case "select": {
-      if (info.his) return refused("That choice is his to make. Ask him, or leave it.");
-      const r = await exec(target.frameId, "selectOption", target.local, action.option);
-      return r.startsWith("selected") ? ok(r) : failed(r);
+      const no = hisRefusal(info, action);
+      if (no) return no;
+      const r = await exec(target.frameId, "selectOption", target.local, action.option, info.his === "demographic");
+      return r.startsWith("selected") ? ok(r) : r.startsWith("refused") ? refused(r) : failed(r);
     }
     case "check": {
-      if (info.his) return refused("That box is his to tick. Ask him to do it.");
+      const no = hisRefusal(info, action);
+      if (no) return no;
       const before = await exec(target.frameId, "checked", target.local);
       if (before === action.checked) return ok("Already set.");
       await clickAt(target, info);
@@ -595,7 +654,8 @@ async function perform(action, step) {
       try {
         pdf = await run.pdf();
       } catch (err) {
-        return failed(err.message);
+        run.problems = [...new Set([...(run.problems || []), `The resume wasn't attached: ${trim(err.message, 200)}`])];
+        return failed(`${err.message} Retrying won't help. Leave the resume, carry on with the rest of the form, and name it in your summary.`);
       }
       const r = await exec(target.frameId, "upload", target.local, pdf.b64, pdf.filename);
       return r.startsWith("attached") ? ok(r) : failed(r);
@@ -621,6 +681,10 @@ async function perform(action, step) {
       await sleep(action.seconds * 1000);
       return ok("Waited.");
     case "ask": {
+      if (run.unattended) {
+        run.questions = [...(run.questions || []), action.question];
+        return ok("He isn't watching this run. Leave that field blank, carry on with the rest, and name it in your summary.");
+      }
       const { value, text } = await waitFor({
         iconName: "ask",
         title: "I need you",
@@ -656,9 +720,13 @@ function pdfLoader(jobId) {
     for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
     return { b64: btoa(bin), filename: name };
   };
+  // One retry for a network blip; a second failure (a build error) sticks for the run.
+  let failures = 0;
   return () => {
     promise ??= load();
-    promise.catch(() => (promise = null));
+    promise.catch(() => {
+      if (++failures < 2) promise = null;
+    });
     return promise;
   };
 }
@@ -680,16 +748,74 @@ function renderCount() {
   els.count.textContent = `Step ${run.steps} of ${run.cap}`;
 }
 
-// Resolves with how the run ended: "submitted", "done", "stopped" or "error".
+// In an auto-submit run nobody is watching the panel, so anything only he can
+// do ends the run as "needs you", with the reason, and the queue moves on. The
+// tab stays open for him.
+function handOff(blocker) {
+  run.outcome = "needs_you";
+  run.blocker = blocker;
+  run.stopped = true;
+  if (pendingCard) pendingCard("stop");
+  setState("waiting", "Needs you");
+  note("warn", "Left for you", `${blocker}\n\nThe tab is still open. It's on your Applications tab in Signal Desk.`);
+  return refused("Handed to him.");
+}
+
+// The record on his Applications tab: opened when a job run starts, closed when it ends.
+async function openRecord(url) {
+  if (!run.jobId) return;
+  try {
+    const { id } = await apiJSON("/api/public/ext/runs", { method: "POST", body: JSON.stringify({ jobId: run.jobId, autoSubmit: run.auto, url }) });
+    run.serverId = id;
+  } catch {
+    // The run still works without its record; the old "applied" call covers the submit.
+  }
+}
+
+async function closeRecord(outcome) {
+  if (!run.serverId) return false;
+  const tab = await chrome.tabs.get(run.tabId).catch(() => null);
+  if (!run.fields?.length && tab) {
+    const form = await exec(0, "filled", null).catch(() => null);
+    if (form?.fields?.length) run.fields = form.fields;
+  }
+  // A queued job that ended short of the final submit isn't finished: it needs him.
+  const short = outcome === "done" && run.unattended;
+  const status = short ? "needs_you" : { submitted: "submitted", ready: "ready", done: "done", stopped: "stopped", needs_you: "needs_you", error: "failed" }[outcome] || "failed";
+  const notes = [run.blocker, short && !run.blocker ? "It stopped before the final submit." : "", ...(run.problems || [])];
+  if (run.questions?.length) notes.push(`Left blank, I didn't know: ${run.questions.join(" | ")}`);
+  run.blocker = notes.filter(Boolean).join("\n");
+  try {
+    await apiJSON(`/api/public/ext/runs/${run.serverId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        status,
+        steps: run.steps,
+        url: tab?.url?.slice(0, 2000),
+        summary: trim(run.summary || "", 4000),
+        blocker: trim(run.blocker || "", 1200),
+        fields: (run.fields || []).slice(0, 120).map((f) => ({ label: trim(f.label, 300), value: trim(f.value, 2000) })),
+      }),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Resolves with how the run ended: "submitted", "done", "needs_you", "stopped" or "error".
 async function start(task, target = {}) {
   task = task.trim();
   if (!task || run) return null;
-  const tab = target.tabId ? { id: target.tabId } : await activeTab();
+  const tab = target.tabId ? await chrome.tabs.get(target.tabId).catch(() => null) : await activeTab();
   if (!tab) return null;
   const jobId = target.jobId !== undefined ? target.jobId : els.job.value || null;
-  run = { tabId: tab.id, task, jobId, history: [], steps: 0, cap: MAX_STEPS, approved: false, paused: false, stopped: false, attached: null, acks: new Set(), outcome: "stopped" };
+  const mode = target.mode === "auto" || target.mode === "review" ? target.mode : "watch";
+  const auto = mode === "auto";
+  run = { tabId: tab.id, task, jobId, mode, auto, unattended: mode !== "watch", history: [], steps: 0, cap: mode === "watch" ? MAX_STEPS : AUTO_MAX_STEPS, approved: false, paused: false, stopped: false, attached: null, acks: new Set(), outcome: "stopped" };
   run.pdf = pdfLoader(jobId);
   if (jobId || /\b(apply|application|resume|cv)\b/i.test(task)) run.pdf().catch(() => {});
+  await openRecord(tab.url);
 
   els.task.value = "";
   addYou(task);
@@ -705,11 +831,13 @@ async function start(task, target = {}) {
     outcome = run.outcome;
   } catch (err) {
     outcome = "error";
+    run.blocker = err.message;
     if (!run?.stopped) {
       setState("error", "Stopped");
       note("error", "I had to stop", err.message);
     }
   } finally {
+    await closeRecord(outcome);
     await overlay(false);
     await detach();
     run = null;
@@ -743,26 +871,29 @@ function tabLoaded(tabId, timeoutMs = 30_000) {
   });
 }
 
-// Works through the jobs one by one, each in a new tab. Every submit still
-// waits for his Approve; Stop on a card moves on to the next job, the Stop
-// under the log ends the whole queue.
+// Works through the jobs one by one, each in a new tab. A job with autoSubmit
+// is submitted by the agent; any other waits for his Approve. Stop on a card
+// moves on to the next job, the Stop under the log ends the whole queue. Jobs
+// the desk sends while it runs join the end.
 async function runQueue(jobs) {
   if (run || queue) return;
-  queue = { stopped: false, results: [] };
+  queue = { stopped: false, results: [], jobs };
   els.stop.textContent = "Stop all";
-  addYou(`Apply to all ${jobs.length} ready jobs`);
+  addYou(jobs.length === 1 ? `Apply to ${jobs[0].title} at ${jobs[0].company}` : `Apply to ${jobs.length} jobs`);
   try {
     for (const [i, job] of jobs.entries()) {
       if (queue.stopped) break;
       els.log.append(el("div", { class: "queue-mark" }, el("strong", { text: `Job ${i + 1} of ${jobs.length}` }), el("span", { text: `${job.title} at ${job.company}` })));
-      const tab = await chrome.tabs.create({ url: job.url_apply, active: true });
+      const windowId = await targetWindow();
+      const tab = await chrome.tabs.create({ url: job.url_apply, active: true, ...(windowId ? { windowId } : {}) });
       await tabLoaded(tab.id);
       await sleep(1200);
-      const outcome = await start(applyTask(job), { tabId: tab.id, jobId: job.id });
+      const mode = job.autoSubmit ? "auto" : "review";
+      const outcome = await start(applyTask(job, mode), { tabId: tab.id, jobId: job.id, mode });
       queue.results.push({ job, outcome: outcome || "error" });
     }
   } finally {
-    const label = { submitted: "submitted", done: "finished, not submitted", stopped: "skipped", error: "hit a problem" };
+    const label = { submitted: "submitted", ready: "filled, ready for you to submit", done: "finished, not submitted", needs_you: "needs you", stopped: "skipped", error: "hit a problem" };
     const lines = queue.results.map((r) => `${r.job.company}: ${label[r.outcome] || r.outcome}`);
     const sent = queue.results.filter((r) => r.outcome === "submitted").length;
     queue = null;
@@ -772,7 +903,25 @@ async function runQueue(jobs) {
     setState("done", `${sent} submitted`);
     note("done", `Queue finished: ${sent} of ${lines.length} submitted`, lines.join("\n"));
     refreshContext();
+    takePending();
   }
+}
+
+// Jobs the desk handed over (background.js keeps them until the window takes them).
+async function takePending() {
+  if (!WINDOW_MODE) return;
+  const { pending = [] } = await chrome.storage.session.get("pending");
+  if (!pending.length) return;
+  await chrome.storage.session.set({ pending: [] });
+  if (queue) queue.jobs.push(...pending);
+  else if (!run) runQueue(pending);
+}
+
+if (WINDOW_MODE) {
+  document.body.classList.add("window");
+  chrome.storage.session.onChanged.addListener((changes) => {
+    if (changes.pending?.newValue?.length) takePending();
+  });
 }
 
 async function loop() {
@@ -782,6 +931,7 @@ async function loop() {
     if (run.stopped) return;
 
     if (run.steps >= run.cap) {
+      if (run.unattended) return handOff(`I spent ${run.steps} steps on this without finishing. Have a look at where it got to.`);
       const { value } = await waitFor({
         title: `That's ${run.steps} steps`,
         body: "I've been at this a while. Keep going, or stop and pick it up yourself?",
@@ -808,6 +958,7 @@ async function loop() {
 
     if (page.flags.captcha && !run.acks.has(`c ${page.url}`)) {
       thinking.finish("refused", "There's a human check on the page.");
+      if (run.unattended) return handOff("There's a human check (CAPTCHA) on the page. Solve it and finish the form yourself.");
       const { value } = await waitFor({
         iconName: "shield",
         title: "Your turn: a human check",
@@ -823,6 +974,7 @@ async function loop() {
     }
     if (page.flags.password && !run.acks.has(`p ${hostOf(page.url)}`)) {
       thinking.finish("refused", "This page asks for a password.");
+      if (run.unattended) return handOff("The site wants you signed in. Sign in (or pick a guest option) and run it again, or finish it yourself.");
       const { value } = await waitFor({
         iconName: "shield",
         title: "Your turn: sign in",
@@ -848,11 +1000,20 @@ async function loop() {
           title: trim(page.title || "", 300),
           snapshot: page.text,
           jobId: run.jobId,
+          mode: run.mode,
           history: run.history.slice(-HISTORY),
         }),
       });
     } catch (err) {
       thinking.finish("failed", err.message);
+      if (run.unattended) {
+        run.apiErrors = (run.apiErrors || 0) + 1;
+        if (run.apiErrors < 3) {
+          await sleep(4000);
+          continue;
+        }
+        return handOff(`Signal Desk kept failing to answer: ${err.message}`);
+      }
       const { value } = await waitFor({
         kind: "error",
         title: "Signal Desk didn't answer",
@@ -887,7 +1048,8 @@ async function loop() {
 
 async function finish(action) {
   let summary = action.summary;
-  if (action.submitted && run.approved && run.jobId) {
+  run.summary = summary;
+  if (action.submitted && run.approved && run.jobId && !run.serverId) {
     try {
       await apiJSON("/api/public/ext/applied", { method: "POST", body: JSON.stringify({ jobId: run.jobId }) });
       summary += "\n\nMarked as submitted in Signal Desk.";
@@ -936,4 +1098,4 @@ els.task.addEventListener("input", () => {
   els.task.style.height = `${Math.min(els.task.scrollHeight, 160)}px`;
 });
 
-loadSettings().then(refreshContext);
+loadSettings().then(refreshContext).then(takePending);

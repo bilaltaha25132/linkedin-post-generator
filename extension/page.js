@@ -20,9 +20,16 @@
     ),
   ].join(",");
 
-  // Fields that are his to answer: demographics, consent, attestations, secrets.
-  const HIS =
-    /\b(gender|sex|race|racial|ethnic\w*|veteran|disabilit\w*|sexual orientation|pronouns?|consent\w*|privacy|terms|certif\w*|attest\w*|acknowledg\w*|i agree|i confirm|i declare|declaration|signature|sign here|date of birth|birth ?date|passport|national id|ssn|social security|iqama|cnic|emirates id|password|card number|cvv|cvc|iban|bank|routing)\b/i;
+  // Fields that are his to answer, in three kinds. Secrets are never touched.
+  // Consent and demographic questions are his too, unless he turned on
+  // auto-submit for the run: then consent boxes may be ticked and demographic
+  // questions may only get a "decline to answer" option.
+  const SECRET =
+    /\b(signature|sign here|date of birth|birth ?date|passport|national id|ssn|social security|iqama|cnic|emirates id|password|card number|cvv|cvc|iban|bank|routing)\b/i;
+  const CONSENT = /\b(consent\w*|privacy|terms|certif\w*|attest\w*|acknowledg\w*|i agree|i confirm|i declare|declaration)\b/i;
+  const DEMOGRAPHIC = /\b(gender|sex|race|racial|ethnic\w*|veteran|disabilit\w*|sexual orientation|pronouns?)\b/i;
+  const DECLINE = /\b(decline|prefer not|rather not|do not wish|don't wish|not wish to|choose not|not to (say|disclose|answer|identify|self-identify))\b/i;
+  const HIS_MARK = { secret: "(his: leave)", consent: "(his: consent)", demographic: "(his: demographic)" };
   const SUBMIT = /\b(submit|send|finish|complete|confirm|apply)\b/i;
   const NOT_SUBMIT = /\b(next|continue|save|back|previous|add|upload|attach|search|filter|sign in|log ?in|cancel|close|more|edit|remove)\b/i;
   const PAY = /\b(pay|place order|purchase|checkout|buy now)\b/i;
@@ -122,10 +129,21 @@
     return "clickable";
   }
 
-  function isHis(el, name) {
-    if (el.type === "password" || /^cc-/.test(el.getAttribute("autocomplete") || "")) return true;
-    const group = el.type === "radio" || el.type === "checkbox" ? questionFor(el) : "";
-    return HIS.test(`${name} ${group}`);
+  // A single checkbox that says what it is ("I agree to the privacy policy"). It is judged on its
+  // own words, not on whatever label happens to sit above it, unlike "Male" under "Gender".
+  function loneBox(el, name) {
+    return el.type === "checkbox" && name.split(/\s+/).length >= 3 && (!el.name || document.querySelectorAll(`input[type=checkbox][name="${CSS.escape(el.name)}"]`).length < 2);
+  }
+
+  // "secret", "consent", "demographic", or "" when the field is fine to fill.
+  function hisKind(el, name) {
+    if (el.type === "password" || /^cc-/.test(el.getAttribute("autocomplete") || "")) return "secret";
+    const group = !loneBox(el, name) && (el.type === "radio" || el.type === "checkbox" || el.getAttribute("role") === "option") ? questionFor(el) : "";
+    const text = `${name} ${group}`;
+    if (SECRET.test(text)) return "secret";
+    if (DEMOGRAPHIC.test(text)) return "demographic";
+    if (CONSENT.test(text)) return "consent";
+    return "";
   }
 
   function refFor(el) {
@@ -179,7 +197,8 @@
     const exp = el.getAttribute("aria-expanded");
     if (exp) bits.push(exp === "true" ? "expanded" : "collapsed");
     if (el.getAttribute("aria-selected") === "true" || el.getAttribute("aria-checked") === "true") bits.push("selected");
-    if (role !== "link" && role !== "button" && isHis(el, name)) bits.push("(his: leave)");
+    const kind = role !== "link" && role !== "button" ? hisKind(el, name) : "";
+    if (kind) bits.push(HIS_MARK[kind]);
     return bits.join(" ");
   }
 
@@ -290,7 +309,8 @@
       type: (el.type || "").toLowerCase(),
       role,
       name,
-      his: isHis(el, name),
+      his: hisKind(el, name),
+      declines: DECLINE.test(name),
       submitLike,
       pay: buttonish && PAY.test(label),
       editable: /^(INPUT|TEXTAREA)$/.test(el.tagName) || el.isContentEditable || role === "combobox" || role === "textbox",
@@ -332,7 +352,7 @@
     return "typed";
   }
 
-  function selectOption(ref, option) {
+  function selectOption(ref, option, declineOnly) {
     const el = get(ref);
     if (!el) return "not found";
     if (el.tagName !== "SELECT") return "not a native select; click it and pick the option instead";
@@ -340,6 +360,7 @@
     const opts = [...el.options];
     const hit = opts.find((o) => clean(o.textContent).toLowerCase() === want) || opts.find((o) => clean(o.textContent).toLowerCase().startsWith(want)) || opts.find((o) => o.value.toLowerCase() === want);
     if (!hit) return `no option "${option}"`;
+    if (declineOnly && !DECLINE.test(hit.textContent)) return "refused: on this question only a decline-to-answer option may be chosen";
     el.value = hit.value;
     fire(el, "input");
     fire(el, "change");
@@ -401,8 +422,11 @@
       let label = nameOf(f);
       let value = "";
       if (type === "checkbox" || type === "radio") {
-        if (!f.checked) continue;
-        const group = questionFor(f);
+        if (!f.checked) {
+          if (type === "checkbox" && f.required) missing.push(clean(label, 80) || "(unlabelled)");
+          continue;
+        }
+        const group = loneBox(f, label) ? "" : questionFor(f);
         if (group && group !== label) {
           value = label;
           label = group;
@@ -457,7 +481,7 @@
       frame.append(pill);
       document.documentElement.append(frame);
     }
-    frame.firstChild.textContent = label || "Signal Desk agent is working. Pause or stop it from the side panel.";
+    frame.firstChild.textContent = label || "Signal Desk agent is working. Pause or stop it from the agent panel.";
   }
 
   function mark(ref) {

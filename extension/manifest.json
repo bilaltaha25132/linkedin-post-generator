@@ -1,12 +1,19 @@
 {
   "manifest_version": 3,
   "name": "Signal Desk Agent",
-  "version": "2.1.0",
-  "description": "Works through job applications and other web tasks in your own browser while you watch. Asks before it submits anything.",
+  "version": "2.2.0",
+  "description": "Works through job applications and other web tasks in your own browser while you watch. Started from Signal Desk's Agentic Apply or from the side panel.",
   "minimum_chrome_version": "121",
   "action": { "default_title": "Open the Signal Desk agent" },
   "side_panel": { "default_path": "panel.html" },
   "background": { "service_worker": "background.js" },
   "permissions": ["sidePanel", "activeTab", "scripting", "storage", "debugger"],
-  "optional_host_permissions": ["https://*/*", "http://*/*"]
+  "host_permissions": ["https://*/*", "http://*/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://linkedin-post-generator-eight-rosy.vercel.app/*", "http://localhost/*"],
+      "js": ["bridge.js"],
+      "run_at": "document_start"
+    }
+  ]
 }

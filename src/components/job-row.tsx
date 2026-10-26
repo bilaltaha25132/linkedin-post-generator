@@ -4,8 +4,10 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Bookmark, BookmarkCheck, ExternalLink, EyeOff, Send, Wand2 } from "lucide-react";
 
+import { AgentApply } from "@/components/agent-apply";
 import { LocalTime } from "@/components/local-time";
 import { SignalScore } from "@/components/signal-score";
+import { agentCanApply } from "@/lib/agent/bridge";
 import { setJobStatus } from "@/lib/jobs/actions";
 import { VISA_LABEL, payText, whereText } from "@/lib/jobs/format";
 import type { Job, JobStatus } from "@/lib/jobs/types";
@@ -91,6 +93,9 @@ export function JobRow({ job, now }: { job: Job; now: number }) {
         <a href={job.url_apply} target="_blank" rel="noreferrer" className="btn btn-primary">
           <ExternalLink aria-hidden /> Apply
         </a>
+        {agentCanApply(job.url_apply) && (
+          <AgentApply jobs={[{ id: job.id, title: job.title, company: job.company, url_apply: job.url_apply }]} className="btn btn-dark" />
+        )}
         <Link href={`/jobs/${job.id}/apply`} className="btn btn-ghost">
           <Wand2 aria-hidden /> Apply kit
         </Link>

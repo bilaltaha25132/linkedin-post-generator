@@ -409,22 +409,49 @@ four steps:
 4. **Submit.** He submits on the employer's site himself, then marks it. That
    moves the job to Applied and saves his written answers to `answer_bank`.
 
-The browser agent in `extension/` does the form work in his own Chrome while
-he watches, and handles other tasks on any page too. It is a side panel
-(`panel.js`) that loops: `page.js` reads the page, including forms inside
-frames, into a numbered element list; `/api/public/ext/step`
-(`src/lib/agent/step.ts`) sends that, the task and the run so far to the
-utility model with his facts, reviewed answers, ledger and cover letter, and
-gets one action back; the panel performs it with trusted mouse and keyboard
-input through `chrome.debugger`. `/api/public/ext/context` matches the open
-page to a job, `/api/public/ext/file` builds the resume PDF it attaches (the
-accepted tailored version, else the master), and `/api/public/ext/applied`
-marks the job submitted. All four take bearer `EXTENSION_TOKEN`. The rules sit
+The browser agent in `extension/` does the form work in his own Chrome, and
+handles other tasks on any page too. It is a panel (`panel.js`, in the side
+panel or a docked agent window) that loops: `page.js` reads the page,
+including forms inside frames, into a numbered element list;
+`/api/public/ext/step` (`src/lib/agent/step.ts`) sends that, the task, the run
+mode and the run so far to the utility model with his facts, reviewed answers,
+ledger and cover letter, and gets one action back; the panel performs it with
+trusted mouse and keyboard input through `chrome.debugger`.
+`/api/public/ext/context` matches the open page to a job, `/api/public/ext/file`
+builds the resume PDF it attaches (the accepted tailored version, else the
+master), and `/api/public/ext/applied` marks the job submitted.
+
+**Agentic Apply** starts the agent from Signal Desk itself. The button
+(`src/components/agent-apply.tsx`) sits on each job row, on the apply kit, and
+as "Agentic Apply to recent" on Jobs (open jobs found this week that it can
+reach, best fit first, up to 25). It talks to the extension through
+`bridge.js`, the one content script, which runs only on Signal Desk's own
+origins and relays `window.postMessage` calls (`src/lib/agent/bridge.ts`):
+`hello`, `connect` (hands over the address and `EXTENSION_TOKEN` via the
+`agentConnection` server action) and `apply` (queues the jobs). The
+background worker opens the agent window, which works through the queue one
+tab at a time in one of two modes he picks in the dialog:
+
+- **Fill for review** fills every page and stops at the final submit without
+  clicking it; the tab stays open and the run ends `ready`.
+- **Auto-submit** clicks the final submit and checks for a confirmation.
+
+Queued runs are unattended: a sign-in, CAPTCHA, step cap or repeated API error
+ends that job as `needs_you` with the reason, and questions it can't answer are
+recorded instead of asked. Each run is a row in `agent_runs` (`0029_agent_runs.sql`,
+`src/lib/agent/runs.ts`), opened by `POST /api/public/ext/runs` and closed by
+`PATCH /api/public/ext/runs/[id]` with the fields it filled; opening one also
+writes a short summary of the company and the work from the job ad, in the
+background. The **Applications** page lists them. A `submitted` run marks the
+job submitted.
+
+Every `/api/public/ext/*` route takes bearer `EXTENSION_TOKEN`. The rules sit
 in the panel's code, not the prompt: the final submit (or any click that looks
-like one, or Enter in a form) waits for his Approve on a card listing what the
-form holds; fields that are his (EEO, consent, attestations, passwords, cards,
-IDs) are never touched; sign-ins and CAPTCHAs pause for him; payments and
-linkedin.com are refused; it reaches only sites he allows.
+like one, or Enter in a form) waits for his Approve in a watched run, is never
+clicked in Fill for review, and is clicked only in Auto-submit; passwords,
+cards and ID numbers are never typed; demographic questions get only a
+"prefer not to say" option; consent boxes are left to him in a watched run;
+sign-ins and CAPTCHAs go to him; payments and linkedin.com are refused.
 `scripts/check-extension.mjs` checks those promises.
 
 Nothing in the kit itself submits, clicks or sends anything. Tables are in

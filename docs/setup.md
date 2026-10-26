@@ -93,7 +93,8 @@ before it submits anything. Each step is one utility-model call, so an
 application costs roughly 30 to 60 calls. Set
 `EXTENSION_TOKEN` (32 random bytes, e.g.
 `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`)
-in `.env.local` and Vercel, then follow [extension/README.md](../extension/README.md).
+in `.env.local` and Vercel, run the migrations (`agent_runs` is in
+`0029_agent_runs.sql`), then follow [extension/README.md](../extension/README.md).
 
 ## 4. Run
 
