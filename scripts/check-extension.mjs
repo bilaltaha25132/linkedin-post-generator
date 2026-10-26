@@ -49,6 +49,13 @@ check(/info\.pay\)\s*return refused/.test(caseBody("click")) && /info\.pay\)\s*r
 check(/password/.test(page) && /cc-/.test(page) && /gender/.test(page) && /consent/.test(page), "page.js no longer marks passwords, cards, demographics or consent as his");
 check(/flags\.password/.test(panel) && /flags\.captcha/.test(panel), "the panel no longer hands sign-ins and human checks to him");
 check(/recaptcha\|hcaptcha\|turnstile/.test(page), "page.js no longer spots CAPTCHAs");
+// Human checks and passwords wait for him; the only sign-in it does alone is the site's Google or LinkedIn button.
+const gates = panel.slice(panel.indexOf("page.flags.captcha"), panel.indexOf("/api/public/ext/step\""));
+check(/waitForHim/.test(gates.slice(0, gates.indexOf("page.flags.password"))), "a CAPTCHA no longer waits for him");
+check(/flags\.sso/.test(gates) && /Never type a password/.test(gates) && /waitForHim/.test(gates.slice(gates.indexOf("page.flags.password"))), "a password form no longer waits for him");
+check(/waitForHim/.test(caseBody("handoff")), "the handoff action no longer waits for him");
+// Tabs he opens himself are his: only a tab opened right after the agent's own action is followed.
+check(/run\.lastAct/.test(panel.slice(panel.indexOf("tabs.onCreated"), panel.indexOf("tabs.onRemoved"))), "the agent follows any new tab, including his");
 
 // Where it may go.
 check(/linkedin\\\.com/.test(panel), "panel.js no longer refuses linkedin.com");

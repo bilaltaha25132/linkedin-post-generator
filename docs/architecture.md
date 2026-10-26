@@ -419,7 +419,8 @@ ledger and cover letter, and gets one action back; the panel performs it with
 trusted mouse and keyboard input through `chrome.debugger`.
 `/api/public/ext/context` matches the open page to a job, `/api/public/ext/file`
 builds the resume PDF it attaches (the accepted tailored version, else the
-master), and `/api/public/ext/applied` marks the job submitted.
+master; with `tailor=1` a job without one gets a version tailored and accepted
+on the spot by `createTailoredVersion` in `src/lib/apply/versions.ts`), and `/api/public/ext/applied` marks the job submitted.
 
 **Agentic Apply** starts the agent from Signal Desk itself. The button
 (`src/components/agent-apply.tsx`) sits on each job row, on the apply kit, and
@@ -428,17 +429,33 @@ reach, best fit first, up to 25). It talks to the extension through
 `bridge.js`, the one content script, which runs only on Signal Desk's own
 origins and relays `window.postMessage` calls (`src/lib/agent/bridge.ts`):
 `hello`, `connect` (hands over the address and `EXTENSION_TOKEN` via the
-`agentConnection` server action) and `apply` (queues the jobs). The
-background worker opens the agent window, which works through the queue one
-tab at a time in one of two modes he picks in the dialog:
+`agentConnection` server action), `apply` (queues the jobs) and `show` (brings
+the tab a waiting run is on to the front). The dialog has two steps: the jobs
+and the mode, then "What the agent will type", his contact details and links
+(`agentDetails` / `saveAgentDetails`, saved to `candidate_profile`) and whether
+each job gets a tailored resume (on by default). The background worker opens
+the agent window, which works through the queue one tab at a time in one of
+two modes he picks in the dialog:
 
 - **Fill for review** fills every page and stops at the final submit without
   clicking it; the tab stays open and the run ends `ready`.
 - **Auto-submit** clicks the final submit and checks for a confirmation.
 
-Queued runs are unattended: a sign-in, CAPTCHA, step cap or repeated API error
-ends that job as `needs_you` with the reason, and questions it can't answer are
-recorded instead of asked. Each run is a row in `agent_runs` (`0029_agent_runs.sql`,
+Queued runs are unattended. On a sign-in wall the agent clicks the site's
+"Continue with Google" button (LinkedIn's only when there's no Google one) and
+picks his account. A password form with no such button, a CAPTCHA, an email
+code or the model's `handoff` action puts the run at `waiting` with the
+reason: the panel polls `GET /api/public/ext/runs/[id]` for his answer
+(`answerAgentRun`: "go" or "skip"), given from the Agentic Apply dialog,
+Applications or the panel, and moves on after 20 minutes. A step cap, the same
+action six times running or repeated API errors end that job as `needs_you`,
+and questions it can't answer are recorded instead of asked. Each step sets
+the run's `activity`; the dialog polls `/api/agent/progress` (one poller per
+page, `src/lib/agent/progress.ts`) and the button shows how far the batch has
+got. A new tab is followed only when it opens right after the agent's own
+click or keypress, and a sign-in popup that closes returns it to the page
+that opened it. Each run is a row in `agent_runs` (`0029_agent_runs.sql`,
+`0030_agent_run_waiting.sql`,
 `src/lib/agent/runs.ts`), opened by `POST /api/public/ext/runs` and closed by
 `PATCH /api/public/ext/runs/[id]` with the fields it filled; opening one also
 writes a short summary of the company and the work from the job ad, in the
@@ -451,7 +468,8 @@ like one, or Enter in a form) waits for his Approve in a watched run, is never
 clicked in Fill for review, and is clicked only in Auto-submit; passwords,
 cards and ID numbers are never typed; demographic questions get only a
 "prefer not to say" option; consent boxes are left to him in a watched run;
-sign-ins and CAPTCHAs go to him; payments and linkedin.com are refused.
+passwords, codes and CAPTCHAs go to him; a resume is never put in a photo
+field; payments and linkedin.com pages are refused.
 `scripts/check-extension.mjs` checks those promises.
 
 Nothing in the kit itself submits, clicks or sends anything. Tables are in

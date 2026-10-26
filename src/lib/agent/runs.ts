@@ -2,6 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 
+import { LIVE_STATUSES, RUN_STATUSES, type RunReply, type RunStatus } from "@/lib/agent/status";
 import { markSubmitted } from "@/lib/apply/actions";
 import { getJob } from "@/lib/apply/queries";
 import { chatJSON } from "@/lib/llm/client";
@@ -11,11 +12,11 @@ import { supabaseAdmin } from "@/lib/supabase/server";
  * The record of each job the browser agent works on. The extension opens a run
  * when it starts on a job and closes it when the run ends; the Applications tab
  * reads them back. A run that reaches "submitted" moves the job to Applied,
- * the same as his own "I submitted".
+ * the same as his own "I submitted". A run that needs him (a sign-in, a CAPTCHA)
+ * sits at "waiting" until he answers from Signal Desk; the agent polls for it.
  */
 
-export const RUN_STATUSES = ["running", "submitted", "ready", "needs_you", "stopped", "failed", "done"] as const;
-export type RunStatus = (typeof RUN_STATUSES)[number];
+export { RUN_STATUSES, type RunReply, type RunStatus } from "@/lib/agent/status";
 
 export interface AgentRun {
   id: string;
@@ -27,6 +28,8 @@ export interface AgentRun {
   final_url: string | null;
   summary: string | null;
   blocker: string | null;
+  activity: string | null;
+  reply: RunReply | null;
   fields: { label: string; value: string }[];
   company_summary: string | null;
   role_summary: string | null;
@@ -47,6 +50,7 @@ export const updateRunSchema = z.object({
   url: z.string().max(2000).optional(),
   summary: z.string().max(4000).optional(),
   blocker: z.string().max(1200).optional(),
+  activity: z.string().max(300).optional(),
   fields: z.array(z.object({ label: z.string().max(300), value: z.string().max(2000) })).max(120).optional(),
 });
 
@@ -66,11 +70,14 @@ export async function updateRun(id: string, input: z.infer<typeof updateRunSchem
   const now = new Date().toISOString();
   const patch: Record<string, unknown> = { updated_at: now };
   if (input.status) patch.status = input.status;
-  if (input.status && input.status !== "running") patch.finished_at = now;
+  // Each time the agent waits or picks up again, any earlier answer is spent.
+  if (input.status && LIVE_STATUSES.includes(input.status)) patch.reply = null;
+  if (input.status && !LIVE_STATUSES.includes(input.status)) patch.finished_at = now;
   if (input.steps !== undefined) patch.steps = input.steps;
   if (input.url) patch.final_url = input.url;
   if (input.summary !== undefined) patch.summary = input.summary;
   if (input.blocker !== undefined) patch.blocker = input.blocker;
+  if (input.activity !== undefined) patch.activity = input.activity;
   if (input.fields) patch.fields = input.fields;
   const { data, error } = await db.from("agent_runs").update(patch).eq("id", id).select("job_id").maybeSingle();
   if (error) throw new Error(error.message);
@@ -79,6 +86,48 @@ export async function updateRun(id: string, input: z.infer<typeof updateRunSchem
     const marked = await markSubmitted(data.job_id);
     if (!marked.ok) throw new Error(marked.error);
   }
+}
+
+/** What the agent polls while it waits: has he answered yet? */
+export async function runReply(id: string): Promise<{ status: RunStatus; reply: RunReply | null }> {
+  const { data, error } = await supabaseAdmin().from("agent_runs").select("status, reply").eq("id", id).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("No such run.");
+  return data as { status: RunStatus; reply: RunReply | null };
+}
+
+/** His answer to a waiting run: "go" once he's done his part, "skip" to give the job up. */
+export async function answerRun(id: string, reply: RunReply): Promise<void> {
+  const { data, error } = await supabaseAdmin()
+    .from("agent_runs")
+    .update({ reply, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("status", "waiting")
+    .select("id")
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("The agent isn't waiting on that job any more.");
+}
+
+/** The latest run for each of these jobs since a moment, for the live view on the Agentic Apply button. */
+export async function runsSince(jobIds: string[], since: string): Promise<AgentRun[]> {
+  if (!jobIds.length) return [];
+  const { data, error } = await supabaseAdmin()
+    .from("agent_runs")
+    .select("*, job:jobs(id, title, company, url_apply, location_raw)")
+    .in("job_id", jobIds)
+    .gte("started_at", since)
+    .order("started_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  const latest = new Map<string, AgentRun>();
+  for (const r of data ?? []) {
+    if (!latest.has(r.job_id))
+      latest.set(r.job_id, {
+        ...r,
+        fields: Array.isArray(r.fields) ? r.fields : [],
+      } as AgentRun);
+  }
+  return [...latest.values()];
 }
 
 const summarySchema = z.object({ company: z.string().min(1).max(700), role: z.string().min(1).max(900) });

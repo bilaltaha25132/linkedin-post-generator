@@ -18,7 +18,7 @@ export function agentVersion(): string | null {
   return document.documentElement.dataset.sdAgent ?? null;
 }
 
-export function askAgent(type: "hello" | "connect" | "apply", payload?: unknown, timeoutMs = 4000): Promise<AgentReply> {
+export function askAgent(type: "hello" | "connect" | "apply" | "show", payload?: unknown, timeoutMs = 4000): Promise<AgentReply> {
   return new Promise((resolve) => {
     const id = crypto.randomUUID();
     const done = (reply: AgentReply) => {

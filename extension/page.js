@@ -34,6 +34,9 @@
   const NOT_SUBMIT = /\b(next|continue|save|back|previous|add|upload|attach|search|filter|sign in|log ?in|cancel|close|more|edit|remove)\b/i;
   const PAY = /\b(pay|place order|purchase|checkout|buy now)\b/i;
   const GENERIC = /^(attach|upload|browse|choose file|select file|enter manually|add|add another|remove|edit|delete|clear)$/i;
+  // A sign-in the agent may use on its own: the site's Google or LinkedIn button.
+  const SSO = /\b(continue|sign ?(in|up)|log ?in|apply|register|join)\b.{0,12}\b(with|using|via)\b.{0,6}\b(google|linkedin)\b/i;
+  const PHOTO = /\b(photo|picture|avatar|headshot|profile image|image)\b/i;
 
   const refs = new Map();
   const refOf = new WeakMap();
@@ -218,7 +221,7 @@
       budget -= s.length + 1;
       out.push(budget > 0 ? s : "… (page cut short here; scroll or act on what's above)");
     };
-    const flags = { captcha: false, password: false };
+    const flags = { captcha: false, password: false, sso: false };
 
     const walk = (root) => {
       for (const el of root.children) {
@@ -241,6 +244,7 @@
 
         if (el.matches(INTERACTIVE) || (tag !== "BODY" && clickableDiv(el))) {
           if (!shown(el)) continue;
+          if (SSO.test(nameOf(el))) flags.sso = true;
           emit(line(el));
           const role = el.getAttribute("role");
           if (role === "listbox" || role === "radiogroup" || role === "group" || role === "menu" || role === "tablist" || role === "grid") walk(el);
@@ -399,6 +403,11 @@
       el = el.querySelector?.("input[type=file]") || el.closest("form,div,section")?.querySelector("input[type=file]");
     }
     if (!el) return "no file input near that element";
+    // A resume never goes into a photo field (SmartRecruiters puts one above the resume).
+    const accept = (el.accept || "").toLowerCase();
+    if (accept && !/pdf|application\/|\*\/\*/.test(accept)) return `refused: that field only takes ${accept}, so it isn't the resume field. Find the resume or CV upload.`;
+    const about = `${nameOf(el)} ${questionFor(el)}`;
+    if (PHOTO.test(about) && !/\b(resume|cv|curriculum)\b/i.test(about)) return "refused: that's a photo field, not the resume. Find the resume or CV upload.";
     const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
     const dt = new DataTransfer();
     dt.items.add(new File([bytes], filename, { type: "application/pdf" }));

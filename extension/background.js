@@ -36,11 +36,20 @@ async function handle(msg, tab) {
       if (!jobs.length) return { ok: false, error: "None of those jobs has a link the agent can apply on." };
       const { pending = [] } = await chrome.storage.session.get("pending");
       await chrome.storage.session.set({
-        pending: [...pending, ...jobs.map((j) => ({ ...j, autoSubmit: msg.payload?.autoSubmit === true }))],
+        pending: [...pending, ...jobs.map((j) => ({ ...j, autoSubmit: msg.payload?.autoSubmit === true, tailor: msg.payload?.tailor === true }))],
         targetWindowId: tab.windowId,
       });
       await openAgentWindow(tab.windowId);
       return { ok: true, queued: jobs.length };
+    }
+    case "show": {
+      // Brings the tab a waiting run is on to the front, so he can sign in or solve the check.
+      const { waitingRun } = await chrome.storage.session.get("waitingRun");
+      if (!waitingRun || waitingRun.id !== msg.payload?.runId) return { ok: false, error: "The agent isn't waiting on that job in this browser." };
+      const shown = await chrome.tabs.update(waitingRun.tabId, { active: true }).catch(() => null);
+      if (!shown) return { ok: false, error: "That tab was closed." };
+      await chrome.windows.update(shown.windowId, { focused: true });
+      return { ok: true };
     }
     default:
       return { ok: false, error: `Unknown request: ${msg.type}` };

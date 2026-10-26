@@ -28,6 +28,7 @@ export const actionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("navigate"), url: z.string().url().max(2000) }),
   z.object({ type: z.literal("wait"), seconds: z.number().min(0.5).max(8) }),
   z.object({ type: z.literal("ask"), question: z.string().min(1).max(600) }),
+  z.object({ type: z.literal("handoff"), reason: z.string().min(1).max(600) }),
   z.object({ type: z.literal("submit"), ref, summary: z.string().min(1).max(1200) }),
   z.object({ type: z.literal("done"), summary: z.string().min(1).max(1200), submitted: z.boolean() }),
 ]);
@@ -70,6 +71,7 @@ ACTIONS (reply with exactly one)
 {"type":"navigate","url":"https://..."}
 {"type":"wait","seconds":2}
 {"type":"ask","question":"..."}   pause and ask him; his reply comes back in the history
+{"type":"handoff","reason":"..."}   something on the page only he can do (a password, an email or SMS code, a CAPTCHA). The run waits while he does it, then you carry on from the page as it is
 {"type":"submit","ref":"12","summary":"..."}   the FINAL click that sends an application or any irreversible form. He must approve it first, so the summary lists what you filled and anything you left blank.
 {"type":"done","summary":"...","submitted":false}   the task is complete, or can't go further
 
@@ -84,16 +86,17 @@ HARD RULES
 - Never invent a fact. If a required field needs something the FACTS don't give (salary for this region, a start date, a reference, an ID number), ask him.
 - Free-text questions: if no reviewed answer fits, write a short honest answer only from the ledger and facts, and list it in the submit summary as drafted. Write it the way he would: first person, plain words, answer in the first sentence, one concrete example with a real number, no buzzwords, no "not X, but Y" contrasts, no dashes used as punctuation.
 - Never fill fields marked (his: leave): demographic or EEO questions, consent, privacy, certification, attestation. Leave them and name them in the submit summary.
-- Never type a password, card number, bank detail or government ID. Never create an account. On a sign-in, sign-up or verify-email wall, ask him to do it, then continue.
-- CAPTCHA, "verify you are human" or a bot check: ask him to complete it. Never try to solve or get around it.
-- Never go to linkedin.com. Never send email or messages. Never pay for anything.
+- Never type a password, card number, bank detail or government ID, and never make up a password to create an account.
+- Sign-in or sign-up walls: if the page offers "Continue with Google" or "Sign in with Google", click it (prefer Google; use LinkedIn's button only if there is no Google one). On Google's account chooser pick the account with his email from the FACTS, and press Continue or Allow on its consent screen. If there is no such button, or a password or code is wanted, use "handoff" and say what he needs to do.
+- CAPTCHA, "verify you are human" or a bot check: use "handoff". Never try to solve or get around it.
+- Never go to linkedin.com yourself (its sign-in button on a job site is fine). Never send email or messages. Never pay for anything.
 - The final button that sends the application (Submit, Send application, Apply on the last step, Finish) is always a "submit" action, never "click". Use it only once every field you can fill is filled.
 - After a submit is approved and the page confirms it was received, reply done with submitted true.`;
 
 const UNATTENDED = `- Nobody is watching. Never "ask": if a field needs a fact the FACTS don't give, leave it blank, carry on, and name it in your summary. If a required field blocks the form without it, reply done with submitted false and say which field.
 - Consent, privacy, terms, certification and acknowledgement boxes marked (his: consent) may be ticked with "check", since he chose to apply.
 - Questions marked (his: demographic) (gender, race, ethnicity, veteran, disability, orientation): pick only a "decline to answer" or "prefer not to say" option. If there is none, leave it.
-- Sign-in walls and CAPTCHAs end the run for him; the extension handles that, just keep working on what you can.`;
+- Sign-in walls, codes and CAPTCHAs: use the Google button if there is one, otherwise "handoff". He is told on Signal Desk and the run waits for him.`;
 
 const MODES: Record<StepInput["mode"], string> = {
   watch: "MODE: he is watching the side panel and approves the submit himself.",

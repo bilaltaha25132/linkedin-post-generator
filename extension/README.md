@@ -6,8 +6,9 @@ through multi-step forms, using your Signal Desk facts, reviewed answers and
 cover letter. Start it two ways:
 
 - **From Signal Desk.** Press **Agentic Apply** on a job, or **Agentic Apply to
-  recent** on Jobs, pick a mode and press Start. The first time, it connects
-  itself. An agent window docks on the right and works through the jobs one
+  recent** on Jobs, pick a mode, check the details it will type and whether
+  to tailor your resume to each job, and press Start. The first time, it
+  connects itself. An agent window docks on the right and works through the jobs one
   tab at a time. Each run shows up under **Applications**.
 - **From the toolbar.** The side panel opens next to the page; tell it what to
   do ("Apply to this job", "Fill the form on this page", or anything else) and
@@ -28,15 +29,20 @@ submit** on a card listing what the form holds.
 ## What stays with you
 
 - **Secrets.** It never types passwords, card numbers, bank details or ID
-  numbers, and doesn't create accounts.
+  numbers. The one sign-in it does alone is a site's "Continue with Google"
+  button (LinkedIn's if there's no Google one), which can create an account
+  on that site through your Google account.
 - **Demographic questions** only ever get a "prefer not to say" option.
 - **Consent boxes** are ticked only in runs you queued from Agentic Apply;
   from the toolbar panel they are left to you.
-- **Sign-ins and human checks.** In a queued run, a sign-in wall or CAPTCHA
-  ends that job as "Needs you" with the tab left open, and it moves on. From
-  the toolbar panel it pauses for you to handle them and press Continue.
-- **Money and LinkedIn.** It refuses payment buttons and won't run on
-  linkedin.com.
+- **Passwords, codes and human checks.** In a queued run it waits, marked
+  "Waiting for you" on the Agentic Apply button and Applications: press
+  **Show me the tab**, do your part, then **I've done it, carry on** (or
+  **Skip this job**). After 20 minutes with no answer it moves on and marks
+  the job "Needs you". From the toolbar panel it pauses for you to press
+  Continue.
+- **Money and LinkedIn.** It refuses payment buttons and won't work on
+  linkedin.com pages; a LinkedIn sign-in popup waits for you to confirm it.
 
 Queued runs open job sites with nobody there to click "allow", so the
 extension has access to http(s) sites up front. The only script it puts in a

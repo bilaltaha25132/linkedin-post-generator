@@ -2780,6 +2780,61 @@ fieldset.stack-xs {
   background: var(--brand-50);
   color: var(--brand-ink);
 }
+.run-status[data-status="waiting"] {
+  background: var(--card-amber);
+  color: var(--warning);
+  font-weight: 600;
+}
+.run-status[data-status="queued"] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.agent-badge {
+  margin-left: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 500;
+  background: rgb(255 255 255 / 0.18);
+  white-space: nowrap;
+}
+.agent-badge[data-waiting] {
+  background: var(--card-amber);
+  color: var(--warning);
+}
+.agent-progress {
+  display: grid;
+  gap: 8px;
+  max-height: min(56vh, 520px);
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.agent-progress li {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.agent-progress li:has([data-status="waiting"]) {
+  border-color: var(--warning);
+}
+.agent-progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+.agent-progress-head .run-status {
+  flex: none;
+}
+.agent-progress p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
 .run-about {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -2815,4 +2870,17 @@ fieldset.stack-xs {
   margin: 0;
   white-space: pre-line;
   overflow-wrap: anywhere;
+}
+.agent-details .apply-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.agent-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.agent-check input {
+  margin-top: 3px;
 }

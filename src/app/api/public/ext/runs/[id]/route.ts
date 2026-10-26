@@ -1,12 +1,25 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { updateRun, updateRunSchema } from "@/lib/agent/runs";
+import { runReply, updateRun, updateRunSchema } from "@/lib/agent/runs";
 import { bearerAuthorized } from "@/lib/auth/cron";
 import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
-/** The agent reports how a run went: steps, what it filled, how it ended. */
+/** The agent, waiting on him, asks whether he has answered from Signal Desk. */
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await bearerAuthorized(req, env.extensionToken()))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const { id } = await params;
+  try {
+    return NextResponse.json(await runReply(id), { headers: { "Cache-Control": "no-store" } });
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Couldn't read the run." }, { status: 500 });
+  }
+}
+
+/** The agent reports how a run went: steps, what it's doing, what it filled, how it ended. */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await bearerAuthorized(req, env.extensionToken()))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

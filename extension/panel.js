@@ -3,15 +3,21 @@
 // turn: read the page (page.js), ask Signal Desk for the next action, check it
 // against the rules below, then act with real mouse and keyboard input through
 // the debugger. The rules are enforced here, in code, whatever the model says:
-// secrets are never typed, sign-ins and human checks are handed to him, nothing
-// is paid for, and LinkedIn is off limits. The final submit waits for his
-// Approve, unless he started the run with auto-submit on: then the agent
+// secrets are never typed, passwords, codes and human checks are handed to him,
+// nothing is paid for, and LinkedIn is off limits. A site's own "Continue with
+// Google" button is the one sign-in the agent may use. The final submit waits
+// for his Approve, unless he started the run with auto-submit on: then the agent
 // submits, may tick consent boxes, and may only decline demographic questions.
-// Anything it can't do alone marks the job "needs you" and the queue moves on.
+// In a queued run, anything only he can do waits for him on Signal Desk; what
+// still can't be done marks the job "needs you" and the queue moves on.
 
 const MAX_STEPS = 60;
 const AUTO_MAX_STEPS = 80;
 const HISTORY = 40;
+// How long a queued run waits for him to sign in or solve a check before it moves on.
+const WAIT_MS = 20 * 60_000;
+// The same action this many times in a row is a loop, not progress.
+const REPEATS = 6;
 const LINKEDIN = /(^|\.)linkedin\.com$/i;
 const WINDOW_MODE = new URLSearchParams(location.search).has("window");
 
@@ -420,6 +426,7 @@ const KEYS = {
 
 async function pressKey(name) {
   const k = KEYS[name];
+  if (run) run.lastAct = Date.now();
   const common = { key: k.key || name, code: k.code, windowsVirtualKeyCode: k.keyCode, nativeVirtualKeyCode: k.keyCode };
   await cdp("Input.dispatchKeyEvent", { type: k.text ? "keyDown" : "rawKeyDown", text: k.text, ...common });
   await cdp("Input.dispatchKeyEvent", { type: "keyUp", ...common });
@@ -476,7 +483,17 @@ async function readPage() {
   if (!url || !(await originGranted(url))) {
     if (!(await askForAccess(url))) return null;
   }
-  await inject();
+  try {
+    await inject();
+  } catch (err) {
+    // Chrome's own "site can't be reached" page: a blip is common, so reload once.
+    if (!/error page/i.test(err.message) || run.reloaded) throw new Error(`The page didn't load (${err.message}).`);
+    run.reloaded = true;
+    await chrome.tabs.reload(run.tabId);
+    await tabLoaded(run.tabId);
+    await sleep(1500);
+    return readPage();
+  }
   const results = await chrome.scripting.executeScript({ target: { tabId: run.tabId, allFrames: true }, func: () => window.__sd?.snapshot() }).catch(() => []);
   const main = results.find((r) => r.frameId === 0)?.result;
   if (!main) throw new Error("I couldn't read this page.");
@@ -486,6 +503,7 @@ async function readPage() {
     if (r.frameId === 0 || !r.result?.text) continue;
     flags.captcha ||= r.result.flags.captcha;
     flags.password ||= r.result.flags.password;
+    flags.sso ||= r.result.flags.sso;
     text += `\n\n# Inside a frame (${hostOf(r.result.url)})\n${r.result.text.replaceAll("[§:", `[f${r.frameId}:`)}`;
   }
   return { url: main.url, title: main.title, text: trim(text, 58000), flags };
@@ -516,6 +534,8 @@ function describe(action, info) {
       return `Wait ${action.seconds}s`;
     case "ask":
       return "Ask you";
+    case "handoff":
+      return "Hand over to you";
     case "submit":
       return `Submit with ${name}`;
     case "done":
@@ -587,6 +607,7 @@ I didn't click "${trim(info.name || "submit", 40)}". The tab stays open.`);
 }
 
 async function clickAt(target, info) {
+  run.lastAct = Date.now();
   await exec(target.frameId, "mark", target.local).catch(() => {});
   if (target.frameId === 0 && info.w > 0) await mouseClick(info.x, info.y);
   else await exec(target.frameId, "click", target.local);
@@ -658,7 +679,8 @@ async function perform(action, step) {
         return failed(`${err.message} Retrying won't help. Leave the resume, carry on with the rest of the form, and name it in your summary.`);
       }
       const r = await exec(target.frameId, "upload", target.local, pdf.b64, pdf.filename);
-      return r.startsWith("attached") ? ok(r) : failed(r);
+      if (r.startsWith("attached")) return ok(pdf.tailored ? `${r} (his resume tailored to this job)` : r);
+      return r.startsWith("refused") ? refused(r) : failed(r);
     }
     case "key": {
       if (action.key === "Enter" && (await exec(0, "enterRisk").catch(() => false))) {
@@ -698,6 +720,11 @@ async function perform(action, step) {
       if (value === "stop") return refused("Stopped.");
       return ok(value === "reply" && text ? `He answered: ${text}` : "He skipped it. Leave that field blank and carry on.");
     }
+    case "handoff": {
+      const go = await waitForHim("Your turn", action.reason);
+      if (!go) return refused("Handed to him.");
+      return ok("He says he's done his part. Read the page again and carry on from where it is now.");
+    }
     case "submit":
       if (info.pay) return refused("That looks like a payment. Paying is his to do.");
       return approveSubmit(target, action.summary, info);
@@ -709,16 +736,17 @@ async function perform(action, step) {
 
 // ---------- The run ----------
 
-function pdfLoader(jobId) {
+function pdfLoader(jobId, tailor) {
   let promise = null;
   const name = context.name ? `${context.name} Resume.pdf` : "Resume.pdf";
   const load = async () => {
-    const res = await api(`/api/public/ext/file${jobId ? `?job=${jobId}` : ""}`);
+    const res = await api(`/api/public/ext/file${jobId ? `?job=${jobId}${tailor ? "&tailor=1" : ""}` : ""}`);
     if (!res.ok) throw new Error((await res.text()) || "Signal Desk couldn't build the resume PDF.");
+    const tailored = res.headers.get("X-Resume") === "tailored";
     const bytes = new Uint8Array(await res.arrayBuffer());
     let bin = "";
     for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-    return { b64: btoa(bin), filename: name };
+    return { b64: btoa(bin), filename: name, tailored };
   };
   // One retry for a network blip; a second failure (a build error) sticks for the run.
   let failures = 0;
@@ -731,13 +759,28 @@ function pdfLoader(jobId) {
   };
 }
 
-// An apply button that opens the form in a new tab: follow it.
+// An apply button that opens the form in a new tab, or a sign-in popup: follow it.
+// Only a tab that opens right after the agent's own click or keypress counts.
+// Chrome also names the agent's tab as the opener of tabs he opens himself while
+// it's in front, and those are his.
 chrome.tabs.onCreated.addListener(async (tab) => {
   if (!run || tab.openerTabId !== run.tabId) return;
+  // A new tab page's address is hidden from the extension, so only a web address counts.
+  if (Date.now() - (run.lastAct || 0) > 6000 || !/^https?:/.test(tab.pendingUrl || tab.url || "")) return;
   await detach();
+  run.tabStack = [...(run.tabStack || []), run.tabId];
   run.tabId = tab.id;
   run.history.push({ thought: "", action: "(the page opened a new tab)", result: "I moved to the new tab." });
   addStep("navigate", "Followed the new tab").finish("ok");
+});
+
+// A sign-in popup closes itself when it's done: go back to the page that opened it.
+chrome.tabs.onRemoved.addListener((tabId) => {
+  if (!run || tabId !== run.tabId || !run.tabStack?.length) return;
+  run.attached = null;
+  run.tabId = run.tabStack.pop();
+  run.history.push({ thought: "", action: "(the tab closed)", result: "I went back to the page that opened it." });
+  addStep("navigate", "Back to the page that opened it").finish("ok");
 });
 
 async function gate() {
@@ -761,6 +804,70 @@ function handOff(blocker) {
   return refused("Handed to him.");
 }
 
+// Something only he can do: a password, a code, a human check. A watched run asks
+// on the panel. A queued run marks itself "waiting" on Signal Desk, where the
+// Agentic Apply button and Applications show why, and waits for his "Carry on"
+// from there or from this window. No answer in WAIT_MS hands the job to him.
+// Resolves true when he's done his part.
+async function waitForHim(title, body) {
+  if (!run.unattended) {
+    const { value } = await waitFor({
+      iconName: "shield",
+      title,
+      body,
+      buttons: [
+        { label: "Continue", value: "go", primary: true },
+        { label: "Stop", value: "stop", danger: true },
+      ],
+    });
+    if (value !== "go") stopRun();
+    return value === "go";
+  }
+  if (!run.serverId) {
+    handOff(body);
+    return false;
+  }
+  await report({ status: "waiting", blocker: body, activity: title });
+  // Signal Desk's "Show me" button brings this tab to the front.
+  await chrome.storage.session.set({ waitingRun: { id: run.serverId, tabId: run.tabId } });
+  const answer = waitFor({
+    iconName: "shield",
+    title,
+    body: `${body}\n\nPress Carry on here or on Signal Desk once it's done.`,
+    buttons: [
+      { label: "Carry on", value: "go", primary: true },
+      { label: "Skip this job", value: "skip" },
+    ],
+  });
+  let value = null;
+  answer.then((r) => (value = r.value));
+  const until = Date.now() + WAIT_MS;
+  while (value === null && Date.now() < until) {
+    await sleep(3000);
+    const r = await apiJSON(`/api/public/ext/runs/${run.serverId}`).catch(() => null);
+    if (r?.reply && value === null) {
+      pendingCard?.(r.reply);
+      break;
+    }
+  }
+  if (value === null) pendingCard?.("timeout");
+  ({ value } = await answer);
+  await chrome.storage.session.remove("waitingRun");
+  if (run.stopped) return false;
+  if (value !== "go") {
+    handOff(value === "timeout" ? `${body}\n\nNobody answered for ${WAIT_MS / 60_000} minutes, so I moved on.` : `${body}\n\nYou skipped it.`);
+    return false;
+  }
+  await report({ status: "running", blocker: "", activity: "Carrying on" });
+  return true;
+}
+
+// A small update to his run record. Never fatal: the run carries on without it.
+function report(patch) {
+  if (!run?.serverId) return Promise.resolve();
+  return apiJSON(`/api/public/ext/runs/${run.serverId}`, { method: "PATCH", body: JSON.stringify(patch) }).catch(() => {});
+}
+
 // The record on his Applications tab: opened when a job run starts, closed when it ends.
 async function openRecord(url) {
   if (!run.jobId) return;
@@ -782,7 +889,8 @@ async function closeRecord(outcome) {
   // A queued job that ended short of the final submit isn't finished: it needs him.
   const short = outcome === "done" && run.unattended;
   const status = short ? "needs_you" : { submitted: "submitted", ready: "ready", done: "done", stopped: "stopped", needs_you: "needs_you", error: "failed" }[outcome] || "failed";
-  const notes = [run.blocker, short && !run.blocker ? "It stopped before the final submit." : "", ...(run.problems || [])];
+  // The agent's own summary says why it stopped; the stock line is only for when there's none.
+  const notes = [run.blocker, short && !run.blocker && !run.summary ? "It stopped before the final submit." : "", ...(run.problems || [])];
   if (run.questions?.length) notes.push(`Left blank, I didn't know: ${run.questions.join(" | ")}`);
   run.blocker = notes.filter(Boolean).join("\n");
   try {
@@ -813,7 +921,7 @@ async function start(task, target = {}) {
   const mode = target.mode === "auto" || target.mode === "review" ? target.mode : "watch";
   const auto = mode === "auto";
   run = { tabId: tab.id, task, jobId, mode, auto, unattended: mode !== "watch", history: [], steps: 0, cap: mode === "watch" ? MAX_STEPS : AUTO_MAX_STEPS, approved: false, paused: false, stopped: false, attached: null, acks: new Set(), outcome: "stopped" };
-  run.pdf = pdfLoader(jobId);
+  run.pdf = pdfLoader(jobId, target.tailor === true);
   if (jobId || /\b(apply|application|resume|cv)\b/i.test(task)) run.pdf().catch(() => {});
   await openRecord(tab.url);
 
@@ -889,7 +997,7 @@ async function runQueue(jobs) {
       await tabLoaded(tab.id);
       await sleep(1200);
       const mode = job.autoSubmit ? "auto" : "review";
-      const outcome = await start(applyTask(job, mode), { tabId: tab.id, jobId: job.id, mode });
+      const outcome = await start(applyTask(job, mode), { tabId: tab.id, jobId: job.id, mode, tailor: job.tailor });
       queue.results.push({ job, outcome: outcome || "error" });
     }
   } finally {
@@ -945,6 +1053,15 @@ async function loop() {
     }
 
     const thinking = addStep("think", "Reading the page");
+    // A "Continue with LinkedIn" popup: the agent never works on LinkedIn, so he confirms it there.
+    const current = await chrome.tabs.get(run.tabId).catch(() => null);
+    if (current && LINKEDIN.test(hostOf(current.url || current.pendingUrl || ""))) {
+      thinking.finish("refused", "LinkedIn's sign-in is open.");
+      if (!(await waitForHim("Your turn: confirm on LinkedIn", "The site's LinkedIn sign-in opened. I don't work on LinkedIn, so confirm it there yourself."))) return;
+      // The popup closes itself once he confirms, and the agent goes back to the page that opened it.
+      await sleep(2000);
+      continue;
+    }
     const page = await readPage();
     if (run.stopped) return;
     if (!page) {
@@ -958,35 +1075,22 @@ async function loop() {
 
     if (page.flags.captcha && !run.acks.has(`c ${page.url}`)) {
       thinking.finish("refused", "There's a human check on the page.");
-      if (run.unattended) return handOff("There's a human check (CAPTCHA) on the page. Solve it and finish the form yourself.");
-      const { value } = await waitFor({
-        iconName: "shield",
-        title: "Your turn: a human check",
-        body: "This page wants to know a person is here. Solve it yourself, then press Continue.",
-        buttons: [
-          { label: "Continue", value: "go", primary: true },
-          { label: "Stop", value: "stop", danger: true },
-        ],
-      });
-      if (value !== "go") return stopRun();
+      if (!(await waitForHim("Your turn: a human check", `${hostOf(page.url)} wants to know a person is here. Solve the check on that tab.`))) return;
       run.acks.add(`c ${page.url}`);
       continue;
     }
-    if (page.flags.password && !run.acks.has(`p ${hostOf(page.url)}`)) {
-      thinking.finish("refused", "This page asks for a password.");
-      if (run.unattended) return handOff("The site wants you signed in. Sign in (or pick a guest option) and run it again, or finish it yourself.");
-      const { value } = await waitFor({
-        iconName: "shield",
-        title: "Your turn: sign in",
-        body: "I don't enter passwords or create accounts. Sign in yourself (or skip if there's a guest option), then press Continue.",
-        buttons: [
-          { label: "Continue", value: "go", primary: true },
-          { label: "Stop", value: "stop", danger: true },
-        ],
-      });
-      if (value !== "go") return stopRun();
-      run.acks.add(`p ${hostOf(page.url)}`);
-      continue;
+    // A password form: the site's Google or LinkedIn button is tried first, once per site.
+    const host = hostOf(page.url);
+    if (page.flags.password && !run.acks.has(`p ${host}`)) {
+      if (page.flags.sso && !run.acks.has(`s ${host}`)) {
+        run.acks.add(`s ${host}`);
+        run.history.push({ thought: "", action: "(a sign-in form)", result: "This page wants a sign-in. Click its Continue with Google button (LinkedIn only if there's no Google one). Never type a password." });
+      } else {
+        thinking.finish("refused", "This page asks for a password.");
+        if (!(await waitForHim("Your turn: sign in", `${host} wants you signed in, and I don't type passwords. Sign in on that tab (Chrome can fill your saved password).`))) return;
+        run.acks.add(`p ${host}`);
+        continue;
+      }
     }
 
     thinking.update("think", "Deciding the next step");
@@ -1033,6 +1137,19 @@ async function loop() {
     const action = reply.action;
     thinking.update(action.type, describe(action));
     if (reply.thought) thinking.why(reply.thought);
+    report({ steps: run.steps, activity: trim(`${describe(action)} on ${host}`, 300) });
+
+    const said = JSON.stringify(action);
+    run.repeats = said === run.lastSaid ? (run.repeats || 0) + 1 : 1;
+    run.lastSaid = said;
+    if (run.repeats >= REPEATS && action.type !== "wait") {
+      thinking.finish("refused", "Going round in circles.");
+      const why = `I tried "${describe(action)}" ${run.repeats} times in a row without getting anywhere, so I stopped on this job.`;
+      if (run.unattended) return handOff(why);
+      run.history.push({ thought: "", action: said, result: `${why} Try something else, or ask him.` });
+      run.repeats = 0;
+      continue;
+    }
     const outcome = await perform(action, thinking).catch((err) => failed(err.message));
     if (run.stopped) return;
     thinking.finish(outcome.status, outcome.result);

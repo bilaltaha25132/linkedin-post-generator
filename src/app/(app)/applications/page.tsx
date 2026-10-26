@@ -1,27 +1,18 @@
 import Link from "next/link";
 import { Bot, ExternalLink, TriangleAlert, Wand2 } from "lucide-react";
 
-import { RunLive, RunSentButton } from "@/components/run-tools";
+import { RunLive, RunSentButton, RunWaitTools } from "@/components/run-tools";
 import { LocalTime } from "@/components/local-time";
 import { EmptyState, PageHeader } from "@/components/page-header";
 import { SetupNotice } from "@/components/setup-notice";
-import { listRuns, type AgentRun, type RunStatus } from "@/lib/agent/runs";
+import { listRuns, type AgentRun } from "@/lib/agent/runs";
+import { LIVE_STATUSES, STATUS_LABEL, type RunStatus } from "@/lib/agent/status";
 import { supabaseConfigured } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-// A run still "running" after this long lost its agent window (closed mid-run); stop auto-refreshing for it.
-const LIVE_MS = 30 * 60_000;
-
-const STATUS_LABEL: Record<RunStatus, string> = {
-  running: "Working on it",
-  submitted: "Submitted",
-  ready: "Ready for you to submit",
-  needs_you: "Needs you",
-  stopped: "Stopped",
-  failed: "Hit a problem",
-  done: "Finished, not submitted",
-};
+// A run still live after this long lost its agent window (closed mid-run); stop auto-refreshing for it.
+const LIVE_MS = 90 * 60_000;
 
 export default async function ApplicationsPage() {
   if (!supabaseConfigured()) return <SetupNotice />;
@@ -30,11 +21,15 @@ export default async function ApplicationsPage() {
 
   return (
     <>
-      <PageHeader title="Applications" eyebrow="Career" action={<RunLive running={runs.some((r) => r.status === "running" && now - Date.parse(r.started_at) < LIVE_MS)} />}>
+      <PageHeader
+        title="Applications"
+        eyebrow="Career"
+        action={<RunLive running={runs.some((r) => LIVE_STATUSES.includes(r.status) && now - Date.parse(r.started_at) < LIVE_MS)} />}
+      >
         Every job the agent worked on, newest first: what the company does, what the role is, what went into the form
         and how it ended.
         {runs.length > 0 &&
-          ` ${counts.submitted ?? 0} submitted, ${counts.ready ?? 0} ready for you, ${counts.needs_you ?? 0} need you.`}
+          ` ${counts.submitted ?? 0} submitted, ${counts.ready ?? 0} ready for you, ${(counts.needs_you ?? 0) + (counts.waiting ?? 0)} need you.`}
       </PageHeader>
 
       {loadError ? (
@@ -110,9 +105,9 @@ function RunCard({ run }: { run: AgentRun }) {
         </div>
       )}
 
-      {run.blocker && (
-        <p className={`notice run-blocker${run.status === "failed" ? " notice-danger" : ""}`}>{run.blocker}</p>
-      )}
+      {run.status === "running" && run.activity && <p className="small soft">Now: {run.activity}</p>}
+      {run.blocker && <p className={`notice run-blocker${run.status === "failed" ? " notice-danger" : ""}`}>{run.blocker}</p>}
+      {run.status === "waiting" && <RunWaitTools runId={run.id} />}
       {run.summary && <p className="small soft run-blocker">{run.summary}</p>}
 
       {run.fields.length > 0 && (

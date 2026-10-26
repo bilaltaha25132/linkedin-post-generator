@@ -7,11 +7,10 @@ import { draftAnswers, draftCoverLetter, rememberAnswers } from "@/lib/apply/ans
 import { techTerms } from "@/lib/apply/check";
 import { detectAts, formFromQuestions, readForm, type ApplicationForm } from "@/lib/apply/forms";
 import { extractNumbers, parseResume, toPlain } from "@/lib/apply/latex";
-import { getApplication, getCandidateProfile, getJob, getLedger, latestVersion } from "@/lib/apply/queries";
+import { getApplication, getCandidateProfile, getLedger, latestVersion } from "@/lib/apply/queries";
 import { renderTailored } from "@/lib/apply/render";
-import { planTailoring } from "@/lib/apply/tailor";
 import type { Answer, CandidateProfile, ResumeVersion, VersionReport } from "@/lib/apply/types";
-import { fetchDescription } from "@/lib/jobs/sources";
+import { createTailoredVersion, jobAd } from "@/lib/apply/versions";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 const MAX_LATEX = 200_000;
@@ -180,29 +179,11 @@ export async function saveCandidateProfile(p: CandidateProfile): Promise<ActionR
   });
 }
 
-async function jobAd(jobId: string) {
-  const job = await getJob(jobId);
-  if (!job) throw new Error("That job is gone.");
-  let description = job.description;
-  if (!description && job.source_id.includes(":")) description = await fetchDescription(job.source, job.source_id).catch(() => null);
-  return { job, ad: { title: job.title, company: job.company, description } };
-}
-
 export async function tailorResume(jobId: string): Promise<ActionResult<ResumeVersion>> {
   return attempt(async () => {
-    const [{ ad }, ledger] = await Promise.all([jobAd(jobId), getLedger()]);
-    if (!ledger.master) throw new Error("Add your master resume on the Resume page first.");
-    const summary = parseResume(ledger.master.latex).summary?.plain ?? null;
-    const plan = await planTailoring(ledger, ad, summary);
-    const { latex, report } = renderTailored(ledger, plan);
-    const { data, error } = await supabaseAdmin()
-      .from("resume_versions")
-      .insert({ job_id: jobId, plan, checks: report, latex })
-      .select("*")
-      .single();
-    if (error) throw new Error(error.message);
+    const version = await createTailoredVersion(jobId);
     revalidatePath(`/jobs/${jobId}/apply`);
-    return data as ResumeVersion;
+    return version;
   });
 }
 
