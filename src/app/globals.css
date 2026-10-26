@@ -2718,6 +2718,23 @@ fieldset.stack-xs {
 .agent-jobs label:hover {
   background: var(--hover);
 }
+.agent-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.agent-pick .field {
+  width: 72px;
+  text-align: center;
+}
+.agent-rank {
+  min-width: 18px;
+  text-align: right;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
 .agent-steps {
   margin: 0;
   padding-left: 18px;

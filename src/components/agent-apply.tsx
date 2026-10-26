@@ -66,6 +66,7 @@ export function AgentApply({ jobs, label = "Agentic Apply", className = "btn btn
   const [mode, setMode] = useState<Mode>("review");
   const [tailor, setTailor] = useState(true);
   const [picked, setPicked] = useState<Set<string>>(() => new Set(jobs.map((j) => j.id)));
+  const [anchor, setAnchor] = useState<number | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [picking, setPicking] = useState(true);
@@ -100,6 +101,7 @@ export function AgentApply({ jobs, label = "Agentic Apply", className = "btn btn
     setMessage(null);
     setStep("jobs");
     setPicked(new Set(jobs.map((j) => j.id)));
+    setAnchor(null);
     setPicking(!tracked.length);
     dialog.current?.showModal();
   };
@@ -111,13 +113,23 @@ export function AgentApply({ jobs, label = "Agentic Apply", className = "btn btn
     setPicking(true);
   };
 
-  const toggle = (id: string) =>
+  // The list is best fit first, so "the top N" is the quick way to pick.
+  const pickTop = (n: number) => setPicked(new Set(jobs.slice(0, Math.max(0, n)).map((j) => j.id)));
+
+  // Shift-click ticks or unticks every job between the last one clicked and this one.
+  const toggle = (index: number, range: boolean) => {
+    const on = !picked.has(jobs[index].id);
+    const [from, to] = range && anchor !== null ? [Math.min(anchor, index), Math.max(anchor, index)] : [index, index];
     setPicked((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      for (const j of jobs.slice(from, to + 1)) {
+        if (on) next.add(j.id);
+        else next.delete(j.id);
+      }
       return next;
     });
+    setAnchor(index);
+  };
 
   const toDetails = async () => {
     setMessage(null);
@@ -244,18 +256,43 @@ export function AgentApply({ jobs, label = "Agentic Apply", className = "btn btn
         ) : step === "jobs" ? (
           <>
             {many ? (
-              <ul className="agent-jobs scroll-slim">
-                {jobs.map((j) => (
-                  <li key={j.id}>
-                    <label>
-                      <input type="checkbox" checked={picked.has(j.id)} onChange={() => toggle(j.id)} />
-                      <span className="truncate">
-                        <strong>{j.company}</strong> <span className="soft">{j.title}</span>
-                      </span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <div className="agent-pick">
+                  <label htmlFor="agent-top">Apply to the top</label>
+                  <input
+                    id="agent-top"
+                    className="field"
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={jobs.length}
+                    value={chosen.length}
+                    onChange={(e) => pickTop(Number(e.target.value) || 0)}
+                    onFocus={(e) => e.target.select()}
+                  />
+                  <span className="soft">of {jobs.length}, best fit first</span>
+                  <button type="button" className="btn btn-ghost btn-sm push" onClick={() => pickTop(jobs.length)} disabled={chosen.length === jobs.length}>
+                    All
+                  </button>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => pickTop(0)} disabled={!chosen.length}>
+                    None
+                  </button>
+                </div>
+                <ul className="agent-jobs scroll-slim">
+                  {jobs.map((j, i) => (
+                    <li key={j.id}>
+                      <label>
+                        <input type="checkbox" checked={picked.has(j.id)} onChange={(e) => toggle(i, (e.nativeEvent as MouseEvent).shiftKey)} />
+                        <span className="agent-rank soft">{i + 1}</span>
+                        <span className="truncate">
+                          <strong>{j.company}</strong> <span className="soft">{j.title}</span>
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+                <p className="small muted">Shift-click to tick or untick a run of jobs at once.</p>
+              </>
             ) : (
               <p className="small">
                 <strong>{jobs[0].company}</strong> <span className="soft">{jobs[0].title}</span>
