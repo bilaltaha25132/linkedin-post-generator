@@ -18,6 +18,8 @@ const HISTORY = 40;
 const WAIT_MS = 20 * 60_000;
 // The same action this many times in a row is a loop, not progress.
 const REPEATS = 6;
+// The same button this many times in the last dozen clicks on a page, other clicks in between or not.
+const CLICK_LOOP = 4;
 const LINKEDIN = /(^|\.)linkedin\.com$/i;
 const WINDOW_MODE = new URLSearchParams(location.search).has("window");
 
@@ -606,6 +608,16 @@ I didn't click "${trim(info.name || "submit", 40)}". The tab stays open.`);
   return ok("He approved, and I clicked it. Check the next page for a confirmation before saying it's submitted.");
 }
 
+// The same button clicked again and again on one page is a loop, even when other clicks come between
+// and the page renumbers its refs (Himalayas' Apply modal: "Apply now", "I'm ready to apply", repeat).
+// Buttons that move a multi-page form along are exempt: "Next" on every page is progress.
+function clickLoop(info) {
+  if (/\b(next|continue|add|save)\b/i.test(info.name || "")) return false;
+  const key = `${run.tabId}|${info.name}`;
+  run.clicks = [...(run.clicks || []), key].slice(-12);
+  return run.clicks.filter((k) => k === key).length >= CLICK_LOOP;
+}
+
 async function clickAt(target, info) {
   run.lastAct = Date.now();
   await exec(target.frameId, "mark", target.local).catch(() => {});
@@ -620,6 +632,12 @@ async function perform(action, step) {
   const info = needsRef ? await exec(target.frameId, "info", target.local).catch(() => ({ found: false })) : null;
   step.update(action.type, describe(action, info));
   if (needsRef && !info.found) return failed(`[${action.ref}] isn't on the page any more. Read the new snapshot.`);
+  if (action.type === "click" && clickLoop(info)) {
+    const why = `I clicked "${trim(info.name, 60)}" ${CLICK_LOOP} times on this page without getting anywhere, so I stopped on this job.`;
+    if (run.unattended) return handOff(why);
+    run.clicks = [];
+    return refused(`${why} Try something else, or ask him.`);
+  }
 
   switch (action.type) {
     case "click": {
@@ -764,15 +782,27 @@ function pdfLoader(jobId, tailor) {
 // Chrome also names the agent's tab as the opener of tabs he opens himself while
 // it's in front, and those are his.
 chrome.tabs.onCreated.addListener(async (tab) => {
-  if (!run || tab.openerTabId !== run.tabId) return;
+  if (!run || tab.openerTabId !== run.tabId || Date.now() - (run.lastAct || 0) > 6000) return;
   // A new tab page's address is hidden from the extension, so only a web address counts.
-  if (Date.now() - (run.lastAct || 0) > 6000 || !/^https?:/.test(tab.pendingUrl || tab.url || "")) return;
+  const url = tab.pendingUrl || tab.url || (await addressOf(tab.id));
+  if (!run || tab.openerTabId !== run.tabId || !/^https?:/.test(url)) return;
   await detach();
   run.tabStack = [...(run.tabStack || []), run.tabId];
   run.tabId = tab.id;
   run.history.push({ thought: "", action: "(the page opened a new tab)", result: "I moved to the new tab." });
   addStep("navigate", "Followed the new tab").finish("ok");
 });
+
+// A tab opened by a link (Himalayas' "I'm ready to apply") often has no address yet when it appears.
+async function addressOf(tabId) {
+  for (let i = 0; i < 20; i++) {
+    await sleep(150);
+    const tab = await chrome.tabs.get(tabId).catch(() => null);
+    if (!tab) return "";
+    if (tab.pendingUrl || tab.url) return tab.pendingUrl || tab.url;
+  }
+  return "";
+}
 
 // A sign-in popup closes itself when it's done: go back to the page that opened it.
 chrome.tabs.onRemoved.addListener((tabId) => {
