@@ -580,9 +580,14 @@ function hisRefusal(info, action) {
 async function approveSubmit(target, summary, info) {
   const form = await exec(target.frameId, "filled", target.local).catch(() => ({ fields: [], missing: [] }));
   run.fields = form.fields;
-  // A form with required fields still blank never goes out unattended, and isn't "ready" either.
-  if (run.unattended && form.missing.length) {
-    return handOff(`Filled what I could. Still blank and required: ${form.missing.join(", ")}. I didn't submit.`);
+  // The first time, blank required fields go back to the agent to fill.
+  if (run.unattended && form.missing.length && !run.swept) {
+    run.swept = true;
+    return refused(`Not yet. Still blank and required: ${form.missing.join(", ")}. Fill each one and check its value in the next snapshot, then submit again. If the FACTS can't answer one, leave it and submit again.`);
+  }
+  // A form with required fields still blank never goes out. Filled for review, it's still his to finish.
+  if (run.auto && form.missing.length) {
+    return handOff(`Missing fact: still blank and required: ${form.missing.join(", ")}. I didn't submit.`);
   }
   if (run.mode === "review") {
     run.outcome = "ready";

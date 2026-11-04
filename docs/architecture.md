@@ -435,12 +435,22 @@ origins and relays `window.postMessage` calls (`src/lib/agent/bridge.ts`):
 the tab a waiting run is on to the front). The dialog has two steps: the jobs
 and the mode, then "What the agent will type", his contact details and links
 (`agentDetails` / `saveAgentDetails`, saved to `candidate_profile`) and whether
-each job gets a tailored resume (on by default). The background worker opens
+each job gets a tailored resume (on by default). Before a batch of two or more goes out,
+`vetAgentJobs` (`src/lib/agent/preflight.ts`) rules out two kinds of job: closed
+ones (the ATS's public API, or a 404, a 410 or a closure banner on the page; the
+job gets `closed_at`) and ones whose ad says in words that he can't take them
+(the model must quote it, and code checks the quote is in the ad). Each leaves a
+finished run saying why, so it shows on Applications and isn't queued again. Both
+checks pass a job when unsure. A job he picks on its own isn't vetted. The
+idea and the ATS endpoints come from career-ops (MIT, career-ops-hq/career-ops).
+The background worker opens
 the agent window, which works through the queue one tab at a time in one of
 two modes he picks in the dialog:
 
 - **Fill for review** fills every page and stops at the final submit without
-  clicking it; the tab stays open and the run ends `ready`.
+  clicking it; the tab stays open and the run ends `ready`. The extension sends
+  blank required fields back to the agent once; any it still can't answer are
+  named on the run for him to finish.
 - **Auto-submit** clicks the final submit and checks for a confirmation.
 
 Queued runs are unattended. On a sign-in wall the agent clicks the site's

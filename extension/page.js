@@ -446,7 +446,10 @@
       let value = "";
       if (type === "checkbox" || type === "radio") {
         if (!f.checked) {
-          if (type === "checkbox" && f.required) missing.push(clean(label, 80) || "(unlabelled)");
+          const required = f.required || f.getAttribute("aria-required") === "true";
+          if (type === "checkbox" && required) missing.push(clean(label, 80) || "(unlabelled)");
+          // One ticked option answers the group; an unticked one means nothing by itself.
+          if (type === "radio" && required && f.name && !root.querySelector(`input[type=radio][name="${CSS.escape(f.name)}"]:checked`)) missing.push(clean(questionFor(f) || label, 80) || "(unlabelled)");
           continue;
         }
         const group = loneBox(f, label) ? "" : questionFor(f);
@@ -456,7 +459,7 @@
         } else value = "yes";
       } else if (type === "file") value = f.files?.[0]?.name || "";
       else if (f.tagName === "SELECT") value = f.selectedIndex > 0 || f.value ? clean(f.options[f.selectedIndex]?.textContent, 80) : "";
-      else value = f.isContentEditable ? f.innerText : f.value ?? f.innerText;
+      else value = (f.isContentEditable ? f.innerText : f.value ?? f.innerText) || (f.getAttribute("role") === "combobox" ? shownChoice(f) : "");
       value = clean(value, 300);
       const key = `${label}|${value}`;
       if (seen.has(key)) continue;
@@ -464,7 +467,7 @@
       if (value) fields.push({ label: clean(label, 80) || "(unlabelled)", value });
       else if (f.required || f.getAttribute("aria-required") === "true") missing.push(clean(label, 80) || "(unlabelled)");
     }
-    return { fields, missing };
+    return { fields, missing: [...new Set(missing)] };
   }
 
   // Enter in a plain text input submits most forms, which would skip his approval.

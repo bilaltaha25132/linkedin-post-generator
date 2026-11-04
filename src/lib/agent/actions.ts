@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { attempt, unwrap, type ActionResult } from "@/lib/action-result";
+import { vetJobs, type Vetting } from "@/lib/agent/preflight";
 import { answerRun, updateRun, type RunReply } from "@/lib/agent/runs";
 import { saveCandidateProfile } from "@/lib/apply/actions";
 import { getCandidateProfile } from "@/lib/apply/queries";
@@ -19,6 +20,18 @@ export async function agentConnection(): Promise<ActionResult<{ token: string }>
     const token = env.extensionToken();
     if (!token) throw new Error("EXTENSION_TOKEN isn't set on the server, so the agent has nothing to connect with.");
     return { token };
+  });
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Rules out the jobs in a batch that are closed or say they're shut to him, before the agent opens them. */
+export async function vetAgentJobs(ids: string[]): Promise<ActionResult<Vetting[]>> {
+  return attempt(async () => {
+    if (!Array.isArray(ids) || ids.length > 60 || !ids.every((id) => UUID.test(id))) throw new Error("Those aren't job ids.");
+    const results = await vetJobs(ids);
+    revalidatePath("/applications");
+    return results;
   });
 }
 

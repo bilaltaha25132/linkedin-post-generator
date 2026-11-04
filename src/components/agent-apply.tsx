@@ -6,7 +6,7 @@ import { ArrowLeft, ArrowRight, Bot, Play, Plus, RefreshCw, X } from "lucide-rea
 
 import { RunWaitTools } from "@/components/run-tools";
 import { unwrap } from "@/lib/action-result";
-import { agentConnection, agentDetails, saveAgentDetails, type AgentDetails } from "@/lib/agent/actions";
+import { agentConnection, agentDetails, saveAgentDetails, vetAgentJobs, type AgentDetails } from "@/lib/agent/actions";
 import { agentVersion, askAgent, type AgentJob } from "@/lib/agent/bridge";
 import { batchFinished, refreshProgress, startBatch, useBatchProgress, type ProgressRun } from "@/lib/agent/progress";
 import { LIVE_STATUSES, STATUS_LABEL } from "@/lib/agent/status";
@@ -179,8 +179,13 @@ export function AgentApply({ jobs, label = "Agentic Apply", className = "btn btn
         const linked = await askAgent("connect", { token });
         if (!linked.ok) throw new Error(linked.error);
       }
-      const sent = await askAgent("apply", { jobs: chosen, autoSubmit: mode === "auto", tailor }, 8000);
-      if (!sent.ok) throw new Error(sent.error);
+      // A job he picked on its own is his call; only a batch is vetted.
+      const vetted = chosen.length > 1 ? unwrap(await vetAgentJobs(chosen.map((j) => j.id))) : [];
+      const passing = chosen.filter((j) => !vetted.some((v) => v.id === j.id && !v.go));
+      if (passing.length) {
+        const sent = await askAgent("apply", { jobs: passing, autoSubmit: mode === "auto", tailor }, 8000);
+        if (!sent.ok) throw new Error(sent.error);
+      }
       startBatch(chosen.map((j) => j.id));
       setPhase("sent");
       setPicking(false);

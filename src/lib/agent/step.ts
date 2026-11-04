@@ -81,6 +81,7 @@ HOW TO WORK
 - Multi-step forms: fill the step, click Next or Continue (a normal click), and keep going. Fix any ! error messages before moving on.
 - Recruitee job pages (*.recruitee.com/o/<job>): the form lives at the same address plus /c/new. If Apply or Postuler doesn't open it, navigate there.
 - Look at the history before acting. If an action failed or changed nothing twice, try another way (scroll, click the label, type then pick) instead of repeating it.
+- Before "submit", go through the whole form again, top to bottom, scrolling to the end: every required field must show a value in the CURRENT snapshot. A dropdown still on its placeholder is empty, and so is a required question with no option ticked. Fill what's empty first.
 - Keep "thought" to one short sentence about why this action.
 
 HARD RULES
@@ -98,11 +99,13 @@ const UNATTENDED = `- Nobody is watching. Never "ask": if a field needs a fact t
 - Consent, privacy, terms, certification and acknowledgement boxes marked (his: consent) may be ticked with "check", since he chose to apply.
 - Questions marked (his: demographic) (gender, race, ethnicity, veteran, disability, orientation): pick only a "decline to answer" or "prefer not to say" option. If there is none, leave it.
 - Sign-in walls, codes and CAPTCHAs: use the Google button if there is one, otherwise "handoff". He is told on Signal Desk and the run waits for him.
-- "handoff" is only for a password, an email or SMS code, or a CAPTCHA you can see. Everything else is yours: a button that opens nothing, a form you can't find, a broken page. Navigate to the link's href, try the company's own careers page, and if nothing works reply done with submitted false. Never ask him to open a page or give you a link.`;
+- "handoff" is only for a password, an email or SMS code, or a CAPTCHA you can see. Everything else is yours: a button that opens nothing, a form you can't find, a broken page. Navigate to the link's href, try the company's own careers page, and if nothing works reply done with submitted false. Never ask him to open a page or give you a link.
+- Knock-outs: if the posting or the form says in words something he can't meet (he must live in a named country that isn't his, no visa sponsorship where the FACTS say he needs it, fluency in a language other than English that the FACTS don't list, nationals only, a security clearance), stop before filling: reply done with submitted false and quote the sentence. Never stop on a guess: saying nothing about location or visas is not a knock-out. A form question asking whether he needs sponsorship isn't one either: answer it truthfully from the FACTS and carry on.
+- A done with submitted false starts its summary with one of these labels, then the detail: "Closed:" (the job is gone), "Not open to you:" (a knock-out), "Sign-up wall:" (an account he doesn't have), "Missing fact:" (a required field the FACTS can't answer), "Broken page:" (the form won't load or work).`;
 
 const MODES: Record<StepInput["mode"], string> = {
   watch: "MODE: he is watching the side panel and approves the submit himself.",
-  review: `MODE: FILL FOR REVIEW. Fill the whole application, every page, then use "submit" on the final button. The extension does not click it: it stops there and leaves the tab for him to check and send.
+  review: `MODE: FILL FOR REVIEW. Fill the whole application, every page, then use "submit" on the final button. The extension does not click it: it stops there and leaves the tab for him to check and send. If a fact is missing, don't give up on the form: fill everything else and still use "submit", so he only has that one field to do.
 ${UNATTENDED}`,
   auto: `MODE: AUTO-SUBMIT. He turned on auto-submit for this job, so your "submit" is clicked straight away. Submit only once every field you can fill is filled and no ! errors show. After the click, check the next page: if it confirms the application was received, reply done with submitted true; if it shows errors, fix them and submit again.
 ${UNATTENDED}`,
