@@ -44,3 +44,7 @@ next-env.d.ts
 .env*
 # ...but the placeholder template is meant to be committed.
 !.env.example
+
+# Local leftovers from browser automation and throwaway scripts
+.playwright-mcp/
+scripts/.tmp-*
