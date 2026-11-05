@@ -2908,6 +2908,10 @@ fieldset.stack-xs {
 .study-list > .table-wrap {
   min-width: 0;
 }
+/* Contains the screen-reader-only header label, which would otherwise escape the scroll box and widen the page. */
+.study-list > .table-wrap {
+  position: relative;
+}
 .study-table td {
   vertical-align: top;
 }
