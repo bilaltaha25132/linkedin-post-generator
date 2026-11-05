@@ -2903,6 +2903,11 @@ fieldset.stack-xs {
 }
 
 /* Study */
+/* Grid items default to min-width: auto, so without these the table widens the page instead of scrolling. */
+.study-list,
+.study-list > .table-wrap {
+  min-width: 0;
+}
 .study-table td {
   vertical-align: top;
 }

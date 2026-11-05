@@ -43,7 +43,7 @@ export function StudyPrograms({ programs, stages }: { programs: Program[]; stage
   const universities = new Set(shown.map((p) => p.university)).size;
 
   return (
-    <div className="stack-sm">
+    <div className="stack-sm study-list">
       <div className="toolbar" style={{ marginBottom: 0 }}>
         <label className="search">
           <Search aria-hidden />
@@ -87,7 +87,8 @@ export function StudyPrograms({ programs, stages }: { programs: Program[]; stage
       </div>
 
       <p className="small muted result-count" aria-live="polite">
-        {shown.length} programs at {universities} universities
+        {shown.length} {shown.length === 1 ? "program" : "programs"} at {universities}{" "}
+        {universities === 1 ? "university" : "universities"}
       </p>
 
       {shown.length === 0 ? (
