@@ -155,13 +155,13 @@ function ProgramRow({ program: p, stage }: { program: Program; stage?: StudyStag
       <td className="study-window small soft">{p.winter ?? "Not listed"}</td>
       <td className="small">
         {p.source ? (
-          <a href={p.source} target="_blank" rel="noreferrer" className="link">
+          <a href={p.source} target="_blank" rel="noreferrer" className="link" style={{ whiteSpace: "nowrap" }}>
             {p.evidence === "DAAD" ? "DAAD" : "Official page"} <ExternalLink aria-hidden size={12} />
           </a>
         ) : (
           <span className="muted">None</span>
         )}
-        <div className="muted">{p.evidence}</div>
+        {p.evidence !== "DAAD" && <div className="muted">{p.evidence}</div>}
       </td>
       <td>
         {stage ? (
