@@ -18,12 +18,13 @@ import {
   CalendarCheck,
   CalendarRange,
   FileUser,
+  GraduationCap,
   type LucideIcon,
 } from "lucide-react";
 
 export type NavLink = { href: string; label: string; icon: LucideIcon };
 
-/** The sidebar, grouped by job: find a story, write about it, find work, run the desk. */
+/** The sidebar, grouped by job: find a story, write about it, find work, plan study, run the desk. */
 export const NAV_GROUPS: { title: string; links: NavLink[] }[] = [
   {
     title: "Wire",
@@ -60,6 +61,10 @@ export const NAV_GROUPS: { title: string; links: NavLink[] }[] = [
       { href: "/resume", label: "Resume", icon: FileUser },
       { href: "/leads", label: "Leads", icon: Handshake },
     ],
+  },
+  {
+    title: "Study",
+    links: [{ href: "/study", label: "Universities", icon: GraduationCap }],
   },
   {
     title: "Desk",

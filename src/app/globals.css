@@ -2901,3 +2901,56 @@ fieldset.stack-xs {
 .agent-check input {
   margin-top: 3px;
 }
+
+/* Study */
+.study-table td {
+  vertical-align: top;
+}
+.study-program {
+  min-width: 280px;
+  max-width: 520px;
+}
+.study-note {
+  margin-top: 6px;
+  max-width: 72ch;
+}
+.study-window {
+  min-width: 150px;
+}
+.study-window .chip {
+  margin-bottom: 4px;
+}
+.study-tracked {
+  display: grid;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border-soft);
+}
+.study-tracked:first-of-type {
+  border-top: none;
+}
+.study-docs {
+  display: grid;
+  gap: 2px;
+}
+.study-doc {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 4px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+.study-doc:hover {
+  background: var(--hover);
+}
+.study-doc input {
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--brand-600);
+  flex: none;
+}
+.study-doc span span {
+  display: block;
+}
