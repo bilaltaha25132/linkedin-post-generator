@@ -15,6 +15,14 @@ export type ProgramFacts = {
   tuition?: string;
   ielts?: string;
   toefl?: string;
+  /** CEFR level of English asked for. */
+  english?: string;
+  /** German level needed, often only by the end of the first year. */
+  german?: string;
+  /** Needs uni-assist's VPD before applying. */
+  vpd?: boolean;
+  /** An English-medium degree is not accepted as proof of English. */
+  moiRefused?: boolean;
   grade?: string;
   ects?: string;
   tests?: string[];

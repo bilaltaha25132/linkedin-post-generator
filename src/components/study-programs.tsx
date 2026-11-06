@@ -252,7 +252,11 @@ function ProgramCard({ program: p, status, stage, now }: { program: Program; sta
           </div>
           <div className="row study-tags">
             {(p.facts.tuition || fee) && <span className={`chip ${hasFees(p) ? "chip-amber" : ""}`}>{fee ? "EUR 1,500 state fee" : p.facts.tuition}</span>}
-            {p.facts.ielts && <span className="chip">IELTS {p.facts.ielts}</span>}
+            {(p.facts.english || p.facts.ielts) && (
+              <span className="chip">{[p.facts.english && `English ${p.facts.english}`, p.facts.ielts && `IELTS ${p.facts.ielts}`].filter(Boolean).join(", ")}</span>
+            )}
+            {p.facts.german && <span className="chip chip-amber">German {p.facts.german}</span>}
+            {p.facts.vpd && <span className="chip">VPD</span>}
             {p.facts.grade && <span className="chip">Grade {p.facts.grade}</span>}
             {p.facts.tests?.map((t) => (
               <span key={t} className="chip chip-lavender">
@@ -260,7 +264,7 @@ function ProgramCard({ program: p, status, stage, now }: { program: Program; sta
               </span>
             ))}
             {p.facts.interview && <span className="chip">Interview</span>}
-            {p.route && <span className="chip">{p.route}</span>}
+            {p.route === "uni-assist" && <span className="chip">uni-assist</span>}
           </div>
         </div>
 
@@ -328,7 +332,10 @@ function ProgramDetails({ program: p }: { program: Program }) {
     ["Fees", [x.tuition, feeWarning(p)].filter(Boolean).join(" ") || "Not stated"],
     ["Duration", x.duration],
     ["Starts", x.intakes],
-    ["English", [x.ielts && `IELTS ${x.ielts}`, x.toefl && `TOEFL ${x.toefl}`].filter(Boolean).join(", ")],
+    ["English", [x.english && `Level ${x.english}`, x.ielts && `IELTS ${x.ielts}`, x.toefl && `TOEFL iBT ${x.toefl}`].filter(Boolean).join(", ")],
+    ["English-medium degree", x.moiRefused ? "Not accepted as proof of English" : null],
+    ["German", x.german && `${x.german} asked for; check whether by enrolment or later`],
+    ["VPD", x.vpd ? "Needs a uni-assist VPD before you apply. Allow 4 to 6 weeks." : null],
     ["Minimum grade", x.grade],
     ["Bachelor's size", x.ects && `${x.ects} ECTS`],
     ["Tests", x.tests?.join(", ")],
