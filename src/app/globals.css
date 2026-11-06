@@ -2903,31 +2903,137 @@ fieldset.stack-xs {
 }
 
 /* Study */
-/* Grid items default to min-width: auto, so without these the table widens the page instead of scrolling. */
+/* Grid items default to min-width: auto; without this a long card widens the page on phones. */
 .study-list,
-.study-list > .table-wrap {
+.study-list > * {
   min-width: 0;
 }
-/* Contains the screen-reader-only header label, which would otherwise escape the scroll box and widen the page. */
-.study-list > .table-wrap {
-  position: relative;
+.study-cards {
+  display: grid;
+  gap: 10px;
 }
-.study-table td {
-  vertical-align: top;
+.study-card {
+  display: grid;
+  gap: 10px;
+  padding: 18px 20px;
+  border-radius: 20px;
+  background: var(--surface-muted);
+  transition: opacity 0.15s;
 }
-.study-program {
-  min-width: 280px;
-  max-width: 520px;
+.study-card-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 300px) auto;
+  gap: 16px 24px;
+  align-items: start;
+}
+.study-card-title h3 {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.study-tags {
+  margin-top: 10px;
+  gap: 6px;
+}
+.study-card-windows {
+  display: grid;
+  gap: 10px;
+}
+.study-window-cell {
+  display: grid;
+  grid-template-columns: 96px auto;
+  gap: 2px 10px;
+  align-items: center;
+  justify-items: start;
+}
+.study-window-cell > .small.soft {
+  grid-column: 2;
+}
+.study-card-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.study-chevron-open {
+  transform: rotate(180deg);
 }
 .study-note {
-  margin-top: 6px;
-  max-width: 72ch;
+  margin: 0;
+  max-width: 80ch;
 }
-.study-window {
-  min-width: 150px;
+.study-details {
+  display: grid;
+  gap: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-soft);
 }
-.study-window .chip {
-  margin-bottom: 4px;
+.study-details dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px 24px;
+  margin: 0;
+}
+.study-details dt {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.study-details dd {
+  margin: 2px 0 0;
+  font-size: 13.5px;
+}
+.study-details h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.study-details p {
+  margin: 0;
+  max-width: 90ch;
+}
+@media (max-width: 899px) {
+  .study-card-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .study-card-actions {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+@media (max-width: 639px) {
+  .study-card {
+    padding: 14px;
+    border-radius: 16px;
+  }
+}
+.study-closing {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+.study-closing svg {
+  vertical-align: -2px;
+}
+.study-days {
+  display: grid;
+  place-items: center;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--card-blue);
+  color: var(--card-ink);
+  line-height: 1.1;
+}
+.study-days strong {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.study-days span {
+  font-size: 11px;
+}
+.study-days-urgent {
+  background: var(--card-rose);
 }
 .study-tracked {
   display: grid;

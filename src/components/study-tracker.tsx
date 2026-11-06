@@ -4,14 +4,16 @@ import { useState, useTransition } from "react";
 import { ExternalLink, GraduationCap, X } from "lucide-react";
 
 import { EmptyState } from "@/components/page-header";
-import { FITS, INTAKES, STAGES, STATUS_CHIP, STATUS_LABEL } from "@/lib/study/catalog";
+import { FITS, INTAKES, STAGES, STATUS_CHIP, STATUS_LABEL, feeWarning, stateName } from "@/lib/study/catalog";
 import { trackProgram, untrackProgram, type TrackChange } from "@/lib/study/actions";
 import type { Program, StudyFit, StudyIntake, StudyStage, TrackedProgram } from "@/lib/study/types";
+import { formatDay, nextDeadline, summerStatus } from "@/lib/study/windows";
 
 export type TrackedRow = { tracked: TrackedProgram; program: Program };
 
 /** Programs he follows, by stage, each with his fit verdict, intake and notes. */
-export function StudyTracker({ rows }: { rows: TrackedRow[] }) {
+export function StudyTracker({ rows, now: nowMs }: { rows: TrackedRow[]; now: number }) {
+  const now = new Date(nowMs);
   if (rows.length === 0) {
     return (
       <EmptyState icon={GraduationCap} title="Not following any programs yet">
@@ -22,7 +24,10 @@ export function StudyTracker({ rows }: { rows: TrackedRow[] }) {
   return (
     <div className="stack">
       {STAGES.map(({ stage, label }) => {
-        const inStage = rows.filter((r) => r.tracked.stage === stage);
+        // Soonest deadline first; programs with no open window go last.
+        const inStage = rows
+          .filter((r) => r.tracked.stage === stage)
+          .sort((a, b) => (nextDeadline(a.program, now)?.end.getTime() ?? Infinity) - (nextDeadline(b.program, now)?.end.getTime() ?? Infinity));
         if (inStage.length === 0) return null;
         return (
           <section key={stage} className="panel stack-sm" aria-label={label}>
@@ -32,7 +37,7 @@ export function StudyTracker({ rows }: { rows: TrackedRow[] }) {
               </h2>
             </div>
             {inStage.map((r) => (
-              <TrackedProgramRow key={r.program.id} row={r} />
+              <TrackedProgramRow key={r.program.id} row={r} now={now} />
             ))}
           </section>
         );
@@ -41,7 +46,10 @@ export function StudyTracker({ rows }: { rows: TrackedRow[] }) {
   );
 }
 
-function TrackedProgramRow({ row: { tracked: t, program: p } }: { row: TrackedRow }) {
+function TrackedProgramRow({ row: { tracked: t, program: p }, now }: { row: TrackedRow; now: Date }) {
+  const next = nextDeadline(p, now);
+  const status = summerStatus(p, now);
+  const fee = feeWarning(p);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState(t.notes);
@@ -71,9 +79,18 @@ function TrackedProgramRow({ row: { tracked: t, program: p } }: { row: TrackedRo
           )}
           <div className="meta">
             <span className="soft">{p.university}</span>
-            <span className={`chip ${STATUS_CHIP[p.status]}`}>Summer: {STATUS_LABEL[p.status]}</span>
-            {p.summer && <span>{p.summer}</span>}
-            {p.winter && <span>Winter {p.winter}</span>}
+            <span>{stateName(p.state)}</span>
+            <span className={`chip ${STATUS_CHIP[status]}`}>Summer: {STATUS_LABEL[status]}</span>
+            {next ? (
+              <span className={`chip ${next.daysLeft <= 14 ? "chip-rose" : "chip-blue"}`}>
+                {next.intake === "summer" ? "Summer" : "Winter"} {next.year} {next.status === "upcoming" ? "opens" : "closes"}{" "}
+                {formatDay(next.status === "upcoming" && next.start ? next.start : next.end)}
+                {next.status === "open" ? `, ${next.daysLeft} days left` : ""}
+              </span>
+            ) : (
+              <span>{p.winter ? `Winter ${p.winter}` : "No dated window"}</span>
+            )}
+            {p.facts.tuition && <span>{fee ? "EUR 1,500 state fee" : p.facts.tuition}</span>}
             {fit && <span className={`chip ${fit.chip}`}>{fit.label}</span>}
           </div>
           {t.fit_note && <p className="small soft study-note">{t.fit_note}</p>}

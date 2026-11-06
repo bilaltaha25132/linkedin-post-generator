@@ -54,6 +54,48 @@ export const FITS: { fit: StudyFit; label: string; chip: string }[] = [
   { fit: "out", label: "Out", chip: "chip-rose" },
 ];
 
+export const TIER_LABEL: Record<Program["tier"], string> = {
+  core: "CS, AI, data",
+  related: "Related",
+  wider: "Wider field",
+};
+
+export const KIND_LABEL: Record<Program["kind"], string> = {
+  university: "University",
+  uas: "Applied sciences",
+  private: "Private",
+};
+
+/** English names for the Bundesländer, keyed by the German name the institution list uses. */
+export const STATE_LABEL: Record<string, string> = {
+  "Baden-Württemberg": "Baden-Württemberg",
+  Bayern: "Bavaria",
+  Berlin: "Berlin",
+  Brandenburg: "Brandenburg",
+  Bremen: "Bremen",
+  Hamburg: "Hamburg",
+  Hessen: "Hesse",
+  "Mecklenburg-Vorpommern": "Mecklenburg-Vorpommern",
+  Niedersachsen: "Lower Saxony",
+  "Nordrhein-Westfalen": "North Rhine-Westphalia",
+  "Rheinland-Pfalz": "Rhineland-Palatinate",
+  Saarland: "Saarland",
+  Sachsen: "Saxony",
+  "Sachsen-Anhalt": "Saxony-Anhalt",
+  "Schleswig-Holstein": "Schleswig-Holstein",
+  "Thüringen": "Thuringia",
+};
+
+export function stateName(state: string | null): string {
+  return state ? (STATE_LABEL[state] ?? state) : "Unknown state";
+}
+
+/** Baden-Württemberg charges non-EU students a state fee that DAAD's "no tuition" line often leaves out. */
+export function feeWarning(p: Program): string | null {
+  if (p.state !== "Baden-Württemberg" || p.kind === "private") return null;
+  return "Baden-Württemberg charges non-EU students EUR 1,500 per semester at public universities.";
+}
+
 const byId = new Map(PROGRAMS.map((p) => [p.id, p]));
 
 export function programById(id: string): Program | undefined {

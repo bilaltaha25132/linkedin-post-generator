@@ -4,9 +4,11 @@ import { TriangleAlert } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { SetupNotice } from "@/components/setup-notice";
 import { StudyDocuments } from "@/components/study-documents";
+import { StudyOverview } from "@/components/study-overview";
 import { StudyPrograms } from "@/components/study-programs";
 import { StudyTracker, type TrackedRow } from "@/components/study-tracker";
 import { CATALOG_AS_OF, PROGRAMS, programById } from "@/lib/study/catalog";
+import { targetYears } from "@/lib/study/windows";
 import { listDocumentStates, listTrackedPrograms } from "@/lib/study/queries";
 import type { StudyStage } from "@/lib/study/types";
 import { supabaseConfigured } from "@/lib/supabase/server";
@@ -24,16 +26,19 @@ export default async function StudyPage({ searchParams }: PageProps<"/study">) {
   const raw = (await searchParams).view;
   const view: View = VIEWS.some((v) => v.view === raw) ? (raw as View) : "programs";
   if (!supabaseConfigured()) return <SetupNotice />;
-  const { rows, done, loadError } = await load();
+  const { rows, done, loadError, now } = await load();
   const stages = Object.fromEntries(rows.map((r) => [r.program.id, r.tracked.stage])) as Record<string, StudyStage>;
   const universities = new Set(PROGRAMS.map((p) => p.university)).size;
+  const states = new Set(PROGRAMS.map((p) => p.state).filter(Boolean)).size;
+  const years = targetYears(new Date(now));
 
   return (
     <>
       <PageHeader title="Study in Germany" eyebrow="Study">
-        {PROGRAMS.length} English-taught Master&rsquo;s programs at {universities} universities, mostly public, with
-        summer 2027 and winter windows for non-EU applicants. Dates were read on {CATALOG_AS_OF}; check the official
-        page before you apply.
+        {PROGRAMS.length} English-taught Master&rsquo;s programs at {universities} universities in all {states} states,
+        with summer {years.summer} and winter {years.winter} windows for non-EU applicants. Open, closed and days left
+        are worked out from today&rsquo;s date; the dates themselves were read on {CATALOG_AS_OF}, so check the
+        official page before you apply.
       </PageHeader>
 
       {loadError ? (
@@ -54,8 +59,13 @@ export default async function StudyPage({ searchParams }: PageProps<"/study">) {
               </Link>
             ))}
           </nav>
-          {view === "programs" && <StudyPrograms programs={PROGRAMS} stages={stages} />}
-          {view === "following" && <StudyTracker rows={rows} />}
+          {view === "programs" && (
+            <>
+              <StudyOverview programs={PROGRAMS} stages={stages} docsDone={done.length} now={now} />
+              <StudyPrograms programs={PROGRAMS} stages={stages} now={now} />
+            </>
+          )}
+          {view === "following" && <StudyTracker rows={rows} now={now} />}
           {view === "documents" && <StudyDocuments done={done} />}
         </div>
       )}
@@ -63,7 +73,14 @@ export default async function StudyPage({ searchParams }: PageProps<"/study">) {
   );
 }
 
-async function load(): Promise<{ rows: TrackedRow[]; done: string[]; loadError: string | null }> {
+async function load(): Promise<{
+  rows: TrackedRow[];
+  done: string[];
+  loadError: string | null;
+  /** Taken once on the server, so day counts agree between the render and hydration. */
+  now: number;
+}> {
+  const now = Date.now();
   try {
     const [tracked, docs] = await Promise.all([listTrackedPrograms(), listDocumentStates()]);
     // A program dropped from a regenerated catalog leaves its row behind; skip it rather than crash.
@@ -71,8 +88,8 @@ async function load(): Promise<{ rows: TrackedRow[]; done: string[]; loadError: 
       const program = programById(t.program_id);
       return program ? [{ tracked: t, program }] : [];
     });
-    return { rows, done: docs.filter((d) => d.done).map((d) => d.key), loadError: null };
+    return { rows, done: docs.filter((d) => d.done).map((d) => d.key), loadError: null, now };
   } catch (err) {
-    return { rows: [], done: [], loadError: err instanceof Error ? err.message : String(err) };
+    return { rows: [], done: [], loadError: err instanceof Error ? err.message : String(err), now };
   }
 }
