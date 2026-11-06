@@ -9,7 +9,7 @@ import { formatDay, liveWindow, summerStatus, targetYears, type LiveWindow } fro
 const SOON_DAYS = 45;
 const OTHERS_SHOWN = 8;
 
-type Closing = { program: Program; window: LiveWindow; stage?: StudyStage };
+type Closing = { program: Program; window: LiveWindow; stage?: StudyStage; alsoOther: boolean };
 
 /** What he sees first: how much is open, what closes next, and how far his own list has got. */
 export function StudyOverview({
@@ -28,12 +28,14 @@ export function StudyOverview({
   const relevant = programs.filter((p) => p.tier !== "wider" || stages[p.id]);
   const openSummer = relevant.filter((p) => p.tier === "core" && summerStatus(p, now) === "open");
 
-  const closing: Closing[] = relevant.flatMap((p) =>
-    (["summer", "winter"] as const)
+  // One line per program: the sooner window, flagged when the other intake also closes soon (Bochum's 15 December covers both).
+  const closing: Closing[] = relevant.flatMap((p) => {
+    const soon = (["summer", "winter"] as const)
       .map((intake) => liveWindow(intake === "summer" ? p.summerSpan : p.winterSpan, intake, now))
       .filter((w): w is LiveWindow => w !== null && w.status === "open" && w.daysLeft <= SOON_DAYS)
-      .map((window) => ({ program: p, window, stage: stages[p.id] })),
-  );
+      .sort((a, b) => a.end.getTime() - b.end.getTime());
+    return soon.length ? [{ program: p, window: soon[0], stage: stages[p.id], alsoOther: soon.length > 1 }] : [];
+  });
   closing.sort((a, b) => a.window.end.getTime() - b.window.end.getTime());
   const mine = closing.filter((c) => c.stage && c.stage !== "dropped" && c.stage !== "rejected");
   const others = closing.filter((c) => !c.stage && c.program.tier === "core");
@@ -111,7 +113,7 @@ function ClosingList({ title, empty, items, more }: { title: string; empty: stri
         <p className="small soft">{empty}</p>
       ) : (
         <ul className="list-plain stack-sm">
-          {items.map(({ program: p, window: w, stage }) => (
+          {items.map(({ program: p, window: w, stage, alsoOther }) => (
             <li key={`${p.id}-${w.intake}`} className="study-closing">
               <span className={`study-days${w.daysLeft <= 14 ? " study-days-urgent" : ""}`}>
                 <strong>{w.daysLeft}</strong>
@@ -130,6 +132,7 @@ function ClosingList({ title, empty, items, more }: { title: string; empty: stri
                 </span>
                 <span className="small muted">
                   <CalendarClock aria-hidden size={12} /> {w.intake === "summer" ? "Summer" : "Winter"} {w.year}, closes {formatDay(w.end)}
+                  {alsoOther ? `, ${w.intake === "summer" ? "winter" : "summer"} too` : ""}
                   {stage ? `. ${STAGES.find((s) => s.stage === stage)?.label}` : ""}
                 </span>
               </span>

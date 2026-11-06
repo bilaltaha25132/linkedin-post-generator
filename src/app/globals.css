@@ -3013,8 +3013,18 @@ fieldset.stack-xs {
   gap: 12px;
   align-items: center;
 }
+.study-closing {
+  min-width: 0;
+}
 .study-closing svg {
+  display: inline;
   vertical-align: -2px;
+}
+/* The filter groups are wider than a phone; let them scroll sideways inside the toolbar. */
+.study-list .toolbar .seg {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 .study-days {
   display: grid;
