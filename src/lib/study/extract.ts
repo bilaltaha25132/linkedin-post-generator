@@ -128,7 +128,10 @@ export function readPage(text: string): PageRead {
 /** Bot walls and refusals, recorded as blocked and never worked around. */
 export function looksBlocked(status: number, body: string): boolean {
   if (status === 401 || status === 403 || status === 429) return true;
-  return /cf-challenge|challenge-platform|just a moment\.\.\.|captcha|access denied|are you a robot|ddos protection/i.test(body.slice(0, 20000));
+  const head = body.slice(0, 20000);
+  if (/cf-challenge|challenge-platform|just a moment\.\.\.|are you a robot|ddos protection|measure against bots|verifying you are human/i.test(head)) return true;
+  // A cookie banner naming reCAPTCHA is not a wall; a wall is a short page built around the challenge.
+  return body.length < 60_000 && /captcha|access denied/i.test(head);
 }
 
 /** match when a closing date the catalog holds is on the page. */

@@ -1,7 +1,7 @@
 /** Where a summer window stands for non-EU applicants. Dated rows are recomputed live (see windows.ts). */
 export type WindowStatus = "open" | "upcoming" | "closed" | "no-summer" | "text" | "unknown" | "conflict";
 
-export type Evidence = "Verified" | "DAAD" | "To confirm" | "Verified language; dates as noted";
+export type Evidence = "Verified" | "DAAD" | "Compass" | "To confirm" | "Verified language; dates as noted";
 
 /** [month, day] */
 export type MonthDay = [number, number];

@@ -17,6 +17,14 @@ related subjects) for a non-EU applicant aiming at summer or winter 2027.
 - **Wider field** (`tier: "wider"`): maths, electrical and microelectronic
   engineering, media engineering, sensors and cognitive science, read from
   DAAD on 6 November 2026. Further from CS; each row says so.
+- **Higher Education Compass sweep** (`id` `hec:w...`, evidence `Compass`):
+  study-in-germany.com lists every English-taught Master's from the
+  Hochschulkompass (2,066 on 12 November 2026, read state by state because the
+  listing stops at offset 1000). Programs the catalog lacked were read on their
+  detail pages and kept only when English is the main language, a full-time
+  option exists and the subject is CS-near; 76 were added. Their dates are the
+  compass's non-EU deadlines where it gives them, and their check page is the
+  course website (or the compass entry when that is a bare homepage).
 - **State and type** come from the Hochschulkompass institution list (city to
   Bundesland) and the university's name (university, applied sciences,
   private). Baden-Württemberg's EUR 1,500 non-EU fee is added from the state,

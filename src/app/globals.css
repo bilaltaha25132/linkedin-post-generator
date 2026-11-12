@@ -2971,6 +2971,10 @@ fieldset.stack-xs {
 .study-check a {
   white-space: nowrap;
 }
+.study-check svg {
+  display: inline;
+  vertical-align: -1px;
+}
 .study-check .chip {
   margin-right: 4px;
 }
