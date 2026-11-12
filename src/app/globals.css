@@ -2963,6 +2963,38 @@ fieldset.stack-xs {
   margin: 0;
   max-width: 80ch;
 }
+.study-check {
+  margin: 0;
+  max-width: 90ch;
+  color: var(--ink-muted);
+}
+.study-check a {
+  white-space: nowrap;
+}
+.study-check .chip {
+  margin-right: 4px;
+}
+.study-check-ok {
+  color: var(--positive);
+}
+.study-check-warn {
+  color: var(--warning);
+}
+.study-snippets {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+.study-change-sides {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 12px;
+}
+.study-change-sides h4 {
+  margin: 0 0 4px;
+}
 .study-details {
   display: grid;
   gap: 14px;

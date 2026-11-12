@@ -1,0 +1,22 @@
+name: study
+
+# The Study tab's rescan: re-read each program's official page for deadline dates, English scores
+# and fees, and email when a followed program's page changes. Every page weekly, followed ones daily;
+# each run takes the pages that are due (src/lib/study/rescan.ts). Same secrets as monitor.yml.
+on:
+  schedule:
+    # Twice a day, so the about 500 pages spread over the week without any one run running long.
+    - cron: "40 2,14 * * *"
+  workflow_dispatch: {} # manual "Run workflow" button
+
+jobs:
+  study:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger study rescan
+        run: |
+          code=$(curl -sS --max-time 330 -o /tmp/body -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/public/cron/study")
+          echo "HTTP $code"; cat /tmp/body; echo
+          test "$code" = "200"

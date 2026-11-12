@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { ChevronDown, ExternalLink, Plus, Search, SearchX } from "lucide-react";
 
 import { EmptyState } from "@/components/page-header";
+import { CheckLine, recentlyChanged } from "@/components/study-check";
 import {
   KIND_LABEL,
   STAGES,
@@ -14,11 +15,11 @@ import {
   stateName,
 } from "@/lib/study/catalog";
 import { trackProgram } from "@/lib/study/actions";
-import type { Program, StudyStage, WindowStatus } from "@/lib/study/types";
+import type { CheckSummary, Program, StudyStage, WindowStatus } from "@/lib/study/types";
 import { formatDay, liveWindow, nextDeadline, summerStatus, targetYears, type LiveWindow } from "@/lib/study/windows";
 
 const TIERS = ["core", "related", "wider", "all"] as const;
-// Ordered by how soon he could act on them.
+// Ordered by how soon they could be acted on.
 const STATUSES: WindowStatus[] = ["open", "upcoming", "text", "conflict", "closed", "no-summer", "unknown"];
 const SORTS = [
   { value: "deadline", label: "Next deadline first" },
@@ -36,6 +37,7 @@ type Filters = {
   freeOnly: boolean;
   noTest: boolean;
   trackedOnly: boolean;
+  changedOnly: boolean;
   sort: (typeof SORTS)[number]["value"];
 };
 
@@ -48,6 +50,7 @@ const INITIAL: Filters = {
   freeOnly: false,
   noTest: false,
   trackedOnly: false,
+  changedOnly: false,
   sort: "deadline",
 };
 
@@ -57,7 +60,17 @@ const hasFees = (p: Program) =>
   Boolean(feeWarning(p)) || p.kind === "private" || (p.facts.tuition ? !/^no tuition/i.test(p.facts.tuition) : false);
 
 /** The whole catalog, filterable by state, type and window, with details a click away. */
-export function StudyPrograms({ programs, stages, now: nowMs }: { programs: Program[]; stages: Record<string, StudyStage>; now: number }) {
+export function StudyPrograms({
+  programs,
+  stages,
+  checks,
+  now: nowMs,
+}: {
+  programs: Program[];
+  stages: Record<string, StudyStage>;
+  checks: Record<string, CheckSummary>;
+  now: number;
+}) {
   const now = useMemo(() => new Date(nowMs), [nowMs]);
   const years = targetYears(now);
   const [f, setF] = useState<Filters>(INITIAL);
@@ -80,6 +93,7 @@ export function StudyPrograms({ programs, stages, now: nowMs }: { programs: Prog
     if (f.freeOnly && hasFees(p)) return false;
     if (f.noTest && (p.facts.tests?.length ?? 0) > 0) return false;
     if (f.trackedOnly && !stages[p.id]) return false;
+    if (f.changedOnly && !recentlyChanged(checks[p.id], now)) return false;
     if (q && !`${p.program} ${p.university} ${p.city} ${stateName(p.state)} ${p.note}`.toLowerCase().includes(q)) return false;
     return true;
   };
@@ -178,6 +192,9 @@ export function StudyPrograms({ programs, stages, now: nowMs }: { programs: Prog
           <button type="button" aria-pressed={f.trackedOnly} onClick={() => set("trackedOnly", !f.trackedOnly)}>
             Following
           </button>
+          <button type="button" aria-pressed={f.changedOnly} onClick={() => set("changedOnly", !f.changedOnly)}>
+            Page changed
+          </button>
         </div>
       </div>
 
@@ -207,7 +224,7 @@ export function StudyPrograms({ programs, stages, now: nowMs }: { programs: Prog
         <>
           <ul className="list-plain study-cards">
             {shown.slice(0, limit).map((r) => (
-              <ProgramCard key={r.p.id} program={r.p} status={r.status} stage={stages[r.p.id]} now={now} />
+              <ProgramCard key={r.p.id} program={r.p} status={r.status} stage={stages[r.p.id]} check={checks[r.p.id]} now={now} />
             ))}
           </ul>
           {shown.length > limit && (
@@ -221,7 +238,19 @@ export function StudyPrograms({ programs, stages, now: nowMs }: { programs: Prog
   );
 }
 
-function ProgramCard({ program: p, status, stage, now }: { program: Program; status: WindowStatus; stage?: StudyStage; now: Date }) {
+function ProgramCard({
+  program: p,
+  status,
+  stage,
+  check,
+  now,
+}: {
+  program: Program;
+  status: WindowStatus;
+  stage?: StudyStage;
+  check?: CheckSummary;
+  now: Date;
+}) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -293,12 +322,13 @@ function ProgramCard({ program: p, status, stage, now }: { program: Program; sta
       </div>
 
       {p.note && <p className="small soft study-note">{p.note}</p>}
+      <CheckLine check={check} now={now} />
       {error && (
         <p className="notice notice-danger" role="alert">
           {error}
         </p>
       )}
-      {open && <ProgramDetails program={p} />}
+      {open && <ProgramDetails program={p} check={check} />}
     </li>
   );
 }
@@ -319,7 +349,7 @@ function windowText(raw: string | null, live: LiveWindow | null): string {
   return live.status === "open" ? `${range}, ${live.daysLeft} ${live.daysLeft === 1 ? "day" : "days"} left` : range;
 }
 
-function ProgramDetails({ program: p }: { program: Program }) {
+function ProgramDetails({ program: p, check }: { program: Program; check?: CheckSummary }) {
   const x = p.facts;
   const asks = [
     x.letter && "motivation letter",
@@ -340,6 +370,7 @@ function ProgramDetails({ program: p }: { program: Program }) {
     ["Bachelor's size", x.ects && `${x.ects} ECTS`],
     ["Tests", x.tests?.join(", ")],
     ["Also asks for", asks.join(", ")],
+    ["Compass deadline", p.compassDeadline && `Higher Education Compass lists the next non-EU deadline as ${p.compassDeadline}`],
     ["How to apply", p.route],
     ["Found through", p.foundBy],
     ["Evidence", p.evidence],
@@ -362,7 +393,22 @@ function ProgramDetails({ program: p }: { program: Program }) {
           <p className="small soft">{x.admission}</p>
         </div>
       )}
+      {check?.snippets.length ? (
+        <div className="stack-xs">
+          <h4>What the page said when last read</h4>
+          <ul className="small soft study-snippets">
+            {check.snippets.map((s) => (
+              <li key={s}>{s}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <div className="row">
+        {p.compassUrl && (
+          <a href={p.compassUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">
+            <ExternalLink aria-hidden /> Higher Education Compass
+          </a>
+        )}
         {p.source && (
           <a href={p.source} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">
             <ExternalLink aria-hidden /> {p.source.includes("daad.de") ? "DAAD page" : "Official page"}

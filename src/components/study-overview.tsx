@@ -11,7 +11,7 @@ const OTHERS_SHOWN = 8;
 
 type Closing = { program: Program; window: LiveWindow; stage?: StudyStage; alsoOther: boolean };
 
-/** What he sees first: how much is open, what closes next, and how far his own list has got. */
+/** The first thing on the page: how much is open, what closes next, and how far the personal list has got. */
 export function StudyOverview({
   programs,
   stages,

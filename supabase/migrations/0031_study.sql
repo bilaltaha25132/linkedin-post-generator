@@ -1,6 +1,6 @@
--- The Study tab: Master's programs in Germany he is following, and the
+-- The Study tab: Master's programs in Germany being followed, and the
 -- documents every application is built from. The program catalog itself is
--- public research and ships in src/lib/study/programs.json; only his own
+-- public research and ships in src/lib/study/programs.json; only personal
 -- progress, fit verdicts and notes live here. Idempotent.
 
 create table if not exists study_tracked (

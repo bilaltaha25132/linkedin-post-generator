@@ -55,6 +55,12 @@ export type Program = {
   evidence: Evidence;
   note: string;
   source: string | null;
+  /** The official page the rescan re-reads for dates, scores and fees. */
+  checkUrl: string | null;
+  /** Higher Education Compass entry, a second public listing of the same program. */
+  compassUrl?: string;
+  /** The compass's next non-EU deadline month, e.g. "January 2027", a second source to set against our dates. */
+  compassDeadline?: string;
   foundBy: string;
   facts: ProgramFacts;
 };
@@ -74,3 +80,38 @@ export type TrackedProgram = {
 };
 
 export type DocumentState = { key: string; done: boolean; note: string };
+
+export type CheckStatus = "ok" | "blocked" | "failed" | "skipped";
+export type CheckVerdict = "match" | "differs" | "no-dates";
+
+/** The latest automatic read of a program's official page. */
+export type ProgramCheck = {
+  program_id: string;
+  url: string;
+  checked_at: string;
+  status: CheckStatus;
+  verdict: CheckVerdict | null;
+  signals: string[];
+  snippets: string[];
+  last_ok_at: string | null;
+  last_changed_at: string | null;
+  error: string | null;
+};
+
+/** One time a page's dates, scores or fees moved between two reads. */
+export type ProgramChange = {
+  id: number;
+  program_id: string;
+  url: string;
+  detected_at: string;
+  added: string[];
+  removed: string[];
+  before_snippets: string[];
+  after_snippets: string[];
+};
+
+/** What a card needs from the latest check; the full snippets stay on the server. */
+export type CheckSummary = Pick<ProgramCheck, "url" | "checked_at" | "status" | "verdict" | "last_ok_at" | "last_changed_at" | "error"> & {
+  dates: string[];
+  snippets: string[];
+};

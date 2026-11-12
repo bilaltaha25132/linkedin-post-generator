@@ -4,14 +4,15 @@ import { useState, useTransition } from "react";
 import { ExternalLink, GraduationCap, X } from "lucide-react";
 
 import { EmptyState } from "@/components/page-header";
+import { CheckLine } from "@/components/study-check";
 import { FITS, INTAKES, STAGES, STATUS_CHIP, STATUS_LABEL, feeWarning, stateName } from "@/lib/study/catalog";
 import { trackProgram, untrackProgram, type TrackChange } from "@/lib/study/actions";
-import type { Program, StudyFit, StudyIntake, StudyStage, TrackedProgram } from "@/lib/study/types";
+import type { CheckSummary, Program, StudyFit, StudyIntake, StudyStage, TrackedProgram } from "@/lib/study/types";
 import { formatDay, nextDeadline, summerStatus } from "@/lib/study/windows";
 
-export type TrackedRow = { tracked: TrackedProgram; program: Program };
+export type TrackedRow = { tracked: TrackedProgram; program: Program; check?: CheckSummary };
 
-/** Programs he follows, by stage, each with his fit verdict, intake and notes. */
+/** Followed programs, by stage, each with its fit verdict, intake and notes. */
 export function StudyTracker({ rows, now: nowMs }: { rows: TrackedRow[]; now: number }) {
   const now = new Date(nowMs);
   if (rows.length === 0) {
@@ -46,7 +47,7 @@ export function StudyTracker({ rows, now: nowMs }: { rows: TrackedRow[]; now: nu
   );
 }
 
-function TrackedProgramRow({ row: { tracked: t, program: p }, now }: { row: TrackedRow; now: Date }) {
+function TrackedProgramRow({ row: { tracked: t, program: p, check }, now }: { row: TrackedRow; now: Date }) {
   const next = nextDeadline(p, now);
   const status = summerStatus(p, now);
   const fee = feeWarning(p);
@@ -94,6 +95,7 @@ function TrackedProgramRow({ row: { tracked: t, program: p }, now }: { row: Trac
             {fit && <span className={`chip ${fit.chip}`}>{fit.label}</span>}
           </div>
           {t.fit_note && <p className="small soft study-note">{t.fit_note}</p>}
+          <CheckLine check={check} now={now} />
         </div>
         <button type="button" className="btn btn-ghost btn-sm btn-icon" onClick={remove} disabled={pending} aria-label={`Stop following ${p.program}`}>
           <X aria-hidden />

@@ -16,7 +16,7 @@ const DAY = 86_400_000;
 
 // Everything here is UTC, so the server render and the browser agree on the day.
 
-/** The next intake of each kind he can still aim at: summer starts in April, winter in October. */
+/** The next intake of each kind that can still be aimed at: summer starts in April, winter in October. */
 export function targetYears(now: Date): Record<Intake, number> {
   const y = now.getUTCFullYear();
   const m = now.getUTCMonth() + 1;
