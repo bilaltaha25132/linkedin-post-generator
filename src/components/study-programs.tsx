@@ -389,7 +389,7 @@ function ProgramDetails({ program: p, check }: { program: Program; check?: Check
       </dl>
       {x.admission && (
         <div className="stack-xs">
-          <h4>Admission, as DAAD states it</h4>
+          <h4>Admission, as {p.evidence === "Compass" ? "the Higher Education Compass" : "DAAD"} states it</h4>
           <p className="small soft">{x.admission}</p>
         </div>
       )}
